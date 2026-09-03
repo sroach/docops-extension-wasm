@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Markdown → chart demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; line-height: 1.6; }
+        textarea { width: 100%; height: 260px; font-family: monospace; font-size: 13px; }
+        #output svg { max-width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin: 12px 0; }
+        pre code { background: #f3f4f6; padding: 2px 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<h2>Markdown with embedded charts</h2>
+<p>Write markdown below. Any fenced block tagged <code>chart</code> gets rendered
+    as an SVG bar chart instead of a plain code block.</p>
+
+<textarea id="md-source">## Sales report
+
+Here's this month's numbers:
+
+```chart
+---- theme=premium visualVersion=1 title=Monthly Sales Performance yLabel=Revenue ($) xLabel=Month type=R vBar=true ---
+January | 120.0
+February | 334.0
+March | 455.0
+April | 244.0
+May | 256.0
+June | 223.0
+----
+```
+
+Regular markdown still works around it, like **bold text** and normal code:
+
+```js
+console.log("this stays a plain code block");
+```
+</textarea>
+<br/>
+<button id="render">Render</button>
+<div id="output"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/4.4.0/markdown-it.min.js"></script>
+<script type="module">
+    // "docops_extension.js" / .wasm are produced by `wasm-pack build --target web`
+    import init, { generate_svg } from './pkg/docops_extension.js';
+
+    let wasmReady = false;
+
+    async function main() {
+        await init();
+        wasmReady = true;
+
+        const md = window.markdownit();
+        const renderBtn = document.getElementById('render');
+        const mdSource = document.getElementById('md-source');
+        const output = document.getElementById('output');
+
+        function draw() {
+            if (!wasmReady) return;
+
+            // 1. Markdown -> HTML. Fenced blocks become <pre><code class="language-xxx">.
+            output.innerHTML = md.render(mdSource.value);
+
+            // 2. Find every "chart" fenced block and replace it with the rendered SVG.
+            output.querySelectorAll('code.language-chart').forEach((codeEl) => {
+                const dsl = codeEl.textContent.trim();
+                const svgString = generate_svg(dsl);
+
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = svgString;
+
+                // Replace the whole <pre> (parent of <code>), not just the <code> tag,
+                // so we don't leave an empty code-block shell behind.
+                codeEl.closest('pre').replaceWith(wrapper);
+            });
+        }
+
+        renderBtn.addEventListener('click', draw);
+        draw();
+    }
+
+    main();
+</script>
+</body>
+</html>

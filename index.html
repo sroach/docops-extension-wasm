@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WASM SVG Chart Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; }
+    .chart svg { max-width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+<h2>Declarative chart embeds</h2>
+<p>Each chart's DSL lives in a <code>&lt;script type="text/plain"&gt;</code> tag next
+  to a target container. On load, JS finds every source tag, generates the SVG via
+  wasm, and injects it into the matching container.</p>
+
+<!-- Chart 1 -->
+<div class="chart" id="chart-1"></div>
+<script type="text/plain" class="chart-source" data-target="chart-1">
+  [docops,bar]
+  ----
+  theme=premium
+  visualVersion=1
+  title=Monthly Sales Performance
+  yLabel=Revenue ($)
+  xLabel=Month
+  type=R
+  vBar=true
+  ---
+  January | 120.0
+  February | 334.0
+  March | 455.0
+  April | 244.0
+  May | 256.0
+  June | 223.0
+  ----
+</script>
+
+<!-- Chart 2 -->
+<div class="chart" id="chart-2"></div>
+<script type="text/plain" class="chart-source" data-target="chart-2">
+  [docops,bar]
+  ----
+  theme=dark
+  visualVersion=1
+  title=Website Traffic
+  yLabel=Visitors
+  xLabel=Day
+  type=R
+  vBar=true
+  ---
+  Mon | 812.0
+  Tue | 941.0
+  Wed | 1130.0
+  Thu | 998.0
+  Fri | 1240.0
+  ----
+</script>
+
+<!-- Chart 3 -->
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+  [docops,pie]
+  ----
+  theme=premium
+  visualVersion=1
+  title=Website Traffic
+  yLabel=Visitors
+  xLabel=Day
+  type=R
+  vBar=true
+  ---
+  Mon | 812.0
+  Tue | 941.0
+  Wed | 1130.0
+  Thu | 998.0
+  Fri | 1240.0
+  ----
+</script>
+
+<div class="chart" id="chart-4"></div>
+<script type="text/plain" class="chart-source" data-target="chart-4">
+  [docops,badge]
+----
+Made With|Rust||#06133b|#6fc441|<kotlin>|#fcfcfc
+----
+</script>
+
+<script type="module">
+  // "docops_extension.js" and the accompanying .wasm file are produced by
+  // `wasm-pack build --target web` (see README in this project).
+  import init, { generate_svg } from './pkg/docops_extension.js';
+
+  async function main() {
+    await init(); // loads and instantiates the .wasm binary
+
+    // Find every embedded chart source and render it into its target div.
+    document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+      const dsl = sourceEl.textContent.trim();
+      const targetId = sourceEl.dataset.target;
+      const target = document.getElementById(targetId);
+
+      if (!target) {
+        console.error(`No target element #${targetId} for chart source`);
+        return;
+      }
+
+      const svgString = generate_svg(dsl); // wasm returns raw SVG markup as a string
+      target.innerHTML = svgString;
+    });
+  }
+
+  main();
+</script>
+</body>
+</html>
