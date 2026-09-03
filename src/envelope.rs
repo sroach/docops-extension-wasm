@@ -16,7 +16,7 @@ pub struct Envelope<'a> {
 /// Examples this must handle:
 ///   [docops,pieslice, controls=false,useDark=true] ---- ... ----
 ///   [docops,badge] ---- ... ----
-pub fn parse_envelope(input: &str) -> Result<Envelope, String> {
+pub fn parse_envelope(input: &str) -> Result<Envelope<'_>, String> {
     let trimmed = input.trim();
 
     if !trimmed.starts_with('[') {

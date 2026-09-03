@@ -18,6 +18,11 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
 
     let cfg = &data.config;
     let visual_version = cfg.get("visualVersion").map(|s| s.as_str()).unwrap_or("0");
+    let shape = cfg.get("shape").map(|s| s.as_str()).unwrap_or("pie");
+
+    if shape == "donut" {
+        return render_donut(&data, total, _controls);
+    }
 
     if visual_version == "1" {
         return render_v1(&data, total, _controls);
@@ -76,6 +81,248 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
         title = escape(title),
         slices = slices,
         legend = legend,
+    ))
+}
+
+fn render_donut(data: &crate::common::kv::KvBody, total: f64, _controls: &HashMap<String, String>) -> Result<String, String> {
+    let chart_id = format!("id_{}", Uuid::new_v4());
+    let cfg = &data.config;
+    let title = cfg.get("title").map(String::as_str).unwrap_or("Donut Chart");
+    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Rounded donut · bottom legend");
+
+    let is_dark = _controls.get("useDark").map(|s| s.as_str()) == Some("true")
+        || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
+
+    // Colors & Styles from design
+    let bg_colors = if is_dark { ("#08111d", "#102033", "#11180f") } else { ("#f8fafc", "#eef4f8", "#f9f4e8") };
+    let halo_colors = if is_dark { ("#4ade80", "0.18", "#14b8a6", "0.10", "#08111d") } else { ("#ffffff", "0.72", "#d9f99d", "0.18", "#f8fafc") };
+    let tick_color = if is_dark { "#334155" } else { "#cbd5e1" };
+    let tick_op = if is_dark { "0.38" } else { "0.32" };
+    let header_prefix = if is_dark { "#5eead4" } else { "#0f766e" };
+    let header_title = if is_dark { "#f8fafc" } else { "#111827" };
+    let header_sub = if is_dark { "#cbd5e1" } else { "#475569" };
+    let total_box_bg = if is_dark { "#1d3550" } else { "#eaf2ff" };
+    let total_box_stroke = if is_dark { "#3b5f83" } else { "#c7d9f4" };
+    let total_prefix = if is_dark { "#bae6fd" } else { "#0f766e" };
+    let total_val = if is_dark { "#ffffff" } else { "#111827" };
+    let center_label = if is_dark { "#cbd5e1" } else { "#64748b" };
+    let inner_fill = if is_dark { "#0b1220" } else { "#ffffff" };
+    let center_text = if is_dark { "#ffffff" } else { "#111827" };
+    let label_line = if is_dark { "#5eead4" } else { "#0f766e" };
+    let badge_bg = if is_dark { "#06191E" } else { "#172033" };
+    let badge_text = if is_dark { "#F7FBFF" } else { "#FFFFFF" };
+    let legend_surface = if is_dark { ("#132032", "#0d1726") } else { ("#ffffff", "#f8fafc") };
+    let legend_stroke = if is_dark { ("#4ade80", "0.30", "#14b8a6", "0.16") } else { ("#94a3b8", "0.30", "#cbd5e1", "0.16") };
+    let legend_val_header = if is_dark { "#67e8f9" } else { "#0f766e" };
+    let legend_item_text = if is_dark { "#ffffff" } else { "#111827" };
+    let legend_item_val = if is_dark { "#d1d5db" } else { "#475569" };
+    let legend_line = if is_dark { "#475569" } else { "#cbd5e1" };
+    let badge_anim_x = if is_dark { "-10px" } else { "10px" };
+
+    let palette = if is_dark {
+        vec![
+            ("#ea2d69", "#bc003b"),
+            ("#36c1ff", "#0993d1"),
+            ("#6feca4", "#41bf76"),
+            ("#eadf2d", "#bcb100"),
+            ("#ad42f6", "#7f14c8"),
+        ]
+    } else {
+        vec![
+            ("#f17f7f", "#d86565"),
+            ("#fa9146", "#e1772d"),
+            ("#ac87d1", "#926db7"),
+            ("#92ba19", "#78a100"),
+            ("#5dc5a3", "#44ab89"),
+        ]
+    };
+
+    let mut defs = format!(r##"
+        <linearGradient id="donut_bg_{chart_id}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="{bg1}"/><stop offset="48%" stop-color="{bg2}"/><stop offset="100%" stop-color="{bg3}"/>
+        </linearGradient>
+        <radialGradient id="donut_halo_{chart_id}" cx="54%" cy="24%" r="68%">
+            <stop offset="0%" stop-color="{h1}" stop-opacity="{ho1}"/><stop offset="48%" stop-color="{h2}" stop-opacity="{ho2}"/><stop offset="100%" stop-color="{h3}" stop-opacity="0"/>
+        </radialGradient>
+        <pattern id="donut_ticks_{chart_id}" width="26" height="26" patternUnits="userSpaceOnUse">
+            <path d="M 26 0 L 0 0 0 26" fill="none" stroke="{tick_color}" stroke-width="0.8" opacity="{tick_op}"/>
+        </pattern>
+        <linearGradient id="legend_surface_{chart_id}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="{ls1}" stop-opacity="0.92"/><stop offset="100%" stop-color="{ls2}" stop-opacity="0.92"/>
+        </linearGradient>
+        <linearGradient id="legend_stroke_{chart_id}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="{lst1}" stop-opacity="{lsto1}"/><stop offset="100%" stop-color="{lst2}" stop-opacity="{lsto2}"/>
+        </linearGradient>
+        <filter id="donut_lift_{chart_id}" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="blur"/><feOffset in="blur" dx="0" dy="10" result="offset"/>
+            <feComponentTransfer in="offset"><feFuncA type="linear" slope="0.20"/></feComponentTransfer>
+            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+"##,
+        chart_id=chart_id, bg1=bg_colors.0, bg2=bg_colors.1, bg3=bg_colors.2,
+        h1=halo_colors.0, ho1=halo_colors.1, h2=halo_colors.2, ho2=halo_colors.3, h3=halo_colors.4,
+        tick_color=tick_color, tick_op=tick_op,
+        ls1=legend_surface.0, ls2=legend_surface.1,
+        lst1=legend_stroke.0, lsto1=legend_stroke.1, lst2=legend_stroke.2, lsto2=legend_stroke.3
+    );
+
+    let mut segments_html = String::new();
+    let mut legend_html = String::new();
+    let mut external_labels = String::new();
+    let mut angle = -PI / 2.0;
+    let cx = 380.0;
+    let cy = 310.0;
+    let r = 128.0;
+
+    for (i, (label, value)) in data.points.iter().enumerate() {
+        let (c1, c2) = palette[i % palette.len()];
+        let frac = value / total;
+        let sweep = frac * 2.0 * PI;
+        let end_angle = angle + sweep;
+
+        defs.push_str(&format!(
+            r##"        <linearGradient id="orbit_seg_{chart_id}_{i}" x1="80" y1="80" x2="280" y2="280" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="{c1}"/><stop offset="100%" stop-color="{c2}"/>
+        </linearGradient>
+"##,
+            chart_id=chart_id, i=i, c1=c1, c2=c2
+        ));
+
+        let x1 = angle.cos() * r;
+        let y1 = angle.sin() * r;
+        let x2 = end_angle.cos() * r;
+        let y2 = end_angle.sin() * r;
+        let large_arc = if sweep > PI { 1 } else { 0 };
+
+        let delay = (i as f64) * 90.0;
+        segments_html.push_str(&format!(
+            r##"        <g class="reveal" style="animation-delay: {delay}ms">
+            <g class="slice-shell">
+                <path d="M {x1:.2} {y1:.2} A {r:.2} {r:.2} 0 {large_arc} 1 {x2:.2} {y2:.2}" fill="none" stroke="url(#orbit_seg_{chart_id}_{i})" stroke-width="52.0" stroke-linecap="round">
+                    <title>{label}: {value} ({pct:.1}%)</title>
+                </path>
+            </g>
+        </g>
+"##,
+            delay=delay, x1=x1, y1=y1, r=r, large_arc=large_arc, x2=x2, y2=y2, chart_id=chart_id, i=i, label=escape(label), value=value, pct=frac*100.0
+        ));
+
+        // Legend logic (two columns)
+        let row = (i / 2) as f64;
+        let col = (i % 2) as f64;
+        let lx = 32.0 + col * 300.0;
+        let ly = 58.0 + row * 30.0;
+        legend_html.push_str(&format!(
+            r##"        <g class="legend-item" transform="translate({lx}, {ly})">
+            <rect width="14" height="14" rx="4" fill="url(#orbit_seg_{chart_id}_{i})"/>
+            <text x="24" y="11" fill="{item_text}" font-size="13" font-weight="850">{label}</text>
+            <text x="260" y="11" text-anchor="end" fill="{item_val}" font-size="12" font-weight="800">{value} · {pct:.0}%</text>
+        </g>
+"##,
+            lx=lx, ly=ly, chart_id=chart_id, i=i, item_text=legend_item_text, label=escape(label), item_val=legend_item_val, value=value, pct=frac*100.0
+        ));
+
+        // External labels logic
+        let mid_angle = angle + sweep / 2.0;
+        let ex1 = cx + (r + 15.0) * mid_angle.cos();
+        let ey1 = cy + (r + 15.0) * mid_angle.sin();
+        let ex2 = cx + (r + 45.0) * mid_angle.cos();
+        let ey2 = cy + (r + 45.0) * mid_angle.sin();
+        let is_right = mid_angle.cos() > 0.0;
+        let ex3 = if is_right { ex2 + 25.0 } else { ex2 - 25.0 };
+
+        let line_delay = 800.0 + (i as f64) * 100.0;
+        let badge_delay = 900.0 + (i as f64) * 100.0;
+        let badge_x = if is_right { ex3 + 4.0 } else { ex3 - 4.0 - 42.0 };
+        let badge_y = ey2 - 10.0;
+        let text_anchor = if is_right { "start" } else { "end" };
+        let label_text_x = if is_right { badge_x + 50.0 } else { badge_x - 10.0 };
+
+        external_labels.push_str(&format!(
+            r##"        <path class="label-line" d="M {ex1:.1} {ey1:.1} L {ex2:.1} {ey2:.1} L {ex3:.1} {ey2:.1}" fill="none" stroke="{label_line}" stroke-width="1.2" stroke-opacity="0.4" style="animation-delay: {line_delay}ms;"/>
+        <g class="label-badge" style="animation-delay: {badge_delay}ms;">
+            <rect x="{badge_x:.1}" y="{badge_y:.1}" width="42.00" height="20" rx="10" fill="{badge_bg}" opacity="0.9"/>
+            <text x="{badge_tx:.1}" y="{ey2:.1}" text-anchor="middle" dominant-baseline="middle" fill="{badge_text}" font-size="11" font-weight="900">{pct:.0}%</text>
+            <text x="{label_tx:.1}" y="{ey2:.1}" text-anchor="{anchor}" dominant-baseline="middle" fill="{header_sub}" font-size="12" font-weight="700">{label}</text>
+        </g>
+"##,
+            ex1=ex1, ey1=ey1, ex2=ex2, ey2=ey2, ex3=ex3, label_line=label_line, line_delay=line_delay, badge_delay=badge_delay,
+            badge_x=badge_x, badge_y=badge_y, badge_bg=badge_bg, badge_tx=badge_x + 21.0, badge_text=badge_text, pct=frac*100.0,
+            label_tx=label_text_x, anchor=text_anchor, header_sub=header_sub, label=escape(label)
+        ));
+
+        angle = end_angle;
+    }
+
+    Ok(format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 760 660" id="{chart_id}" role="img">
+    <defs>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;850;900&amp;display=swap');
+            #{chart_id} {{ font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif; }}
+            #{chart_id} text {{ font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif; }}
+            #{chart_id} .reveal {{ opacity: 0; transform-box: fill-box; transform-origin: center; animation: orbitReveal_{chart_id} 720ms cubic-bezier(.18,.9,.24,1.12) forwards; }}
+            #{chart_id} .label-line {{ stroke-dasharray: 100; stroke-dashoffset: 100; animation: labelLineReveal_{chart_id} 800ms ease forwards; opacity: 1; }}
+            #{chart_id} .label-badge {{ opacity: 0; animation: labelBadgeReveal_{chart_id} 600ms cubic-bezier(.18,.9,.24,1.12) forwards; }}
+            @keyframes orbitReveal_{chart_id} {{ from {{ opacity: 0; transform: scale(.92) rotate(-5deg); }} to {{ opacity: 1; transform: scale(1) rotate(0deg); }} }}
+            #{chart_id} .slice-shell {{ transform-box: fill-box; transform-origin: center; transition: transform 260ms cubic-bezier(.2,.9,.2,1), filter 260ms ease; cursor: pointer; }}
+            #{chart_id} .slice-shell:hover {{ transform: scale(1.035); filter: url(#donut_lift_{chart_id}); }}
+            #{chart_id} .legend-item {{ transition: transform 200ms ease, opacity 200ms ease; cursor: pointer; }}
+            #{chart_id} .legend-item:hover {{ transform: translateY(-1px); opacity: 0.94; }}
+            @keyframes labelLineReveal_{chart_id} {{ from {{ stroke-dashoffset: 100; opacity: 0; }} to {{ stroke-dashoffset: 0; opacity: 1; }} }}
+            @keyframes labelBadgeReveal_{chart_id} {{ from {{ opacity: 0; transform: translateX({badge_anim_x}); }} to {{ opacity: 1; transform: translateX(0); }} }}
+        </style>
+        {defs}
+    </defs>
+    <rect width="760" height="660" rx="28" fill="url(#donut_bg_{chart_id})"/>
+    <rect width="760" height="660" rx="28" fill="url(#donut_ticks_{chart_id})" opacity="0.50"/>
+    <rect width="760" height="660" rx="28" fill="url(#donut_halo_{chart_id})"/>
+    <text x="56" y="50" fill="{header_prefix}" font-size="10" font-weight="900" letter-spacing="2.2">PIE CHART</text>
+    <text x="56" y="74" fill="{header_title}" font-size="28" font-weight="900" letter-spacing="-0.6">{title_esc}</text>
+    <rect x="56" y="88" width="64" height="4" rx="2" fill="#a37acc"/>
+    <rect x="128" y="88" width="18" height="4" rx="2" fill="#84cc16"/>
+    <text x="56" y="116" fill="{header_sub}" font-size="12" font-weight="700">{subtitle_esc}</text>
+    
+    <g transform="translate(604 48)">
+        <rect width="104" height="46" rx="12" fill="{total_box_bg}" stroke="{total_box_stroke}" stroke-width="1"/>
+        <text x="18" y="17" fill="{total_prefix}" font-size="9" font-weight="900" letter-spacing="1.8">TOTAL</text>
+        <text x="18" y="35" fill="{total_val}" font-size="17" font-weight="900">{total}</text>
+    </g>
+
+    <g transform="translate(0 0)">
+        <circle cx="{cx}" cy="{cy}" r="168" fill="{inner_fill}" opacity="0.42" filter="url(#donut_lift_{chart_id})"/>
+        <circle cx="{cx}" cy="{cy}" r="154" fill="none" stroke="{tick_color}" stroke-width="1.1" stroke-dasharray="2 8"/>
+        <circle cx="{cx}" cy="{cy}" r="106" fill="{inner_fill}" stroke="{tick_color}" stroke-width="1"/>
+        <g transform="translate({cx} {cy})">
+            {segments_html}
+        </g>
+        <circle cx="{cx}" cy="{cy}" r="74" fill="{inner_fill}" stroke="{tick_color}" stroke-width="1.4"/>
+        <circle cx="{cx}" cy="{cy}" r="58" fill="none" stroke="{tick_color}" stroke-width="0.8" opacity="0.72"/>
+        <text x="{cx}" y="294" text-anchor="middle" fill="{center_label}" font-size="11" font-weight="900" letter-spacing="1.4">TOTAL</text>
+        <text x="{cx}" y="324" text-anchor="middle" fill="{center_text}" font-size="34" font-weight="900" letter-spacing="-1.2">{total}</text>
+        <text x="{cx}" y="346" text-anchor="middle" fill="{center_label}" font-size="12" font-weight="700">{segments_count} segments</text>
+    </g>
+
+    <g class="external-labels" pointer-events="none">
+        {external_labels}
+    </g>
+
+    <g transform="translate(80, 480)" filter="url(#donut_lift_{chart_id})">
+        <rect x="0" y="0" width="600" height="164" rx="18" fill="url(#legend_surface_{chart_id})" stroke="url(#legend_stroke_{chart_id})" stroke-width="1.2"/>
+        <text x="32" y="28" fill="{header_sub}" font-size="10" font-weight="900" letter-spacing="1.5">LEGEND</text>
+        <text x="568" y="28" text-anchor="end" fill="{legend_val_header}" font-size="10" font-weight="900" letter-spacing="0.9">VALUES / SHARE</text>
+        <line x1="32" y1="40" x2="568" y2="40" stroke="{legend_line}" stroke-opacity="0.70"/>
+        {legend_html}
+    </g>
+</svg>"##,
+        chart_id=chart_id, title_esc=escape(title), subtitle_esc=escape(subtitle),
+        header_prefix=header_prefix, header_title=header_title, header_sub=header_sub,
+        total_box_bg=total_box_bg, total_box_stroke=total_box_stroke, total_prefix=total_prefix, total_val=total_val,
+        total=total, cx=cx, cy=cy, inner_fill=inner_fill, center_text=center_text,
+        tick_color=tick_color, segments_html=segments_html, center_label=center_label,
+        segments_count=data.points.len(), external_labels=external_labels,
+        legend_val_header=legend_val_header, legend_line=legend_line, legend_html=legend_html,
+        badge_anim_x=badge_anim_x, defs=defs
     ))
 }
 
@@ -340,6 +587,32 @@ mod tests {
         assert!(svg.contains("stop-opacity=\"0.26\"")); // bgGlowA opacity
         assert!(svg.contains("fill=\"#F9FAFB\"")); // sonarDots fill
         assert!(svg.contains("legend-motion"));
+        assert!(svg.contains("translateX(-10px)"));
+    }
+
+    #[test]
+    fn test_render_donut() {
+        let body = "---- title=Donut Chart shape=donut --- A | 30.0 B | 70.0 ----";
+        let result = render(body, &HashMap::new());
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+        assert!(svg.contains("donut_bg_"));
+        assert!(svg.contains("Donut Chart"));
+        assert!(svg.contains("30.0%"));
+        assert!(svg.contains("70.0%"));
+        assert!(svg.contains("PIE CHART"));
+    }
+
+    #[test]
+    fn test_render_donut_dark() {
+        let mut controls = HashMap::new();
+        controls.insert("useDark".to_string(), "true".to_string());
+        let body = "---- title=Dark Donut shape=donut --- A | 30.0 ----";
+        let result = render(body, &controls);
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+        assert!(svg.contains("stop-color=\"#08111d\"")); // donut_bg_ dark start
+        assert!(svg.contains("fill=\"#0b1220\"")); // inner circle fill
         assert!(svg.contains("translateX(-10px)"));
     }
 }

@@ -50,15 +50,26 @@ pub fn parse_kv_body(body: &str) -> Result<KvBody, String> {
         config.insert(key.clone(), value);
     }
 
-    // Label | value pairs; label runs up to " | ", value is a number token.
-    let point_re = Regex::new(r"([A-Za-z][A-Za-z0-9 ]*?)\s*\|\s*(-?\d+(?:\.\d+)?)").unwrap();
+    // Label | value pairs; label can contain multiple pipes for grouping.
+    // We split by pipe and look for values. A value is a number at the start of a token.
+    let val_re = Regex::new(r"^(-?\d+(?:\.\d+)?)(?:\s+|$)").unwrap();
     let mut points = Vec::new();
-    for cap in point_re.captures_iter(data_str) {
-        let label = cap[1].trim().to_string();
-        let value: f64 = cap[2]
-            .parse()
-            .map_err(|_| "bad number in data".to_string())?;
-        points.push((label, value));
+    let tokens: Vec<&str> = data_str.split('|').map(|s| s.trim()).collect();
+    if tokens.len() >= 2 {
+        let mut current_label = tokens[0].to_string();
+        for i in 1..tokens.len() {
+            let token = tokens[i];
+            if let Some(cap) = val_re.captures(token) {
+                let val: f64 = cap[1].parse().unwrap();
+                points.push((current_label.clone(), val));
+                current_label = token[cap[0].len()..].trim().to_string();
+            } else {
+                if !current_label.is_empty() {
+                    current_label.push_str(" | ");
+                }
+                current_label.push_str(token);
+            }
+        }
     }
 
     if points.is_empty() {
