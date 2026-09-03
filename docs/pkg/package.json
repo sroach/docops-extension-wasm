@@ -1,0 +1,15 @@
+{
+  "name": "docops_extension",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "docops_extension_bg.wasm",
+    "docops_extension.js",
+    "docops_extension.d.ts"
+  ],
+  "main": "docops_extension.js",
+  "types": "docops_extension.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

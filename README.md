@@ -34,7 +34,11 @@ To test the extension, you can run the following command:
 cargo test
 ```
 
+### Demo page
 
+```shell
+wasm-pack build --target web --out-dir docs/pkg
+```
 
 ## License
 

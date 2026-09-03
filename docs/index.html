@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>DocOps WASM SVG Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f8fafc;
+            color: #111827;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 260px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 14px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+        }
+
+        button {
+            margin: 16px 0;
+            padding: 10px 16px;
+            border: 0;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .output {
+            margin-top: 20px;
+            padding: 16px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        .output svg {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<h1>DocOps WASM SVG Demo</h1>
+<p>Edit the chart DSL and render it in the browser using the generated WASM module.</p>
+
+<textarea id="source">[docops,bar]
+----
+theme=premium
+visualVersion=1
+title=Monthly Sales Performance
+subtitle=Generated with Rust + WebAssembly
+yLabel=Revenue
+xLabel=Month
+shape=rounded
+mode=simple
+---
+January | 120
+February | 334
+March | 455
+April | 244
+May | 256
+June | 223
+----</textarea>
+
+<br />
+<button id="render">Render chart</button>
+
+<div id="output" class="output"></div>
+
+<script type="module">
+    import init, { generate_svg } from './pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+
+        const source = document.getElementById('source');
+        const output = document.getElementById('output');
+        const button = document.getElementById('render');
+
+        function render() {
+            output.innerHTML = generate_svg(source.value);
+        }
+
+        button.addEventListener('click', render);
+        render();
+    }
+
+    main().catch((error) => {
+        console.error(error);
+        document.getElementById('output').textContent = String(error);
+    });
+</script>
+</body>
+</html>
