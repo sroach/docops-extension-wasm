@@ -36,6 +36,10 @@ cargo test
 
 ### Demo page
 
+https://sroach.github.io/docops-extension-wasm/
+
+#### Building demo
+
 ```shell
 wasm-pack build --target web --out-dir docs/pkg
 ```
