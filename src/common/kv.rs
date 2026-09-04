@@ -10,27 +10,7 @@ pub struct KvBody {
     pub points: Vec<(String, f64)>,
 }
 
-pub fn parse_kv_body(body: &str) -> Result<KvBody, String> {
-    let trimmed = body.trim();
-
-    if trimmed.len() < 8 {
-        return Err("body too short — expected '---- ... ----'".into());
-    }
-    if !trimmed.starts_with("----") || !trimmed.ends_with("----") {
-        return Err("body must start and end with '----'".into());
-    }
-
-    let inner = &trimmed[4..trimmed.len() - 4];
-    let parts: Vec<&str> = inner.splitn(2, "---").collect();
-    if parts.len() != 2 {
-        return Err("missing '---' separator between header and data".into());
-    }
-    let (header_str, data_str) = (parts[0], parts[1]);
-
-    // key=value pairs; each value runs from its '=' to the start of the
-    // next "word=" match (or end of string). regex crate has no lookahead,
-    // so this is done as two passes over match positions rather than one
-    // clever pattern.
+pub fn parse_kv_header(header_str: &str) -> HashMap<String, String> {
     let key_re = Regex::new(r"(\w+)=").unwrap();
     let key_matches: Vec<(String, usize, usize)> = key_re
         .captures_iter(header_str)
@@ -49,6 +29,27 @@ pub fn parse_kv_body(body: &str) -> Result<KvBody, String> {
         let value = header_str[*value_start..value_end].trim().to_string();
         config.insert(key.clone(), value);
     }
+    config
+}
+
+pub fn parse_kv_body(body: &str) -> Result<KvBody, String> {
+    let trimmed = body.trim();
+
+    if trimmed.len() < 8 {
+        return Err("body too short — expected '---- ... ----'".into());
+    }
+    if !trimmed.starts_with("----") || !trimmed.ends_with("----") {
+        return Err("body must start and end with '----'".into());
+    }
+
+    let inner = &trimmed[4..trimmed.len() - 4];
+    let parts: Vec<&str> = inner.splitn(2, "---").collect();
+    if parts.len() != 2 {
+        return Err("missing '---' separator between header and data".into());
+    }
+    let (header_str, data_str) = (parts[0], parts[1]);
+
+    let config = parse_kv_header(header_str);
 
     // Label | value pairs; label can contain multiple pipes for grouping.
     // We split by pipe and look for values. A value is a number at the start of a token.

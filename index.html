@@ -25,7 +25,7 @@
       background: var(--bg);
       color: var(--text);
     }
-    .chart svg { max-width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px; }
+    .chart svg { max-width: 100%;  border-radius: 8px; margin-bottom: 24px; }
   </style>
 </head>
 <body>
@@ -61,7 +61,6 @@
 <script type="text/plain" class="chart-source" data-target="chart-2">
   [docops,bar]
   ----
-  theme=dark
   visualVersion=1
   title=Website Traffic
   yLabel=Visitors
@@ -80,7 +79,7 @@
 <!-- Chart 3 -->
 <div class="chart" id="chart-3"></div>
 <script type="text/plain" class="chart-source" data-target="chart-3">
-  [docops,pie,useDark=true]
+  [docops,pie]
   ----
   theme=premium
   visualVersion=1
@@ -105,7 +104,17 @@
 <script type="text/plain" class="chart-source" data-target="chart-4">
   [docops,badge]
 ----
-Made With|Rust||#d34516|#1e2650|<kotlin>|#fcfcfc
+
+gap=1
+---
+Made With|Rust||#d34516|#1e2650||#fcfcfc
+Made With|Kotlin||#06133b|#6fc441||#fcfcfc
+Build|Passing||#2088ff|#28a745
+Build|Failed||#2088ff|#dc3545
+Build|In Progress||#2088ff|#ffc107
+Tests|1,234 Passed||#6f42c1|#28a745
+Coverage|94%||#6f42c1|#00d084
+Deploy|Production||#e05d44|#28a745
 ----
 </script>
 
