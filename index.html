@@ -4,7 +4,27 @@
   <meta charset="UTF-8" />
   <title>WASM SVG Chart Demo</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; }
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --card-border: #e5e7eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --text: #e2e8f0;
+        --card-border: #334155;
+      }
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      background: var(--bg);
+      color: var(--text);
+    }
     .chart svg { max-width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px; }
   </style>
 </head>

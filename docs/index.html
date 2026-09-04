@@ -5,13 +5,27 @@
     <title>DocOps WASM SVG Demo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111827;
+            --card-border: #e5e7eb;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #e2e8f0;
+                --card-border: #334155;
+            }
+        }
+
         body {
             font-family: system-ui, sans-serif;
             max-width: 1100px;
             margin: 40px auto;
             padding: 0 20px;
-            background: #f8fafc;
-            color: #111827;
+            background: var(--bg);
+            color: var(--text);
         }
 
         textarea {
