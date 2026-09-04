@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>WASM SVG Chart Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+
+<!-- Chart 1 -->
+<div class="chart" id="chart-1"></div>
+<script type="text/plain" class="chart-source" data-target="chart-1">
+    [docops,adr]
+    ----
+    visualVersion=2
+    title= Adopt GraphQL for API Layer
+    status= Accepted
+    date= 2024-07-15
+    context=
+    - Our REST APIs have become complex with many endpoints
+    - Mobile clients need to fetch data from multiple endpoints
+    - Different clients need different data shapes
+    - We need to reduce over-fetching and under-fetching of data
+    decision=
+    - We will adopt GraphQL for our API layer
+    - We will maintain existing REST endpoints for backward compatibility
+    - We will implement a gradual migration strategy
+    - We will use Apollo Server for the GraphQL implementation
+    consequences=
+    - More efficient data fetching for clients
+    - Improved developer experience with self-documenting API
+    - Potential learning curve for the team
+    - Need for new tooling and monitoring
+    participants=
+    Alex Rivera | API Architect | alex.rivera@example.com | #4F46E5
+    Jasmine Wong | Frontend Lead | jasmine.wong@example.com | #059669
+    David Kim | Backend Developer | david.kim@example.com | #D97706
+    references=
+    [[https://graphql.org/ GraphQL Official Documentation]]
+    [[https://www.apollographql.com/docs/ Apollo GraphQL Documentation]]
+    [[https://engineering.example.com/graphql-best-practices GraphQL Best Practices]]
+    ----
+</script>
+
+<!-- Chart 2 -->
+<div class="chart" id="chart-2"></div>
+<script type="text/plain" class="chart-source" data-target="chart-2">
+    [docops,adr,useDark=true]
+----
+theme=premium
+---
+title= Adopt Microservices Architecture
+status= Superseded
+date= 2024-06-01
+template=apple
+context=
+- Our monolithic application is becoming difficult to maintain and scale
+- Development teams need to work independently on different parts of the system
+- We need to improve deployment frequency and reduce time-to-market
+- Different components have different scaling requirements
+decision=
+- We will gradually migrate from monolith to microservices architecture
+- We will use [[https://martinfowler.com/bliki/DomainDrivenDesign.html domain-driven design]] to identify service boundaries
+- We will implement an [[https://aws.amazon.com/api-gateway API gateway]] for client communication
+- We will use containerization ([[https://www.docker.com/ Docker]]) and orchestration ([[https://kubernetes.io/ Kubernetes]])
+consequences=
+- Improved scalability and resilience
+- Faster development cycles and independent deployments
+- Increased operational complexity
+- Need for robust service discovery and monitoring
+participants= Michael Chen (Chief Architect), Sarah Johnson (DevOps Lead), David Wilson (Development Manager)
+----
+</script>
+
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+    [docops,adr,useDark=true]
+----
+title= Migrate Database to NoSQL Solution
+status= Rejected
+date= 2024-05-20
+context=
+- We're experiencing performance issues with our relational database
+- Some of our data doesn't fit well into a relational model
+- We anticipate significant growth in data volume
+- We want to improve horizontal scalability
+decision=
+- We will not migrate from [[https=//www.postgresql.org/ PostgreSQL]] to [[https=//www.mongodb.com/ MongoDB]]
+- We will instead optimize our existing PostgreSQL setup
+- We will implement caching strategies for performance-critical queries
+- We will consider a hybrid approach for specific use cases
+consequences=
+- Avoid disruption of existing systems and processes
+- Leverage team's existing SQL expertise
+- Miss potential benefits of NoSQL for certain data patterns
+- Need to invest in [[https=//www.postgresql.org/docs/current/performance-tips.html PostgreSQL optimization]] and tuning
+participants=
+Jennifer Lee (Database Administrator),
+Carlos Rodriguez (System Architect),
+Thomas Wright (Performance Engineer)
+    ----
+</script>
+
+<script type="module">
+    // "docops_extension.js" and the accompanying .wasm file are produced by
+    // `wasm-pack build --target web` (see README in this project).
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init(); // loads and instantiates the .wasm binary
+
+        // Find every embedded chart source and render it into its target div.
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) {
+                console.error(`No target element #${targetId} for chart source`);
+                return;
+            }
+
+            const svgString = generate_svg(dsl); // wasm returns raw SVG markup as a string
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>
