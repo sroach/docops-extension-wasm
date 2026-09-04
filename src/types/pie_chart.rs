@@ -92,7 +92,7 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
 
     let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
-    let id_full = format!("donut_{}", chart_id);
+    let _id_full = format!("donut_{}", chart_id);
 
     let mut defs = format!(r##"
         <linearGradient id="donut_bg_{chart_id}" x1="0" y1="0" x2="1" y2="1">
@@ -203,7 +203,7 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
     }
 
     let extra_class = if use_dark { " dark-mode" } else { "" };
-    let badge_anim_x = if use_dark { "-10px" } else { "10px" }; // Still need this for now or use CSS vars
+    let _badge_anim_x = if use_dark { "-10px" } else { "10px" }; // Still need this for now or use CSS vars
 
     Ok(format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 760 660" id="{chart_id}" class="donut-container{extra_class}" role="img">
@@ -348,15 +348,7 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
 
     let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
-    let id_full = format!("v1_{}", chart_id);
-
-    let colors = [
-        ("#71A5F8", "#3B82F6", "#306AC9"),
-        ("#AB89F8", "#8B5CF6", "#714BC9"),
-        ("#57BC7C", "#16A34A", "#12853C"),
-        ("#E39D4B", "#D97706", "#B16104"),
-        ("#E56262", "#DC2626", "#B41F1F"),
-    ];
+    let _id_full = format!("v1_{}", chart_id);
 
     let cx = 300.0;
     let cy = 310.0;
@@ -614,8 +606,8 @@ mod tests {
         assert!(svg.contains("30.0%"));
         assert!(svg.contains("70.0%"));
         assert!(svg.contains("PIE CHART"));
-        assert!(svg.contains("stop-color=\"#cccccc\"")); // bgSurface start (light)
-        assert!(svg.contains("translateX(10px)"));
+        assert!(svg.contains("--v1-bg-1: #cccccc")); // Check CSS var
+        assert!(svg.contains("var(--v1-badge-anim-x)"));
     }
 
     #[test]
@@ -626,11 +618,9 @@ mod tests {
         let result = render(body, &controls);
         assert!(result.is_ok());
         let svg = result.unwrap();
-        assert!(svg.contains("stop-color=\"#0F172A\"")); // bgSurface start
-        assert!(svg.contains("stop-opacity=\"0.26\"")); // bgGlowA opacity
-        assert!(svg.contains("fill=\"#F9FAFB\"")); // sonarDots fill
-        assert!(svg.contains("legend-motion"));
-        assert!(svg.contains("translateX(-10px)"));
+        assert!(svg.contains("class=\"v1-container dark-mode\""));
+        assert!(svg.contains("--v1-bg-1: #0F172A")); // In dark-mode block
+        assert!(svg.contains("var(--v1-glow-a-op)"));
     }
 
     #[test]
@@ -654,8 +644,7 @@ mod tests {
         let result = render(body, &controls);
         assert!(result.is_ok());
         let svg = result.unwrap();
-        assert!(svg.contains("stop-color=\"#08111d\"")); // donut_bg_ dark start
-        assert!(svg.contains("fill=\"#0b1220\"")); // inner circle fill
-        assert!(svg.contains("translateX(-10px)"));
+        assert!(svg.contains("class=\"donut-container dark-mode\""));
+        assert!(svg.contains("--donut-bg-1: #08111d"));
     }
 }

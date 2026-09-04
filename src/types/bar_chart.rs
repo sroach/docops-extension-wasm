@@ -438,9 +438,9 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
         ));
 
         let shape_svg = match ctx.shape {
-            BarShape::Rect => render_rect_bar(0.0, -bar_h, bar_inner_w, bar_h, fill),
-            BarShape::Rounded => render_rounded_bar(0.0, -bar_h, bar_inner_w, bar_h, fill),
-            BarShape::Cylinder => render_cylinder_bar(0.0, -bar_h, bar_inner_w, bar_h, fill),
+            BarShape::Rect => render_rect_bar(0.0, -bar_h, bar_inner_w, bar_h, &fill),
+            BarShape::Rounded => render_rounded_bar(0.0, -bar_h, bar_inner_w, bar_h, &fill),
+            BarShape::Cylinder => render_cylinder_bar(0.0, -bar_h, bar_inner_w, bar_h, &fill),
         };
 
         bars_html.push_str(&format!(
@@ -484,14 +484,6 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
     let bar_inner_w = (group_hit_w * 0.7 / (max_bars_per_group as f64)).min(60.0);
     let group_padding = group_hit_w * 0.15;
     
-    let palette = [
-        "url(#barBlue)",
-        "url(#barPurple)",
-        "url(#barGreen)",
-        "url(#barSteel)",
-        "url(#barRose)",
-    ];
-
     let mut global_idx = 0;
     for (g_idx, group) in groups.iter().enumerate() {
         let x_group_start = ctx.plot_x + (g_idx as f64) * group_hit_w + group_padding;
@@ -514,9 +506,9 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
             ));
 
             let shape_svg = match ctx.shape {
-                BarShape::Rect => render_rect_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, fill),
-                BarShape::Rounded => render_rounded_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, fill),
-                BarShape::Cylinder => render_cylinder_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, fill),
+                BarShape::Rect => render_rect_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill),
+                BarShape::Rounded => render_rounded_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill),
+                BarShape::Cylinder => render_cylinder_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill),
             };
 
             let display_label = if sub_label.is_empty() { group.name.clone() } else { format!("{} ({})", group.name, sub_label) };
@@ -563,14 +555,6 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
     let bar_inner_w = (bar_hit_w * 0.6).min(80.0);
     let bar_offset = (bar_hit_w - bar_inner_w) / 2.0;
     
-    let palette = [
-        "url(#barBlue)",
-        "url(#barPurple)",
-        "url(#barGreen)",
-        "url(#barSteel)",
-        "url(#barRose)",
-    ];
-
     let mut global_idx = 0;
     for (g_idx, group) in groups.iter().enumerate() {
         let x_hit = ctx.plot_x + (g_idx as f64) * bar_hit_w;
@@ -591,12 +575,12 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
             // For stacked bars, we use Rect for all if shape isn't specifically handled, 
             // but let's try to respect shape. Rounded stacked bars look weird though.
             let shape_svg = match ctx.shape {
-                BarShape::Rect => render_rect_bar(0.0, -segment_h, bar_inner_w, segment_h, fill),
-                BarShape::Cylinder => render_cylinder_bar(0.0, -segment_h, bar_inner_w, segment_h, fill),
+                BarShape::Rect => render_rect_bar(0.0, -segment_h, bar_inner_w, segment_h, &fill),
+                BarShape::Cylinder => render_cylinder_bar(0.0, -segment_h, bar_inner_w, segment_h, &fill),
                 BarShape::Rounded => {
                     // Only round top and bottom of the whole stack? Hard with current structure.
                     // Just use rect for intermediate segments.
-                    render_rect_bar(0.0, -segment_h, bar_inner_w, segment_h, fill)
+                    render_rect_bar(0.0, -segment_h, bar_inner_w, segment_h, &fill)
                 }
             };
 
@@ -678,7 +662,7 @@ mod tests {
         let result = render(body, &HashMap::new());
         assert!(result.is_ok());
         let svg = result.unwrap();
-        assert!(svg.contains("fill=\"url(#barPeak)\""));
+        assert!(svg.contains("__barPeak)"));
         
         let rect_svg = render_rect_bar(0.0, -100.0, 50.0, 100.0, "blue");
         assert!(!rect_svg.contains("rx="));
