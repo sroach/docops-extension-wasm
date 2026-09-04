@@ -3,3 +3,7 @@
 gen
 
 target
+
+plantuml-mc*.*
+
+Cargo.lock

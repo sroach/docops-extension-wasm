@@ -64,9 +64,12 @@ fn group_points(points: &Vec<(String, f64)>) -> Vec<BarGroup> {
 
 /// Grammar: `[docops,bar] ---- title=... theme=... --- Label | value ... ----`
 /// (identical body syntax to pie_chart — see common::kv)
-pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String, String> {
+pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, String> {
     let data = parse_kv_body(body)?;
     let cfg = &data.config;
+
+    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+        || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
 
     let title = cfg.get("title").map(String::as_str).unwrap_or("Bar Chart");
     let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Visualized data report");
@@ -156,56 +159,66 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
             tick_x = plot_x - 12.0, tick_y = y + 4.0, val = val));
     }
 
+    let extra_class = if use_dark { " dark-mode" } else { "" };
+
     Ok(format!(
-        r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" id="{chart_id}" preserveAspectRatio="xMidYMid meet">
+        r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" id="{chart_id}" class="bar-chart-container{extra_class}" preserveAspectRatio="xMidYMid meet">
     <defs>
-        <linearGradient id="premiumBackground" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#F7FAFF"/>
-            <stop offset="42%" stop-color="#EEF4FB"/>
-            <stop offset="100%" stop-color="#F9FAFB"/>
+        <linearGradient id="{chart_id}__premiumBackground" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--premium-bg-0)"/>
+            <stop offset="42%" stop-color="var(--premium-bg-42)"/>
+            <stop offset="100%" stop-color="var(--premium-bg-100)"/>
         </linearGradient>
-        <radialGradient id="ambientBlue" cx="22%" cy="12%" r="52%">
-            <stop offset="0%" stop-color="#B8D8FF" stop-opacity="0.72"/>
+        <radialGradient id="{chart_id}__ambientBlue" cx="22%" cy="12%" r="52%">
+            <stop offset="0%" stop-color="#B8D8FF" stop-opacity="var(--ambient-blue-op)"/>
             <stop offset="48%" stop-color="#DCEBFF" stop-opacity="0.28"/>
             <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
         </radialGradient>
-        <radialGradient id="ambientGold" cx="77%" cy="20%" r="44%">
-            <stop offset="0%" stop-color="#FFE7B0" stop-opacity="0.56"/>
+        <radialGradient id="{chart_id}__ambientGold" cx="77%" cy="20%" r="44%">
+            <stop offset="0%" stop-color="#FFE7B0" stop-opacity="var(--ambient-gold-op)"/>
             <stop offset="56%" stop-color="#FFF4D9" stop-opacity="0.18"/>
             <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
         </radialGradient>
-        <linearGradient id="glassSurface" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.88"/>
-            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.64"/>
+        <linearGradient id="{chart_id}__glassSurface" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--surface)" stop-opacity="var(--glass-op)"/>
+            <stop offset="100%" stop-color="var(--surface)" stop-opacity="0.64"/>
         </linearGradient>
-        <linearGradient id="glassStroke" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-            <stop offset="100%" stop-color="#C7D2E1" stop-opacity="0.42"/>
+        <linearGradient id="{chart_id}__glassStroke" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--glass-stroke-0)" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="var(--glass-stroke-100)" stop-opacity="0.42"/>
         </linearGradient>
-        <linearGradient id="barBlue" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#4F7FAE"/>
-            <stop offset="100%" stop-color="#8DB8DD"/>
+        <linearGradient id="{chart_id}__barBlue" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-blue-0)"/>
+            <stop offset="100%" stop-color="var(--bar-blue-100)"/>
         </linearGradient>
-        <linearGradient id="barSteel" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#5F86B2"/>
-            <stop offset="100%" stop-color="#A4C6E2"/>
+        <linearGradient id="{chart_id}__barSteel" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-steel-0)"/>
+            <stop offset="100%" stop-color="var(--bar-steel-100)"/>
         </linearGradient>
-        <linearGradient id="barPeak" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#D98613"/>
-            <stop offset="48%" stop-color="#F7B034"/>
-            <stop offset="100%" stop-color="#FFE2A4"/>
+        <linearGradient id="{chart_id}__barPeak" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-peak-0)"/>
+            <stop offset="48%" stop-color="var(--bar-peak-48)"/>
+            <stop offset="100%" stop-color="var(--bar-peak-100)"/>
         </linearGradient>
-        <linearGradient id="barPurple" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#7C3AED"/>
-            <stop offset="100%" stop-color="#A78BFA"/>
+        <linearGradient id="{chart_id}__barPal_0" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-blue-0)"/>
+            <stop offset="100%" stop-color="var(--bar-blue-100)"/>
         </linearGradient>
-        <linearGradient id="barGreen" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#059669"/>
-            <stop offset="100%" stop-color="#34D399"/>
+        <linearGradient id="{chart_id}__barPal_1" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-purp-0)"/>
+            <stop offset="100%" stop-color="var(--bar-purp-100)"/>
         </linearGradient>
-        <linearGradient id="barRose" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stop-color="#E11D48"/>
-            <stop offset="100%" stop-color="#FB7185"/>
+        <linearGradient id="{chart_id}__barPal_2" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-green-0)"/>
+            <stop offset="100%" stop-color="var(--bar-green-100)"/>
+        </linearGradient>
+        <linearGradient id="{chart_id}__barPal_3" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-steel-0)"/>
+            <stop offset="100%" stop-color="var(--bar-steel-100)"/>
+        </linearGradient>
+        <linearGradient id="{chart_id}__barPal_4" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--bar-rose-0)"/>
+            <stop offset="100%" stop-color="var(--bar-rose-100)"/>
         </linearGradient>
         <filter id="premiumShadow" x="-20%" y="-20%" width="140%" height="150%">
             <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#1B2735" flood-opacity="0.12"/>
@@ -227,7 +240,96 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
                 --grid: #7C8BA1;
                 --axis: #9AA8BA;
                 --accent: #F5A524;
+                --ambient-blue-op: 0.72;
+                --ambient-gold-op: 0.56;
+                --glass-op: 0.88;
+                --premium-bg-0: #F7FAFF;
+                --premium-bg-42: #EEF4FB;
+                --premium-bg-100: #F9FAFB;
+                --glass-stroke-0: #FFFFFF;
+                --glass-stroke-100: #C7D2E1;
+                --bar-blue-0: #4F7FAE;
+                --bar-blue-100: #8DB8DD;
+                --bar-steel-0: #5F86B2;
+                --bar-steel-100: #A4C6E2;
+                --bar-peak-0: #D98613;
+                --bar-peak-48: #F7B034;
+                --bar-rose-100: #FFE2A4;
+                --peak-label: #8A5200;
+                --bar-purp-0: #7C3AED;
+                --bar-purp-100: #A78BFA;
+                --bar-green-0: #059669;
+                --bar-green-100: #34D399;
+                --bar-rose-0: #E11D48;
+                --bar-rose-100: #FB7185;
             }}
+
+            @media (prefers-color-scheme: dark) {{
+                #{chart_id} {{
+                    --bg: #111827;
+                    --surface: rgba(31, 41, 55, 0.74);
+                    --text: #F9FAFB;
+                    --text-soft: #9CA3AF;
+                    --grid: #4B5563;
+                    --axis: #6B7280;
+                    --accent: #F5A524;
+                    --ambient-blue-op: 0.4;
+                    --ambient-gold-op: 0.3;
+                    --glass-op: 0.2;
+                    --premium-bg-0: #0F172A;
+                    --premium-bg-42: #111827;
+                    --premium-bg-100: #1F2937;
+                    --glass-stroke-0: #374151;
+                    --glass-stroke-100: #111827;
+                    --bar-blue-0: #3B82F6;
+                    --bar-blue-100: #60A5FA;
+                    --bar-steel-0: #4B5563;
+                    --bar-steel-100: #9CA3AF;
+                    --bar-peak-0: #F59E0B;
+                    --bar-peak-48: #FBBF24;
+                    --bar-peak-100: #FDE68A;
+                    --peak-label: #FDE68A;
+                    --bar-purp-0: #8B5CF6;
+                    --bar-purp-100: #C4B5FD;
+                    --bar-green-0: #10B981;
+                    --bar-green-100: #6EE7B7;
+                    --bar-rose-0: #F43F5E;
+                    --bar-rose-100: #FDA4AF;
+                }}
+            }}
+
+            #{chart_id}.dark-mode {{
+                --bg: #111827;
+                --surface: rgba(31, 41, 55, 0.74);
+                --text: #F9FAFB;
+                --text-soft: #9CA3AF;
+                --grid: #4B5563;
+                --axis: #6B7280;
+                --accent: #F5A524;
+                --ambient-blue-op: 0.4;
+                --ambient-gold-op: 0.3;
+                --glass-op: 0.2;
+                --premium-bg-0: #0F172A;
+                --premium-bg-42: #111827;
+                --premium-bg-100: #1F2937;
+                --glass-stroke-0: #374151;
+                --glass-stroke-100: #111827;
+                --bar-blue-0: #3B82F6;
+                --bar-blue-100: #60A5FA;
+                --bar-steel-0: #4B5563;
+                --bar-steel-100: #9CA3AF;
+                --bar-peak-0: #F59E0B;
+                --bar-peak-48: #FBBF24;
+                --bar-peak-100: #FDE68A;
+                --peak-label: #FDE68A;
+                --bar-purp-0: #8B5CF6;
+                --bar-purp-100: #C4B5FD;
+                --bar-green-0: #10B981;
+                --bar-green-100: #6EE7B7;
+                --bar-rose-0: #F43F5E;
+                --bar-rose-100: #FDA4AF;
+            }}
+
             #{chart_id} text {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }}
             #{chart_id} .title {{ font-size: 31px; font-weight: 800; letter-spacing: -0.02em; fill: var(--text); }}
             #{chart_id} .subtitle {{ font-size: 13px; font-weight: 600; fill: var(--text-soft); }}
@@ -237,7 +339,7 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
             #{chart_id} .tick-text, #{chart_id} .x-label {{ font-size: 12px; font-weight: 600; fill: var(--text-soft); }}
             #{chart_id} .y-label {{ font-size: 13px; font-weight: 700; fill: var(--text-soft); }}
             #{chart_id} .value-label {{ font-size: 12px; font-weight: 800; fill: var(--text); opacity: 0; pointer-events: none; }}
-            #{chart_id} .peak-label {{ fill: #8A5200; }}
+            #{chart_id} .peak-label {{ fill: var(--peak-label); }}
             #{chart_id} .bar-hit {{ fill: transparent; }}
             #{chart_id} .bar-inner {{ transform-box: fill-box; transform-origin: 50% 100%; filter: url(#softBarShadow); transition: transform 260ms ease, filter 260ms ease, opacity 260ms ease; }}
             #{chart_id} .bar-wrap:hover .bar-inner, #{chart_id} .bar-wrap:focus .bar-inner {{ transform: scaleX(1.07) scaleY(1.025); filter: url(#softBarShadow) saturate(1.16); }}
@@ -251,13 +353,13 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
         </style>
     </defs>
 
-    <rect width="100%" height="100%" fill="url(#premiumBackground)"/>
-    <rect width="100%" height="100%" fill="url(#ambientBlue)"/>
-    <rect width="100%" height="100%" fill="url(#ambientGold)"/>
+    <rect width="100%" height="100%" fill="url(#{chart_id}__premiumBackground)"/>
+    <rect width="100%" height="100%" fill="url(#{chart_id}__ambientBlue)"/>
+    <rect width="100%" height="100%" fill="url(#{chart_id}__ambientGold)"/>
 
     <g class="glass-card" filter="url(#premiumShadow)">
-        <rect x="36" y="34" width="888" height="492" rx="34" ry="34" fill="url(#glassSurface)"/>
-        <rect x="36.5" y="34.5" width="887" height="491" rx="33.5" ry="33.5" fill="none" stroke="url(#glassStroke)" stroke-width="1"/>
+        <rect x="36" y="34" width="888" height="492" rx="34" ry="34" fill="url(#{chart_id}__glassSurface)"/>
+        <rect x="36.5" y="34.5" width="887" height="491" rx="33.5" ry="33.5" fill="none" stroke="url(#{chart_id}__glassStroke)" stroke-width="1"/>
     </g>
 
     <g>
@@ -298,6 +400,7 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
         x_label = escape(x_label),
         width_half = width / 2.0,
         bars_html = bars_html,
+        extra_class = extra_class,
         chart_id = chart_id,
     ))
 }
@@ -316,11 +419,11 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
         let y_base = ctx.plot_y + ctx.plot_h;
 
         let fill = if i == ctx.peak_idx {
-            "url(#barPeak)"
+            format!("url(#{}__barPeak)", ctx.chart_id)
         } else if i % 2 == 0 {
-            "url(#barBlue)"
+            format!("url(#{}__barBlue)", ctx.chart_id)
         } else {
-            "url(#barSteel)"
+            format!("url(#{}__barSteel)", ctx.chart_id)
         };
 
         let peak_class = if i == ctx.peak_idx { " peak-label" } else { "" };
@@ -399,7 +502,7 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
             let bar_h = (value / ctx.max_val) * ctx.plot_h;
             let x_bar = x_group_start + (p_idx as f64) * bar_inner_w;
             
-            let fill = palette[p_idx % palette.len()];
+            let fill = format!("url(#{}__barPal_{})", ctx.chart_id, p_idx % 5);
             
             anim_css.push_str(&format!(
                 "            #{} .anim-{} {{ animation: growBar 760ms cubic-bezier(.2,.8,.2,1) {}ms both; }}\n",
@@ -478,7 +581,7 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
         for (p_idx, (sub_label, value)) in group.points.iter().enumerate() {
             global_idx += 1;
             let segment_h = (value / ctx.max_val) * ctx.plot_h;
-            let fill = palette[p_idx % palette.len()];
+            let fill = format!("url(#{}__barPal_{})", ctx.chart_id, p_idx % 5);
             
             anim_css.push_str(&format!(
                 "            #{} .anim-{} {{ animation: growBar 760ms cubic-bezier(.2,.8,.2,1) {}ms both; }}\n",
@@ -609,5 +712,21 @@ mod tests {
         assert!(result.is_ok());
         let svg = result.unwrap();
         assert!(svg.contains("30")); // Total value label
+    }
+
+    #[test]
+    fn test_bar_dark_mode() {
+        let body = "---- title=Test --- A | 10 ----";
+        
+        // Default mode
+        let svg_light = render(body, &HashMap::new()).unwrap();
+        assert!(svg_light.contains("--bg: #F6F8FB"));
+        assert!(svg_light.contains("@media (prefers-color-scheme: dark)"));
+        
+        // Forced dark mode
+        let mut controls = HashMap::new();
+        controls.insert("useDark".to_string(), "true".to_string());
+        let svg_dark = render(body, &controls).unwrap();
+        assert!(svg_dark.contains("class=\"bar-chart-container dark-mode\""));
     }
 }

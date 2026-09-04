@@ -209,8 +209,10 @@ fn add_value(adr: &mut Adr, key: &str, val: &str) {
     }
 }
 
-fn render_svg(adr: &Adr, _controls: &HashMap<String, String>) -> String {
+fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
+    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false);
     let id = Uuid::new_v4().simple().to_string()[..8].to_string();
+    let id_full = format!("adr_{}", id);
     let status_color = match adr.status.to_lowercase().as_str() {
         "proposed" => "#6366F1",
         "accepted" | "approved" | "completed" => "#10B981",
@@ -254,9 +256,10 @@ fn render_svg(adr: &Adr, _controls: &HashMap<String, String>) -> String {
     }
 
     let total_height = y + 60.0;
+    let extra_class = if use_dark { " dark-mode" } else { "" };
 
     format!(
-        r##"<svg width="900" height="{total_height}" viewBox="0 0 900 {total_height}" xmlns="http://www.w3.org/2000/svg">
+        r##"<svg width="900" height="{total_height}" viewBox="0 0 900 {total_height}" xmlns="http://www.w3.org/2000/svg" id="{id_full}" class="adr-container{extra_class}">
     <defs>
         <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap');
             .apple-text {{ font-family: 'SF Pro Display', 'Inter', system-ui, -apple-system, sans-serif; }}
@@ -267,26 +270,66 @@ fn render_svg(adr: &Adr, _controls: &HashMap<String, String>) -> String {
             .participant-node {{ transition: all 0.2s ease; }}
             .participant-node:hover {{ opacity: 0.7; }}
             .chat-btn:hover {{ filter: brightness(1.1); }}
+            
+            #{id_full} {{
+                --apple-bg-start: #FFFFFF;
+                --apple-bg-end: #F2F2F7;
+                --apple-card-bg: #FFFFFF;
+                --apple-text-primary: #000000;
+                --apple-text-secondary: #8E8E93;
+                --apple-text-item: #1C1C1E;
+                --apple-line: rgba(0,0,0,0.1);
+                --apple-link: #007AFF;
+                --apple-shadow-opacity: 0.08;
+            }}
+
+            @media (prefers-color-scheme: dark) {{
+                #{id_full} {{
+                    --apple-bg-start: #1C1C1E;
+                    --apple-bg-end: #000000;
+                    --apple-card-bg: #2C2C2E;
+                    --apple-text-primary: #FFFFFF;
+                    --apple-text-secondary: #8E8E93;
+                    --apple-text-item: #F2F2F7;
+                    --apple-line: rgba(255,255,255,0.1);
+                    --apple-link: #0A84FF;
+                    --apple-shadow-opacity: 0.3;
+                }}
+            }}
+
+            #{id_full}.dark-mode {{
+                --apple-bg-start: #1C1C1E;
+                --apple-bg-end: #000000;
+                --apple-card-bg: #2C2C2E;
+                --apple-text-primary: #FFFFFF;
+                --apple-text-secondary: #8E8E93;
+                --apple-text-item: #F2F2F7;
+                --apple-line: rgba(255,255,255,0.1);
+                --apple-link: #0A84FF;
+                --apple-shadow-opacity: 0.3;
+            }}
         </style>
         <filter id="appleShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.08"></feDropShadow>
+            <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="var(--apple-shadow-opacity)"></feDropShadow>
         </filter>
         <linearGradient id="appleBg_{id}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#FFFFFF"></stop>
-            <stop offset="100%" stop-color="#F2F2F7"></stop>
+            <stop offset="0%" stop-color="var(--apple-bg-start)"></stop>
+            <stop offset="100%" stop-color="var(--apple-bg-end)"></stop>
         </linearGradient>
     </defs>
     <rect width="900" height="{total_height}" fill="url(#appleBg_{id})"></rect>
     <g transform="translate(48, 60)">
         <text x="0" y="0" class="apple-text" font-size="14" font-weight="600" fill="{status_color}" letter-spacing="0.05em">{status}</text>
-        <text x="0" y="48" class="apple-text" font-size="44" font-weight="700" fill="#000000" letter-spacing="-0.02em">{title}</text>
-        <text x="0" y="90" class="apple-mono" font-size="14" font-weight="500" fill="#8E8E93">{date} • ADR-{id_upper}</text>
-        <line x1="0" y1="130" x2="800" y2="130" stroke="#000000" stroke-opacity="0.1" stroke-width="1"></line>
+        <text x="0" y="48" class="apple-text" font-size="44" font-weight="700" fill="var(--apple-text-primary)" letter-spacing="-0.02em">{title}</text>
+        <text x="0" y="90" class="apple-mono" font-size="14" font-weight="500" fill="var(--apple-text-secondary)">{date} • ADR-{id_upper}</text>
+        <line x1="0" y1="130" x2="800" y2="130" stroke="var(--apple-line)" stroke-width="1"></line>
     </g>
     {sections_svg}
 </svg>"##,
         total_height = total_height,
         id = id,
+        id_full = id_full,
+        extra_class = extra_class,
         status = escape(&adr.status.to_uppercase()),
         status_color = status_color,
         title = escape(&adr.title),
@@ -307,7 +350,7 @@ fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) 
                 Fragment::Text(t) => line_content.push_str(&escape(&t)),
                 Fragment::Link { url, title } => {
                     line_content.push_str(&format!(
-                        r##"<a href="{url}" target="_blank" class="link"><tspan fill="#007AFF">{title}</tspan></a>"##,
+                        r##"<a href="{url}" target="_blank" class="link"><tspan fill="var(--apple-link)">{title}</tspan></a>"##,
                         url = escape(&url),
                         title = escape(&title)
                     ));
@@ -315,7 +358,7 @@ fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) 
             }
         }
         items_svg.push_str(&format!(
-            r##"<text x="32" y="{y}" class="apple-text" font-size="17" font-weight="400" fill="#1C1C1E">- {line_content}</text>"##,
+            r##"<text x="32" y="{y}" class="apple-text" font-size="17" font-weight="400" fill="var(--apple-text-item)">- {line_content}</text>"##,
             y = 64.0 + i as f64 * 30.0,
             line_content = line_content
         ));
@@ -323,7 +366,7 @@ fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) 
 
     format!(
         r##"<g transform="translate(48, {y})">
-        <rect width="800" height="{height}" rx="28" fill="#FFFFFF" filter="url(#appleShadow_{id})"></rect>
+        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})"></rect>
         <rect width="6" height="{height}" rx="3" fill="{color}" transform="translate(-12, 0)"></rect>
         <text x="32" y="32" class="apple-text" font-size="13" font-weight="600" fill="{color}" letter-spacing="0.05em">{title}</text>
         {items_svg}
@@ -378,8 +421,8 @@ fn render_participants(participants: &[Participant], color: &str, y: f64, id: &s
             <g class="participant-node">
                 <circle cx="30" cy="30" r="30" fill="{p_color}" fill-opacity="0.1"></circle>
                 {avatar_content}
-                <text x="80" y="24" class="apple-text" font-size="16" font-weight="600" fill="#1C1C1E">{name}</text>
-                <text x="80" y="44" class="apple-text" font-size="13" font-weight="400" fill="#8E8E93">{role}</text>
+                <text x="80" y="24" class="apple-text" font-size="16" font-weight="600" fill="var(--apple-text-item)">{name}</text>
+                <text x="80" y="44" class="apple-text" font-size="13" font-weight="400" fill="var(--apple-text-secondary)">{role}</text>
             </g>
         </g>"##,
             py = py,
@@ -392,7 +435,7 @@ fn render_participants(participants: &[Participant], color: &str, y: f64, id: &s
 
     format!(
         r##"<g transform="translate(48, {y})">
-        <rect width="800" height="{height}" rx="28" fill="#FFFFFF" filter="url(#appleShadow_{id})"></rect>
+        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})"></rect>
         <text x="32" y="32" class="apple-text" font-size="13" font-weight="600" fill="{color}" letter-spacing="0.05em">PARTICIPANTS</text>
         {chat_btn}
         {participants_svg}
@@ -413,7 +456,7 @@ fn render_references(references: &[Reference], color: &str, y: f64, id: &str) ->
         let ry = 64.0 + i as f64 * 40.0;
         refs_svg.push_str(&format!(
             r##"<a href="{url}" target="_blank" class="link">
-            <text x="32" y="{ry}" class="apple-text" font-size="15" fill="#007AFF">{title}</text>
+            <text x="32" y="{ry}" class="apple-text" font-size="15" fill="var(--apple-link)">{title}</text>
         </a>"##,
             ry = ry,
             url = escape(&r.url),
@@ -423,7 +466,7 @@ fn render_references(references: &[Reference], color: &str, y: f64, id: &str) ->
 
     format!(
         r##"<g transform="translate(48, {y})">
-        <rect width="800" height="{height}" rx="28" fill="#FFFFFF" filter="url(#appleShadow_{id})"></rect>
+        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})"></rect>
         <text x="32" y="32" class="apple-text" font-size="13" font-weight="600" fill="{color}" letter-spacing="0.05em">REFERENCES</text>
         {refs_svg}
     </g>"##,
@@ -552,5 +595,22 @@ Bob | Dev | bob@example.com | #000
         let svg3 = render(body3, &HashMap::new()).unwrap();
         assert!(svg3.contains("START GROUP CHAT"), "Should show button with two emails");
         assert!(svg3.contains("alex@example.com,bob@example.com"), "URL should contain both emails");
+    }
+
+    #[test]
+    fn test_dark_mode_support() {
+        let body = "----\ntitle= Dark Mode Test\nstatus= Accepted\n----";
+        
+        // Default mode (should have variables and media query)
+        let svg_light = render(body, &HashMap::new()).unwrap();
+        assert!(svg_light.contains("--apple-bg-start: #FFFFFF"));
+        assert!(svg_light.contains("@media (prefers-color-scheme: dark)"));
+        assert!(svg_light.contains("class=\"adr-container\""));
+        
+        // Forced dark mode
+        let mut controls = HashMap::new();
+        controls.insert("useDark".to_string(), "true".to_string());
+        let svg_dark = render(body, &controls).unwrap();
+        assert!(svg_dark.contains("class=\"adr-container dark-mode\""));
     }
 }
