@@ -55,24 +55,36 @@
 <h1>DocOps WASM SVG Demo</h1>
 <p>Edit the chart DSL and render it in the browser using the generated WASM module.</p>
 
-<textarea id="source">[docops,bar]
-----
-theme=premium
-visualVersion=1
-title=Monthly Sales Performance
-subtitle=Generated with Rust + WebAssembly
-yLabel=Revenue
-xLabel=Month
-shape=rounded
-mode=simple
----
-January | 120
-February | 334
-March | 455
-April | 244
-May | 256
-June | 223
-----</textarea>
+<textarea id="source">[docops,adr]
+    ----
+    visualVersion=2
+    title= Adopt GraphQL for API Layer
+    status= Accepted
+    date= 2024-07-15
+    context=
+    - Our REST APIs have become complex with many endpoints
+    - Mobile clients need to fetch data from multiple endpoints
+    - Different clients need different data shapes
+    - We need to reduce over-fetching and under-fetching of data
+    decision=
+    - We will adopt GraphQL for our API layer
+    - We will maintain existing REST endpoints for backward compatibility
+    - We will implement a gradual migration strategy
+    - We will use Apollo Server for the GraphQL implementation
+    consequences=
+    - More efficient data fetching for clients
+    - Improved developer experience with self-documenting API
+    - Potential learning curve for the team
+    - Need for new tooling and monitoring
+    participants=
+    Alex Rivera | API Architect | alex.rivera@example.com | #4F46E5
+    Jasmine Wong | Frontend Lead | jasmine.wong@example.com | #059669
+    David Kim | Backend Developer | david.kim@example.com | #D97706
+    references=
+    [[https://graphql.org/ GraphQL Official Documentation]]
+    [[https://www.apollographql.com/docs/ Apollo GraphQL Documentation]]
+    [[https://engineering.example.com/graphql-best-practices GraphQL Best Practices]]
+    ----</textarea>
 
 <br />
 <button id="render">Render chart</button>
