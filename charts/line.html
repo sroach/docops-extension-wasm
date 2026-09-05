@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>DocOps - Combination Charts</title>
+    <title>DocOps - Line Charts</title>
     <style>
         :root {
             --bg: #ffffff;
@@ -30,29 +30,66 @@
 </head>
 <body>
 
-<!-- Chart 5: Rect Bar -->
-<div class="chart" id="chart-5"></div>
-<script type="text/plain" class="chart-source" data-target="chart-5">
-    [docops,combination]
-----
-title=Sales Volume vs Profit Margin
-xLabel=Quarter
-yLabel=Units Sold
-yLabelSecondary=Margin (%)
-dualYAxis=true
-theme=premium
----
-Units Sold | BAR | Q1 | 1200 |  | PRIMARY
-Units Sold | BAR | Q2 | 1450 |  | PRIMARY
-Units Sold | BAR | Q3 | 1680 |  | PRIMARY
-Units Sold | BAR | Q4 | 1920 |  | PRIMARY
-Profit Margin | LINE | Q1 | 22.5 |  | SECONDARY
-Profit Margin | LINE | Q2 | 24.8 |  | SECONDARY
-Profit Margin | LINE | Q3 | 26.2 |  | SECONDARY
-Profit Margin | LINE | Q4 | 28.1 |  | SECONDARY
-----
+
+<!-- Chart 3 -->
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+    [docops,line]
+    ----
+    theme=premium
+    visualVersion=1
+    title=Website Traffic
+    ---
+    Product A | 30
+    Product B | 25
+    Product C | 20
+    Product D | 15
+    Product E | 10
+    ----
 </script>
 
+
+<!-- Chart 4 -->
+<div class="chart" id="chart-4"></div>
+<script type="text/plain" class="chart-source" data-target="chart-4">
+    [docops,line]
+    ----
+    shape=donut
+    theme=premium
+    title=Market Share by Region
+    percentages=true
+    ---
+    North America | 1905
+    Europe | 1302
+    Asia Pacific | 1440
+    Latin America | 890
+    Middle East & Africa | 1279
+    ----
+</script>
+
+<!-- Chart 5 -->
+<div class="chart" id="chart-5"></div>
+<script type="text/plain" class="chart-source" data-target="chart-5">
+    [docops,line]
+    ----
+    title=Monthly Performance Metrics
+width=800
+theme=premium
+---
+Sales | Jan | 40
+Sales | Feb | 70
+Sales | Mar | 90
+Sales | Apr | 70
+Sales | May | 40
+Sales | Jun | 30
+Marketing | Jan | 22
+Marketing | Feb | 33
+Marketing | Mar | 44
+Marketing | Apr | 55
+Marketing | May | 66
+Marketing | Jun | 77
+    ----
+</script>
 
 <script type="module">
     // "docops_extension.js" and the accompanying .wasm file are produced by
