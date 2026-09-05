@@ -183,14 +183,15 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" id="{chart_id}" class="combo-chart-container{extra_class}" preserveAspectRatio="xMidYMid meet">
     <defs>
         <filter id="{chart_id}__premiumShadow" x="-20%" y="-20%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#1B2735" flood-opacity="0.12"/>
+            <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op)"/>
         </filter>
         <linearGradient id="{chart_id}__barGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4F7FAE"/>
-            <stop offset="100%" stop-color="#8DB8DD"/>
+            <stop offset="0%" stop-color="var(--primary-grad-0)"/>
+            <stop offset="100%" stop-color="var(--primary-grad-1)"/>
         </linearGradient>
     </defs>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap');
         #{chart_id} {{
             --bg: #F6F8FB;
             --text: #17202A;
@@ -198,7 +199,32 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             --grid: #E5EAF0;
             --axis: #9AA8BA;
             --primary: #4F7FAE;
+            --primary-grad-0: #4F7FAE;
+            --primary-grad-1: #8DB8DD;
             --secondary: #E11D48;
+            --secondary-grad-0: #FB7185;
+            --secondary-grad-1: #E11D48;
+            --shadow-flood: #1B2735;
+            --shadow-op: 0.12;
+            --point-stroke: #FFFFFF;
+        }}
+        @media (prefers-color-scheme: dark) {{
+            #{chart_id} {{
+                --bg: #111827;
+                --text: #F9FAFB;
+                --text-soft: #9CA3AF;
+                --grid: #374151;
+                --axis: #4B5563;
+                --primary: #60A5FA;
+                --primary-grad-0: #93C5FD;
+                --primary-grad-1: #3B82F6;
+                --secondary: #FB7185;
+                --secondary-grad-0: #FDA4AF;
+                --secondary-grad-1: #E11D48;
+                --shadow-flood: #000000;
+                --shadow-op: 0.40;
+                --point-stroke: #FFFFFF;
+            }}
         }}
         #{chart_id}.dark-mode {{
             --bg: #111827;
@@ -207,18 +233,25 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             --grid: #374151;
             --axis: #4B5563;
             --primary: #60A5FA;
+            --primary-grad-0: #93C5FD;
+            --primary-grad-1: #3B82F6;
             --secondary: #FB7185;
+            --secondary-grad-0: #FDA4AF;
+            --secondary-grad-1: #E11D48;
+            --shadow-flood: #000000;
+            --shadow-op: 0.40;
+            --point-stroke: #FFFFFF;
         }}
-        #{chart_id} text {{ font-family: 'Inter', system-ui, sans-serif; }}
-        #{chart_id} .title {{ font-size: 24px; font-weight: 700; fill: var(--text); }}
-        #{chart_id} .subtitle {{ font-size: 14px; fill: var(--text-soft); }}
+        #{chart_id} text {{ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif; }}
+        #{chart_id} .title {{ font-size: 22px; font-weight: 700; fill: var(--text); }}
+        #{chart_id} .subtitle {{ font-size: 13px; font-weight: 500; fill: var(--text-soft); }}
         #{chart_id} .axis-label {{ font-size: 12px; font-weight: 600; fill: var(--text-soft); }}
         #{chart_id} .tick-text {{ font-size: 11px; fill: var(--text-soft); }}
         #{chart_id} .grid {{ stroke: var(--grid); stroke-width: 1; }}
         #{chart_id} .axis-line {{ stroke: var(--axis); stroke-width: 1.5; }}
         #{chart_id} .bar {{ filter: url(#{chart_id}__premiumShadow); transition: all 0.3s; }}
         #{chart_id} .line {{ fill: none; stroke: var(--secondary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }}
-        #{chart_id} .point {{ fill: var(--secondary); stroke: #FFF; stroke-width: 2; }}
+        #{chart_id} .point {{ fill: var(--secondary); stroke: var(--point-stroke); stroke-width: 2; }}
     </style>
     
     <rect width="{width}" height="{height}" fill="var(--bg)" rx="16"/>
@@ -478,5 +511,37 @@ Profit Margin | LINE | Q4 | 28.1 |  | SECONDARY
         assert!(svg.contains("class=\"bar\""));
         assert!(svg.contains("class=\"line\""));
         assert!(svg.contains("Margin (%)"));
+        assert!(svg.contains("prefers-color-scheme: dark"));
+        assert!(svg.contains("--primary-grad-0"));
+    }
+
+    #[test]
+    fn test_render_combo_dark_mode_theme() {
+        let input = r##"----
+title=DarkCombo
+theme=dark
+---
+Units | BAR | Q1 | 100 | | PRIMARY
+Margin | LINE | Q1 | 20 | | SECONDARY
+----"##;
+        let controls = HashMap::new();
+        let svg = render(input, &controls).unwrap();
+        assert!(svg.contains("dark-mode"));
+        assert!(svg.contains("combo-chart-container dark-mode"));
+    }
+
+    #[test]
+    fn test_render_combo_dark_mode_control() {
+        let input = r##"----
+title=ControlDarkCombo
+---
+Units | BAR | Q1 | 100 | | PRIMARY
+Margin | LINE | Q1 | 20 | | SECONDARY
+----"##;
+        let mut controls = HashMap::new();
+        controls.insert("useDark".to_string(), "true".to_string());
+        let svg = render(input, &controls).unwrap();
+        assert!(svg.contains("dark-mode"));
+        assert!(svg.contains("combo-chart-container dark-mode"));
     }
 }
