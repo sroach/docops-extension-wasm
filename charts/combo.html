@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps - Combination Charts</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111827;
+            --card-border: #e5e7eb;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #e2e8f0;
+                --card-border: #334155;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 720px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+        }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+
+<!-- Chart 5: Rect Bar -->
+<div class="chart" id="chart-5"></div>
+<script type="text/plain" class="chart-source" data-target="chart-5">
+    [docops,combination]
+----
+title=Sales Volume vs Profit Margin
+xLabel=Quarter
+yLabel=Units Sold
+yLabelSecondary=Margin (%)
+dualYAxis=true
+theme=premium
+---
+Units Sold | BAR | Q1 | 1200 |  | PRIMARY
+Units Sold | BAR | Q2 | 1450 |  | PRIMARY
+Units Sold | BAR | Q3 | 1680 |  | PRIMARY
+Units Sold | BAR | Q4 | 1920 |  | PRIMARY
+Profit Margin | LINE | Q1 | 22.5 |  | SECONDARY
+Profit Margin | LINE | Q2 | 24.8 |  | SECONDARY
+Profit Margin | LINE | Q3 | 26.2 |  | SECONDARY
+Profit Margin | LINE | Q4 | 28.1 |  | SECONDARY
+----
+</script>
+
+<!-- Chart 6: Cylinder Bar -->
+<div class="chart" id="chart-6"></div>
+<script type="text/plain" class="chart-source" data-target="chart-6">
+    [docops,bar]
+    ----
+    theme=premium
+    title=Cylindrical Bar Shape
+    shape=cylinder
+    xLabel=Year
+    yLabel=Growth
+    ---
+    2021 | 25.0
+    2022 | 55.0
+    2023 | 85.0
+    2024 | 110.0
+    ----
+</script>
+
+<!-- Chart 7: Grouped Mode -->
+<div class="chart" id="chart-7"></div>
+<script type="text/plain" class="chart-source" data-target="chart-7">
+    [docops,bar]
+    ----
+    theme=premium
+    mode=grouped
+    shape=rect
+    title=Annual Product Sales Report
+    yLabel=Sales (USD)
+    xLabel=Quarters
+    ---
+    Product A | Q1 | 5000.0
+    Product A | Q2 | 7000.0
+    Product A | Q3 | 8000.0
+    Product A | Q4 | 6000.0
+    Product B | Q1 | 6000.0
+    Product B | Q2 | 8000.0
+    Product B | Q3 | 7000.0
+    Product B | Q4 | 9000.0
+    ----
+</script>
+
+<!-- Chart 8: Stacked Mode -->
+<div class="chart" id="chart-8"></div>
+<script type="text/plain" class="chart-source" data-target="chart-8">
+    [docops,bar]
+    ----
+    theme=premium
+    title=Stacked Mode Support
+    mode=stacked
+    xLabel=Categories
+    yLabel=Points
+    ---
+    Region North | Alpha | 100.0
+    Region North | Beta | 150.0
+    Region South | Alpha | 120.0
+    Region South | Beta | 90.0
+    ----
+</script>
+
+<script type="module">
+    // "docops_extension.js" and the accompanying .wasm file are produced by
+    // `wasm-pack build --target web` (see README in this project).
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init(); // loads and instantiates the .wasm binary
+
+        // Find every embedded chart source and render it into its target div.
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) {
+                console.error(`No target element #${targetId} for chart source`);
+                return;
+            }
+
+            const svgString = generate_svg(dsl); // wasm returns raw SVG markup as a string
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>
