@@ -358,6 +358,10 @@
                 <optgroup label="Line Charts">
                     <option value="line_chart">Line Chart — Multi-Series Latency Trend</option>
                 </optgroup>
+                <optgroup label="Scorecards">
+                    <option value="scorecard_release">Scorecard — Release Migration Summary</option>
+                    <option value="scorecard_dark">Scorecard — Dark Mode System Comparison</option>
+                </optgroup>
             </select>
         </div>
         <div class="button-group">
@@ -420,6 +424,10 @@
             <div class="feature-item">
                 <h3>Multi-Series Line Charts</h3>
                 <p>Temporal trends and multi-metric comparisons with gradient fill areas via <code>[docops,line]</code>.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Comparison Scorecards</h3>
+                <p>Visual before-and-after release scorecards with status sections, checklist indicators, and dark mode support via <code>[docops,scorecard]</code>.</p>
             </div>
         </div>
     </div>
@@ -658,6 +666,72 @@ Backend | Mar | 180
 Backend | Apr | 165
 Backend | May | 150
 Backend | Jun | 140
+----`,
+
+        scorecard_release: `[docops,scorecard]
+----
+theme=premium
+title=Software Release v2.4.0 - Feature & Bug Summary
+subtitle=Migration from Legacy System to Modern Architecture
+---
+
+[before]
+title=BEFORE v2.4.0
+---
+[before.items]
+=== Feature Status
+Dark Mode Theme | Missing feature affecting user experience
+Multi-language Support | Not available, limiting global reach
+Advanced Search Filters | Basic search only, slow performance
+=== Known Issues
+Login timeout issues | Users frequently logged out
+Memory leaks in dashboard | System becomes slow over time
+Database connection drops | Intermittent connection failures
+---
+
+[after]
+title=AFTER v2.4.0
+---
+[after.items]
+=== New Features Added
+Dark Mode Theme | Implemented with user preference saving
+Multi-language Support | Added 12 languages with automatic detection
+Advanced Search Filters | Fast indexing with multiple filter options
+=== Bugs Resolved
+Login timeout issues | Session management completely rewritten
+Memory leaks in dashboard | React components optimized, memory usage -67%
+Database connection drops | Connection pooling and retry logic implemented
+----`,
+
+        scorecard_dark: `[docops,scorecard]
+----
+theme=dark
+title=Infrastructure Modernization Scorecard
+subtitle=Monolith to Cloud Native Kubernetes Migration
+---
+
+[before]
+title=BEFORE MIGRATION
+---
+[before.items]
+=== Architecture & Scaling
+Monolithic App | Difficult to scale individual components
+Manual Deployments | High risk releases taking several hours
+=== Reliability
+Single Point of Failure | Database outages impact all services
+Slow Incident Recovery | Mean time to recovery over 2 hours
+---
+
+[after]
+title=AFTER MIGRATION
+---
+[after.items]
+=== Architecture & Scaling
+Microservices on K8s | Auto-scaling pods based on traffic demand
+GitOps CI/CD | Automated zero-downtime canary deployments
+=== Reliability
+Multi-Zone Redundancy | Self-healing cluster with 99.99% uptime
+Automated Failover | Instant failover with MTTR under 5 minutes
 ----`
     };
 

@@ -259,6 +259,72 @@ Backend | Apr | 165
 Backend | May | 150
 Backend | Jun | 140
 ----"#,
+            // Scorecard Release
+            r#"[docops,scorecard]
+----
+theme=premium
+title=Software Release v2.4.0 - Feature & Bug Summary
+subtitle=Migration from Legacy System to Modern Architecture
+---
+
+[before]
+title=BEFORE v2.4.0
+---
+[before.items]
+=== Feature Status
+Dark Mode Theme | Missing feature affecting user experience
+Multi-language Support | Not available, limiting global reach
+Advanced Search Filters | Basic search only, slow performance
+=== Known Issues
+Login timeout issues | Users frequently logged out
+Memory leaks in dashboard | System becomes slow over time
+Database connection drops | Intermittent connection failures
+---
+
+[after]
+title=AFTER v2.4.0
+---
+[after.items]
+=== New Features Added
+Dark Mode Theme | Implemented with user preference saving
+Multi-language Support | Added 12 languages with automatic detection
+Advanced Search Filters | Fast indexing with multiple filter options
+=== Bugs Resolved
+Login timeout issues | Session management completely rewritten
+Memory leaks in dashboard | React components optimized, memory usage -67%
+Database connection drops | Connection pooling and retry logic implemented
+----"#,
+            // Scorecard Dark
+            r#"[docops,scorecard]
+----
+theme=dark
+title=Infrastructure Modernization Scorecard
+subtitle=Monolith to Cloud Native Kubernetes Migration
+---
+
+[before]
+title=BEFORE MIGRATION
+---
+[before.items]
+=== Architecture & Scaling
+Monolithic App | Difficult to scale individual components
+Manual Deployments | High risk releases taking several hours
+=== Reliability
+Single Point of Failure | Database outages impact all services
+Slow Incident Recovery | Mean time to recovery over 2 hours
+---
+
+[after]
+title=AFTER MIGRATION
+---
+[after.items]
+=== Architecture & Scaling
+Microservices on K8s | Auto-scaling pods based on traffic demand
+GitOps CI/CD | Automated zero-downtime canary deployments
+=== Reliability
+Multi-Zone Redundancy | Self-healing cluster with 99.99% uptime
+Automated Failover | Instant failover with MTTR under 5 minutes
+----"#,
         ];
 
         for (i, sample) in samples.iter().enumerate() {

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps - Scorecard</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111827;
+            --card-border: #e5e7eb;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #e2e8f0;
+                --card-border: #334155;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 720px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+        }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+
+<!-- Chart 5: Rect Bar -->
+<div class="chart" id="chart-5"></div>
+<script type="text/plain" class="chart-source" data-target="chart-5">
+    [docops,scorecard]
+----
+theme=premium
+title=Software Release v2.4.0 - Feature & Bug Summary
+subtitle=Migration from Legacy System to Modern Architecture
+---
+
+[before]
+title=BEFORE v2.4.0
+---
+[before.items]
+=== Feature Status
+Dark Mode Theme | Missing feature affecting user experience
+Multi-language Support | Not available, limiting global reach
+Advanced Search Filters | Basic search only, slow performance
+Export to PDF | Feature not implemented
+Two-Factor Authentication | Security vulnerability exists
+API Rate Limiting | No protection against abuse
+=== Known Issues
+Login timeout issues | Users frequently logged out
+Memory leaks in dashboard | System becomes slow over time
+File upload corruption | Files sometimes corrupted during upload
+Mobile UI overlapping | Interface broken on mobile devices
+Database connection drops | Intermittent connection failures
+Email notifications failing | Users not receiving important updates
+Report generation errors | Reports fail to generate properly
+---
+
+[after]
+title=AFTER v2.4.0
+---
+[after.items]
+=== New Features Added
+Dark Mode Theme | Implemented with user preference saving
+Multi-language Support | Added 12 languages with automatic detection
+Advanced Search Filters | Fast indexing with multiple filter options
+Export to PDF | High-quality PDF export with custom templates
+Two-Factor Authentication | TOTP and SMS-based 2FA implemented
+API Rate Limiting | Intelligent rate limiting with user tiers
+=== Bugs Resolved
+Login timeout issues | Session management completely rewritten
+Memory leaks in dashboard | React components optimized, memory usage -67%
+File upload corruption | New chunked upload system with integrity checks
+Mobile UI overlapping | Responsive design overhaul completed
+Database connection drops | Connection pooling and retry logic implemented
+Email notifications failing | New email service with 99.9% delivery rate
+Report generation errors | Async report generation with progress tracking
+----
+</script>
+
+
+<script type="module">
+    // "docops_extension.js" and the accompanying .wasm file are produced by
+    // `wasm-pack build --target web` (see README in this project).
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init(); // loads and instantiates the .wasm binary
+
+        // Find every embedded chart source and render it into its target div.
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) {
+                console.error(`No target element #${targetId} for chart source`);
+                return;
+            }
+
+            const svgString = generate_svg(dsl); // wasm returns raw SVG markup as a string
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>

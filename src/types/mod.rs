@@ -5,6 +5,7 @@ pub mod pie_chart;
 pub mod adr;
 pub mod combination_chart;
 pub mod line_chart;
+pub mod scorecard;
 
 
 /// The one place that knows every supported visualization type. Adding a
@@ -18,6 +19,7 @@ pub fn render(viz_type: &str, body: &str, controls: &HashMap<String, String>) ->
         "combination" | "combo" => combination_chart::render(body, controls),
         "badge" => badge::render(body, controls),
         "adr" => adr::render(body, controls),
+        "scorecard" | "score" => scorecard::render(body, controls),
         other => Err(format!(
             "unknown visualization type '{other}' — expected one of: bar, pieslice, badge, adr, gherkin, scorecard"
         )),
