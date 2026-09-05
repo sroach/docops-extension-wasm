@@ -51,7 +51,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
 
     let title = cfg.get("title").map(String::as_str).unwrap_or("Line Chart");
-    let _subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Performance over time");
+    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("");
     let x_label_text = cfg.get("xLabel").map(String::as_str).unwrap_or("");
     let y_label_text = cfg.get("yLabel").map(String::as_str).unwrap_or("");
 
@@ -80,9 +80,9 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let width = 800.0;
     let height = 500.0;
     let plot_x = 85.0;
-    let plot_y = 70.0;
+    let plot_y = 75.0;
     let plot_w = 565.0;
-    let plot_h = 350.0;
+    let plot_h = 345.0;
 
     let chart_id = format!("id_{}", Uuid::new_v4());
     
@@ -103,15 +103,20 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         ));
     }
 
+    let x_padding = 25.0;
     let x_step = if x_labels.len() > 1 {
-        plot_w / (x_labels.len() - 1) as f64
+        (plot_w - 2.0 * x_padding) / (x_labels.len() - 1) as f64
     } else {
-        plot_w
+        0.0
     };
 
     let mut x_ticks = String::new();
     for (i, label) in x_labels.iter().enumerate() {
-        let x = plot_x + i as f64 * x_step;
+        let x = plot_x + x_padding + i as f64 * x_step;
+        grid_svg.push_str(&format!(
+            r##"<line x1="{x}" y1="{y1}" x2="{x}" y2="{y2}"/>"##,
+            x = x, y1 = plot_y, y2 = plot_y + plot_h
+        ));
         x_ticks.push_str(&format!(
             r##"<line x1="{x}" y1="{y_base}" x2="{x}" y2="{tick_y}" class="chart-axis"/><text x="{x}" y="{ty}" text-anchor="middle" class="chart-text tick-label">{label}<title>{label}</title></text>"##,
             x = x, y_base = plot_y + plot_h, tick_y = plot_y + plot_h + 5.0, ty = plot_y + plot_h + 20.0, label = escape(label)
@@ -122,11 +127,10 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let mut series_svg = String::new();
     let mut legend_items = String::new();
 
-    let palette = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#E11D48"];
+    let palette_size = 5;
 
     for (g_idx, group) in groups.iter().enumerate() {
-        let color_idx = g_idx % palette.len();
-        let color = palette[color_idx];
+        let pal_idx = g_idx % palette_size;
         let (peak_val, peak_idx) = series_peaks[g_idx];
 
         let mut path_d = String::new();
@@ -137,7 +141,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
 
         for (i, label) in x_labels.iter().enumerate() {
             if let Some((_, val)) = group.points.iter().find(|(l, _)| l == label) {
-                let x = plot_x + i as f64 * x_step;
+                let x = plot_x + x_padding + i as f64 * x_step;
                 let y = plot_y + plot_h - (val / max_val) * plot_h;
 
                 if first {
@@ -150,8 +154,16 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
 
                 let is_peak = i == peak_idx;
                 let r = if is_peak { 7.5 } else { 6.5 };
-                let p_fill = if is_peak { color } else { "#FFFFFF" };
-                let p_stroke = if is_peak { "#FFFFFF" } else { color };
+                let p_fill = if is_peak {
+                    format!("var(--line-pal-{pal_idx}-stroke)")
+                } else {
+                    "var(--point-bg)".to_string()
+                };
+                let p_stroke = if is_peak {
+                    "var(--point-peak-stroke)".to_string()
+                } else {
+                    format!("var(--line-pal-{pal_idx}-stroke)")
+                };
                 let sw = if is_peak { 3.0 } else { 2.5 };
 
                 points_svg.push_str(&format!(
@@ -163,45 +175,59 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         }
         
         let area_d = format!("{path_d} L {last_x},{base} L {first_x},{base} Z", 
-            path_d = path_d, last_x = last_x, base = plot_y + plot_h, first_x = plot_x);
+            path_d = path_d, last_x = last_x, base = plot_y + plot_h, first_x = plot_x + x_padding);
 
         areas_svg.push_str(&format!(
-            r##"<path class="area-path area-{g_idx}" style="animation-delay:{delay:.2}s" d="{d}" fill="url(#{id}_area_grad_{g_idx})" fill-opacity="1"/>"##,
-            delay = 0.1 + g_idx as f64 * 0.08, d = area_d, id = chart_id, g_idx = g_idx
+            r##"<path class="area-path area-{g_idx}" style="animation-delay:{delay:.2}s" d="{d}" fill="url(#{id}_area_grad_{pal_idx})" fill-opacity="1"/>"##,
+            delay = 0.1 + g_idx as f64 * 0.08, d = area_d, id = chart_id, g_idx = g_idx, pal_idx = pal_idx
         ));
 
         series_svg.push_str(&format!(
             r##"<g class="data-series" id="series-{g_idx}" tabindex="0">
-            <path class="line-path line-reveal line-{g_idx}" style="animation-delay:{delay:.2}s" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="{d}" fill="none" stroke="url(#{id}_line_grad_{g_idx})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path class="line-path line-reveal line-{g_idx}" style="animation-delay:{delay:.2}s" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="{d}" fill="none" stroke="url(#{id}_line_grad_{pal_idx})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
             {points_svg}
         </g>"##,
-            g_idx = g_idx, delay = g_idx as f64 * 0.08, d = path_d, id = chart_id, points_svg = points_svg
+            g_idx = g_idx, pal_idx = pal_idx, delay = g_idx as f64 * 0.08, d = path_d, id = chart_id, points_svg = points_svg
         ));
 
         legend_items.push_str(&format!(
-            r##"<g class="legend-item"><circle cx="676" cy="{cy}" r="5.5" fill="{color}"/><text x="690" y="{ty}" dominant-baseline="middle" style="fill: #111827 !important;" class="chart-text legend-label">{name}</text><text x="690" y="{vy}" dominant-baseline="middle" class="chart-text legend-value">Peak {peak_val}</text></g>"##,
-            cy = 110 + g_idx * 36, ty = 108 + g_idx * 36, vy = 124 + g_idx * 36, color = color, name = escape(&group.name), peak_val = peak_val
+            r##"<g class="legend-item"><circle cx="676" cy="{cy}" r="5.5" fill="var(--line-pal-{pal_idx}-stroke)"/><text x="690" y="{ty}" dominant-baseline="middle" class="chart-text legend-label">{name}</text><text x="690" y="{vy}" dominant-baseline="middle" class="chart-text legend-value">Peak {peak_val}</text></g>"##,
+            cy = 110 + g_idx * 36, ty = 108 + g_idx * 36, vy = 124 + g_idx * 36, pal_idx = pal_idx, name = escape(&group.name), peak_val = peak_val
         ));
     }
 
     let mut series_defs = String::new();
-    for (i, color) in palette.iter().enumerate() {
+    for i in 0..palette_size {
         series_defs.push_str(&format!(
             r##"
         <linearGradient id="{id}_line_grad_{i}" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="{color}" stop-opacity="0.8"/>
-            <stop offset="100%" stop-color="{color}"/>
+            <stop offset="0%" stop-color="var(--line-pal-{i}-1)" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="var(--line-pal-{i}-2)"/>
         </linearGradient>
         <linearGradient id="{id}_area_grad_{i}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="{color}" stop-opacity="0.2"/>
-            <stop offset="100%" stop-color="{color}" stop-opacity="0"/>
+            <stop offset="0%" stop-color="var(--line-pal-{i}-1)" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="var(--line-pal-{i}-2)" stop-opacity="0.0"/>
         </linearGradient>
         "##,
-            id = chart_id, i = i, color = color
+            id = chart_id, i = i
         ));
     }
 
     let extra_class = if use_dark { " dark-mode" } else { "" };
+
+    let header_svg = if !subtitle.is_empty() {
+        format!(
+            r##"<text x="400" y="44" text-anchor="middle" class="chart-text chart-title">{title}</text>
+    <text x="400" y="62" text-anchor="middle" class="chart-text chart-subtitle">{subtitle}</text>"##,
+            title = escape(title),
+            subtitle = escape(subtitle)
+        )
+    } else {
+        format!(
+            r##"<text x="400" y="52" text-anchor="middle" class="chart-text chart-title">{title}</text>"##,
+            title = escape(title)
+        )
+    };
 
     Ok(format!(
         r##"<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" id="{id}" preserveAspectRatio="xMidYMid meet" viewBox="0 0 {width} {height}" class="line-chart-container{extra_class}">
@@ -216,28 +242,28 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     </metadata>
     <defs>
         <linearGradient id="{id}_apple_bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#F7FAFF"/><stop offset="46%" stop-color="#EEF4FF"/><stop offset="100%" stop-color="#E7EEF8"/>
+            <stop offset="0%" stop-color="var(--bg-0)"/><stop offset="46%" stop-color="var(--bg-46)"/><stop offset="100%" stop-color="var(--bg-100)"/>
         </linearGradient>
         <radialGradient id="{id}_glow_blue" cx="19%" cy="8%" r="62%">
-            <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.48"/><stop offset="45%" stop-color="#60A5FA" stop-opacity="0.16"/><stop offset="100%" stop-color="#60A5FA" stop-opacity="0"/>
+            <stop offset="0%" stop-color="var(--glow-blue-color)" stop-opacity="var(--glow-blue-op-0)"/><stop offset="45%" stop-color="var(--glow-blue-color)" stop-opacity="var(--glow-blue-op-45)"/><stop offset="100%" stop-color="var(--glow-blue-color)" stop-opacity="0"/>
         </radialGradient>
         <radialGradient id="{id}_glow_mint" cx="88%" cy="18%" r="56%">
-            <stop offset="0%" stop-color="#99F6E4" stop-opacity="0.5"/><stop offset="48%" stop-color="#2DD4BF" stop-opacity="0.13"/><stop offset="100%" stop-color="#2DD4BF" stop-opacity="0"/>
+            <stop offset="0%" stop-color="var(--glow-mint-color)" stop-opacity="var(--glow-mint-op-0)"/><stop offset="48%" stop-color="var(--glow-mint-color)" stop-opacity="var(--glow-mint-op-48)"/><stop offset="100%" stop-color="var(--glow-mint-color)" stop-opacity="0"/>
         </radialGradient>
         <radialGradient id="{id}_glow_peach" cx="42%" cy="100%" r="62%">
-            <stop offset="0%" stop-color="#FDBA74" stop-opacity="0.24"/><stop offset="100%" stop-color="#FDBA74" stop-opacity="0"/>
+            <stop offset="0%" stop-color="var(--glow-peach-color)" stop-opacity="var(--glow-peach-op)"/><stop offset="100%" stop-color="var(--glow-peach-color)" stop-opacity="0"/>
         </radialGradient>
         <linearGradient id="{id}_plot_glass" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.82"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.48"/>
+            <stop offset="0%" stop-color="var(--plot-surface-0)" stop-opacity="var(--plot-surface-op-0)"/><stop offset="100%" stop-color="var(--plot-surface-100)" stop-opacity="var(--plot-surface-op-100)"/>
         </linearGradient>
         <linearGradient id="{id}_plot_stroke" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.86"/><stop offset="100%" stop-color="#94A3B8" stop-opacity="0.22"/>
+            <stop offset="0%" stop-color="var(--plot-stroke-0)" stop-opacity="var(--plot-stroke-op-0)"/><stop offset="100%" stop-color="var(--plot-stroke-100)" stop-opacity="var(--plot-stroke-op-100)"/>
         </linearGradient>
         <filter id="{id}_apple_card_shadow" x="-20%" y="-20%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#1E293B" flood-opacity="0.14"/><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#FFFFFF" flood-opacity="0.9"/>
+            <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op)"/><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="var(--shadow-flood-sub)" flood-opacity="var(--shadow-op-sub)"/>
         </filter>
         <filter id="{id}_soft_point_shadow" x="-80%" y="-80%" width="260%" height="260%">
-            <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0369A1" flood-opacity="0.22"/>
+            <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="var(--point-shadow-color)" flood-opacity="var(--point-shadow-op)"/>
         </filter>
         <filter id="{id}_line_glow" x="-10%" y="-40%" width="120%" height="180%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.03  0 0 0 0 0.45  0 0 0 0 0.85  0 0 0 0 0.28 0" result="glow"/><feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -245,18 +271,197 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         <clipPath id="{id}_plot_clip"><rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="26" ry="26"/></clipPath>
         {series_defs}
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-            #{id} {{ --text-primary: #111827; --text-secondary: #6B7280; --text-muted: #8A94A6; --grid: #CBD5E1; --axis: #94A3B8; }}
-            #{id} .chart-text {{ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif; fill: #111827; letter-spacing: -0.01em; }}
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap');
+            #{id} {{
+                --bg: #F6F8FB;
+                --bg-0: #F7FAFF;
+                --bg-46: #EEF4FF;
+                --bg-100: #E7EEF8;
+                --card-bg: rgba(255, 255, 255, 0.38);
+                --card-stroke: rgba(255, 255, 255, 0.72);
+                --plot-surface-0: #FFFFFF;
+                --plot-surface-100: #FFFFFF;
+                --plot-surface-op-0: 0.82;
+                --plot-surface-op-100: 0.48;
+                --plot-stroke-0: #FFFFFF;
+                --plot-stroke-100: #94A3B8;
+                --plot-stroke-op-0: 0.86;
+                --plot-stroke-op-100: 0.22;
+                --glow-blue-color: #60A5FA;
+                --glow-blue-op-0: 0.48;
+                --glow-blue-op-45: 0.16;
+                --glow-mint-color: #2DD4BF;
+                --glow-mint-op-0: 0.50;
+                --glow-mint-op-48: 0.13;
+                --glow-peach-color: #FDBA74;
+                --glow-peach-op: 0.24;
+                --deco-circle-1: #FFFFFF;
+                --deco-circle-2: #FFFFFF;
+                --deco-circle-op: 0.18;
+                --text: #111827;
+                --text-soft: #6B7280;
+                --text-muted: #8A94A6;
+                --grid: #CBD5E1;
+                --grid-op: 0.42;
+                --axis: #94A3B8;
+                --legend-box-bg: rgba(255, 255, 255, 0.66);
+                --legend-box-stroke: rgba(255, 255, 255, 0.72);
+                --point-bg: #FFFFFF;
+                --point-peak-stroke: #FFFFFF;
+                --shadow-flood: #1E293B;
+                --shadow-op: 0.14;
+                --shadow-flood-sub: #FFFFFF;
+                --shadow-op-sub: 0.90;
+                --point-shadow-color: #0369A1;
+                --point-shadow-op: 0.22;
+                --line-pal-0-1: #60A5FA;
+                --line-pal-0-2: #3B82F6;
+                --line-pal-0-stroke: #3B82F6;
+                --line-pal-1-1: #A78BFA;
+                --line-pal-1-2: #8B5CF6;
+                --line-pal-1-stroke: #8B5CF6;
+                --line-pal-2-1: #34D399;
+                --line-pal-2-2: #10B981;
+                --line-pal-2-stroke: #10B981;
+                --line-pal-3-1: #FBBF24;
+                --line-pal-3-2: #F59E0B;
+                --line-pal-3-stroke: #F59E0B;
+                --line-pal-4-1: #FB7185;
+                --line-pal-4-2: #E11D48;
+                --line-pal-4-stroke: #E11D48;
+            }}
+
+            @media (prefers-color-scheme: dark) {{
+                #{id} {{
+                    --bg: #111827;
+                    --bg-0: #0F172A;
+                    --bg-46: #111827;
+                    --bg-100: #1E293B;
+                    --card-bg: rgba(30, 41, 59, 0.55);
+                    --card-stroke: rgba(255, 255, 255, 0.12);
+                    --plot-surface-0: #1E293B;
+                    --plot-surface-100: #0F172A;
+                    --plot-surface-op-0: 0.85;
+                    --plot-surface-op-100: 0.65;
+                    --plot-stroke-0: #475569;
+                    --plot-stroke-100: #334155;
+                    --plot-stroke-op-0: 0.60;
+                    --plot-stroke-op-100: 0.30;
+                    --glow-blue-color: #3B82F6;
+                    --glow-blue-op-0: 0.25;
+                    --glow-blue-op-45: 0.08;
+                    --glow-mint-color: #0D9488;
+                    --glow-mint-op-0: 0.20;
+                    --glow-mint-op-48: 0.06;
+                    --glow-peach-color: #C2410C;
+                    --glow-peach-op: 0.12;
+                    --deco-circle-1: #38BDF8;
+                    --deco-circle-2: #818CF8;
+                    --deco-circle-op: 0.05;
+                    --text: #F9FAFB;
+                    --text-soft: #9CA3AF;
+                    --text-muted: #6B7280;
+                    --grid: #374151;
+                    --grid-op: 0.50;
+                    --axis: #4B5563;
+                    --legend-box-bg: rgba(17, 24, 39, 0.75);
+                    --legend-box-stroke: rgba(255, 255, 255, 0.10);
+                    --point-bg: #1E293B;
+                    --point-peak-stroke: #FFFFFF;
+                    --shadow-flood: #000000;
+                    --shadow-op: 0.40;
+                    --shadow-flood-sub: #000000;
+                    --shadow-op-sub: 0.0;
+                    --point-shadow-color: #000000;
+                    --point-shadow-op: 0.40;
+                    --line-pal-0-1: #93C5FD;
+                    --line-pal-0-2: #3B82F6;
+                    --line-pal-0-stroke: #60A5FA;
+                    --line-pal-1-1: #C4B5FD;
+                    --line-pal-1-2: #8B5CF6;
+                    --line-pal-1-stroke: #A78BFA;
+                    --line-pal-2-1: #6EE7B7;
+                    --line-pal-2-2: #10B981;
+                    --line-pal-2-stroke: #34D399;
+                    --line-pal-3-1: #FDE68A;
+                    --line-pal-3-2: #F59E0B;
+                    --line-pal-3-stroke: #FBBF24;
+                    --line-pal-4-1: #FDA4AF;
+                    --line-pal-4-2: #E11D48;
+                    --line-pal-4-stroke: #FB7185;
+                }}
+            }}
+
+            #{id}.dark-mode {{
+                --bg: #111827;
+                --bg-0: #0F172A;
+                --bg-46: #111827;
+                --bg-100: #1E293B;
+                --card-bg: rgba(30, 41, 59, 0.55);
+                --card-stroke: rgba(255, 255, 255, 0.12);
+                --plot-surface-0: #1E293B;
+                --plot-surface-100: #0F172A;
+                --plot-surface-op-0: 0.85;
+                --plot-surface-op-100: 0.65;
+                --plot-stroke-0: #475569;
+                --plot-stroke-100: #334155;
+                --plot-stroke-op-0: 0.60;
+                --plot-stroke-op-100: 0.30;
+                --glow-blue-color: #3B82F6;
+                --glow-blue-op-0: 0.25;
+                --glow-blue-op-45: 0.08;
+                --glow-mint-color: #0D9488;
+                --glow-mint-op-0: 0.20;
+                --glow-mint-op-48: 0.06;
+                --glow-peach-color: #C2410C;
+                --glow-peach-op: 0.12;
+                --deco-circle-1: #38BDF8;
+                --deco-circle-2: #818CF8;
+                --deco-circle-op: 0.05;
+                --text: #F9FAFB;
+                --text-soft: #9CA3AF;
+                --text-muted: #6B7280;
+                --grid: #374151;
+                --grid-op: 0.50;
+                --axis: #4B5563;
+                --legend-box-bg: rgba(17, 24, 39, 0.75);
+                --legend-box-stroke: rgba(255, 255, 255, 0.10);
+                --point-bg: #1E293B;
+                --point-peak-stroke: #FFFFFF;
+                --shadow-flood: #000000;
+                --shadow-op: 0.40;
+                --shadow-flood-sub: #000000;
+                --shadow-op-sub: 0.0;
+                --point-shadow-color: #000000;
+                --point-shadow-op: 0.40;
+                --line-pal-0-1: #93C5FD;
+                --line-pal-0-2: #3B82F6;
+                --line-pal-0-stroke: #60A5FA;
+                --line-pal-1-1: #C4B5FD;
+                --line-pal-1-2: #8B5CF6;
+                --line-pal-1-stroke: #A78BFA;
+                --line-pal-2-1: #6EE7B7;
+                --line-pal-2-2: #10B981;
+                --line-pal-2-stroke: #34D399;
+                --line-pal-3-1: #FDE68A;
+                --line-pal-3-2: #F59E0B;
+                --line-pal-3-stroke: #FBBF24;
+                --line-pal-4-1: #FDA4AF;
+                --line-pal-4-2: #E11D48;
+                --line-pal-4-stroke: #FB7185;
+            }}
+
+            #{id} .chart-text {{ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif; fill: var(--text); letter-spacing: -0.01em; }}
             #{id} .chart-background {{ fill: url(#{id}_apple_bg); }}
-            #{id} .plot-surface {{ fill: url(#{id}_plot_glass); stroke: url(#{id}_plot_stroke); stroke-opacity: 0.8; stroke-width: 1; }}
-            #{id} .chart-grid {{ stroke: var(--grid); stroke-opacity: 0.42; }}
+            #{id} .plot-surface {{ fill: url(#{id}_plot_glass); stroke: url(#{id}_plot_stroke); stroke-width: 1; }}
+            #{id} .chart-grid {{ stroke: var(--grid); stroke-opacity: var(--grid-op); }}
             #{id} .chart-axis {{ stroke: var(--axis); stroke-width: 1.25; stroke-opacity: 0.62; }}
-            #{id} .chart-title {{ fill: #111827; font-size: 25px; font-weight: 760; letter-spacing: -0.025em; }}
-            #{id} .axis-label {{ fill: #111827; font-size: 14px; font-weight: 600; }}
+            #{id} .chart-title {{ fill: var(--text); font-size: 22px; font-weight: 760; letter-spacing: -0.025em; }}
+            #{id} .chart-subtitle {{ fill: var(--text-soft); font-size: 12px; font-weight: 500; }}
+            #{id} .axis-label {{ fill: var(--text-soft); font-size: 13px; font-weight: 600; }}
             #{id} .tick-label {{ fill: var(--text-muted); font-size: 11px; font-weight: 590; }}
-            #{id} .legend-box {{ fill: rgba(255,255,255,0.66); stroke: rgba(255,255,255,0.72); stroke-width: 1; }}
-            #{id} .legend-label {{ fill: #111827; font-size: 12px; font-weight: 650; }}
+            #{id} .legend-box {{ fill: var(--legend-box-bg); stroke: var(--legend-box-stroke); stroke-width: 1; }}
+            #{id} .legend-label {{ fill: var(--text); font-size: 12px; font-weight: 650; }}
             #{id} .legend-value {{ fill: var(--text-muted); font-size: 10px; font-weight: 590; }}
             #{id} .line-path {{ filter: url(#{id}_line_glow); transition: stroke-width 180ms ease; }}
             #{id} .area-path {{ opacity: 0; animation: areaBloom_{id} 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }}
@@ -272,21 +477,18 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             #{id} .data-series:hover .line-path {{ stroke-width: 6; }}
             #{id} .data-series:hover .data-point {{ r: 8; stroke-width: 3; }}
             @media (prefers-reduced-motion: reduce) {{ #{id} * {{ transition: none !important; animation: none !important; }} }}
-            #{id}.dark-mode {{ --text-primary: #F9FAFB; --text-secondary: #9CA3AF; --grid: #4B5563; --axis: #6B7280; }}
-            #{id}.dark-mode .chart-background {{ fill: #111827; }}
-            #{id}.dark-mode .plot-surface {{ fill: rgba(31, 41, 55, 0.48); }}
         </style>
     </defs>
     <rect width="{width}" height="{height}" rx="34" class="chart-background"/>
     <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_blue)"/>
     <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_mint)"/>
     <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_peach)"/>
-    <circle cx="720" cy="80" r="80" fill="#FFFFFF" opacity="0.18"/>
-    <circle cx="88" cy="425" r="112" fill="#FFFFFF" opacity="0.16"/>
+    <circle cx="720" cy="80" r="80" fill="var(--deco-circle-1)" opacity="var(--deco-circle-op)"/>
+    <circle cx="88" cy="425" r="112" fill="var(--deco-circle-2)" opacity="var(--deco-circle-op)"/>
     <g filter="url(#{id}_apple_card_shadow)">
-        <rect x="34" y="28" width="732" height="444" rx="32" fill="rgba(255,255,255,0.38)" stroke="rgba(255,255,255,0.72)" stroke-width="1"/>
+        <rect x="34" y="24" width="732" height="452" rx="32" fill="var(--card-bg)" stroke="var(--card-stroke)" stroke-width="1"/>
     </g>
-    <text x="400" y="56" text-anchor="middle" class="chart-text chart-title">{title_esc}</text>
+    {header_svg}
     <rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="26" class="plot-surface"/>
     <g clip-path="url(#{id}_plot_clip)">
         <g class="chart-grid">{grid_svg}</g>
@@ -307,7 +509,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     </g>
 </svg>"##,
         width = width, height = height, id = chart_id,
-        title_esc = escape(title),
+        header_svg = header_svg,
         px = plot_x, py = plot_y, pw = plot_w, ph = plot_h, pb = plot_y + plot_h, pr = plot_x + plot_w,
         grid_svg = grid_svg, x_ticks = x_ticks, y_ticks = y_ticks,
         x_label_x = plot_x + plot_w / 2.0, x_label_y = plot_y + plot_h + 45.0, x_label_esc = escape(x_label_text),
@@ -329,15 +531,36 @@ mod tests {
         assert!(svg.contains("Growth"));
         assert!(svg.contains("line-chart-container"));
         assert!(svg.contains("line-0"));
+        assert!(svg.contains("prefers-color-scheme: dark"));
+        assert!(svg.contains("--line-pal-0-1"));
     }
 
     #[test]
     fn test_render_multi_line() {
-        let input = "---- title=Comparison ---\nS1 | Jan | 10\nS1 | Feb | 20\nS2 | Jan | 15\nS2 | Feb | 25\n----";
+        let input = "---- title=Comparison\nsubtitle=Monthly comparison ---\nS1 | Jan | 10\nS1 | Feb | 20\nS2 | Jan | 15\nS2 | Feb | 25\n----";
         let controls = HashMap::new();
         let svg = render(input, &controls).unwrap();
         assert!(svg.contains("Comparison"));
+        assert!(svg.contains("Monthly comparison"));
         assert!(svg.contains("line-0"));
         assert!(svg.contains("line-1"));
+    }
+
+    #[test]
+    fn test_render_dark_mode_theme() {
+        let input = "---- title=DarkLine\ntheme=dark ---\nJan | 10\nFeb | 20\n----";
+        let controls = HashMap::new();
+        let svg = render(input, &controls).unwrap();
+        assert!(svg.contains("dark-mode"));
+        assert!(svg.contains(".dark-mode"));
+    }
+
+    #[test]
+    fn test_render_dark_mode_controls() {
+        let input = "---- title=ControlsDark ---\nJan | 10\nFeb | 20\n----";
+        let mut controls = HashMap::new();
+        controls.insert("useDark".to_string(), "true".to_string());
+        let svg = render(input, &controls).unwrap();
+        assert!(svg.contains("dark-mode"));
     }
 }
