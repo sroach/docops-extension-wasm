@@ -496,7 +496,7 @@ fn render_hex(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
             let orb_id = format!("orb_{}_{}", id, button_idx);
             let glow_id = format!("glow_{}_{}", id, button_idx);
             
-            let (r, g, b) = get_rgb(accent_raw);
+            let (_r, _g, _b) = get_rgb(accent_raw);
             
             gradients.push_str(&format!(r##"
         <radialGradient id="{orb_id}" cx="50%" cy="50%" r="50%">
