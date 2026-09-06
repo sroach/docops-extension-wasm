@@ -362,6 +362,15 @@
                     <option value="scorecard_release">Scorecard — Release Migration Summary</option>
                     <option value="scorecard_dark">Scorecard — Dark Mode System Comparison</option>
                 </optgroup>
+                <optgroup label="Buttons">
+                    <option value="button_large">Buttons — Large Card Style</option>
+                    <option value="button_hex">Buttons — Hexagonal Honeycomb</option>
+                    <option value="button_pill">Buttons — Glossy Pill Shape</option>
+                    <option value="button_circle">Buttons — Technical Circle</option>
+                    <option value="button_round">Buttons — Round Orb</option>
+                    <option value="button_rectangle">Buttons — Rectangle Card</option>
+                    <option value="button_regular">Buttons — Regular Rounded</option>
+                </optgroup>
             </select>
         </div>
         <div class="button-group">
@@ -732,6 +741,80 @@ GitOps CI/CD | Automated zero-downtime canary deployments
 === Reliability
 Multi-Zone Redundancy | Self-healing cluster with 99.99% uptime
 Automated Failover | Instant failover with MTTR under 5 minutes
+----`,
+
+        button_large: `[docops,button]
+----
+shape=large
+columns=3
+---
+Google | https://google.com | Search | The world's most popular search engine. | #4285F4 | 2024-09-06
+GitHub | https://github.com | DevOps | Where the world builds software. | #24292e | 2024-09-06
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584 | 2024-09-06
+----`,
+
+        button_hex: `[docops,button]
+----
+shape=hex
+columns=3
+---
+Network | # | INFRA | | #3b82f6
+Database | # | DATA | | #10b981
+Security | # | SEC | | #ef4444
+Cloud | # | OPS | | #8b5cf6
+----`,
+
+        button_pill: `[docops,button]
+----
+shape=pill
+columns=2
+---
+Primary Action | https://example.com | ACTION | | #2563eb
+Secondary Choice | # | INFO | | #64748b
+Warning State | # | WARN | | #f59e0b
+Success Flow | # | SUCCESS | | #10b981
+----`,
+
+        button_circle: `[docops,button]
+----
+shape=circle
+columns=3
+---
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584
+Kotlin | https://kotlinlang.org | Language | A modern programming language that makes developers happier. | #7f52ff
+GitHub | https://github.com | Platform | The world's leading AI-powered developer platform. | #24292f
+----`,
+
+        button_round: `[docops,button]
+----
+shape=round
+columns=3
+---
+Cloud | # | SERVICE | | #0ea5e9
+Security | # | SHIELD | | #ef4444
+Database | # | STORAGE | | #8b5cf6
+----`,
+
+        button_rectangle: `[docops,button]
+----
+shape=rectangle
+columns=2
+---
+Application Hub | # | APP | Central access point for all enterprise applications. | #3b82f6
+Security Gateway | # | AUTH | Secure authentication and authorization services. | #ef4444
+Data Analytics | # | DATA | Real-time insights and business intelligence dashboard. | #10b981
+Cloud Console | # | OPS | Manage your cloud infrastructure and resources. | #8b5cf6
+----`,
+
+        button_regular: `[docops,button]
+----
+shape=regular
+columns=2
+---
+Standard Link | https://example.com
+Active Component | # | | | #f59e0b | true
+Disabled Action | # | | | | false | false
+Custom Color | # | | | #ec4899
 ----`
     };
 

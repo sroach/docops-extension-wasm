@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Rectangle Button Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 40px auto; background: #f8fafc; }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Rectangle Card Buttons</h1>
+    <div class="chart" id="chart"></div>
+    <script type="text/plain" id="source">
+[docops,button]
+----
+shape=rectangle
+columns=2
+---
+Application Hub | # | APP | Central access point for all enterprise applications. | #3b82f6
+Security Gateway | # | AUTH | Secure authentication and authorization services. | #ef4444
+Data Analytics | # | DATA | Real-time insights and business intelligence dashboard. | #10b981
+Cloud Console | # | OPS | Manage your cloud infrastructure and resources. | #8b5cf6
+----
+    </script>
+    <script type="module">
+        import init, { generate_svg } from '../../pkg/docops_extension.js';
+        async function main() {
+            await init();
+            const dsl = document.getElementById('source').textContent.trim();
+            document.getElementById('chart').innerHTML = generate_svg(dsl);
+        }
+        main();
+    </script>
+</body>
+</html>

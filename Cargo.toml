@@ -2,6 +2,9 @@
 name = "docops_extension"
 version = "0.1.0"
 edition = "2021"
+description = "Rust based wasm solution to generate svg visuals from custom dsl"
+repository = "https://github.com/sroach/docops-extension-wasm"
+license-file = "LICENSE"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

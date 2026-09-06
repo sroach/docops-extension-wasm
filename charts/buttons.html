@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Button Visualization Showcase</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --card-border: #e2e8f0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #f8fafc;
+                --card-border: #334155;
+            }
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 20px;
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+        p.subtitle { color: #64748b; margin-bottom: 2rem; }
+
+        section { margin-bottom: 4rem; }
+        h2 { font-size: 1.5rem; border-bottom: 2px solid var(--card-border); padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+
+        .chart svg { 
+            max-width: 100%; 
+            height: auto; 
+            border: 1px solid var(--card-border); 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        pre {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Button Visualizations</h1>
+<p class="subtitle">Showcasing the new button shapes supported by DocOps Extension.</p>
+
+<section>
+    <h2>Large Card Buttons</h2>
+    <p>Rich, informative cards with header gradients, category tags, and description support.</p>
+    <div class="chart" id="large-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=large
+columns=3
+---
+Google | https://google.com | Search | The world's most popular search engine. | #4285F4 | 2024-09-06
+GitHub | https://github.com | DevOps | Where the world builds software. | #24292e | 2024-09-06
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584 | 2024-09-06
+----
+    </pre>
+</section>
+
+<section>
+    <h2>Hexagonal Buttons</h2>
+    <p>Modern honeycomb-style layout with ambient glow and sharp accent strokes.</p>
+    <div class="chart" id="hex-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=hex
+columns=3
+---
+Network | # | INFRA | | #3b82f6
+Database | # | DATA | | #10b981
+Security | # | SEC | | #ef4444
+Cloud | # | OPS | | #8b5cf6
+    ----
+    </pre>
+</section>
+
+<section>
+    <h2>Regular Rounded Buttons</h2>
+    <p>Clean, standard rounded buttons with accent strips and active state indicators.</p>
+    <div class="chart" id="regular-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=regular
+columns=2
+---
+Standard Link | https://example.com
+Active Component | # | | | #f59e0b | true
+Disabled Action | # | | | | false | false
+Custom Color | # | | | #ec4899
+----
+    </pre>
+</section>
+
+<section>
+    <h2>Glossy Pill Buttons</h2>
+    <p>Elegant pill-shaped buttons with glass-like highlights and layered depth.</p>
+    <div class="chart" id="pill-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=pill
+columns=2
+---
+Primary Action | https://example.com | ACTION | | #2563eb
+Secondary Choice | # | INFO | | #64748b
+Warning State | # | WARN | | #f59e0b
+Success Flow | # | SUCCESS | | #10b981
+----
+    </pre>
+</section>
+
+<section>
+    <h2>Technical Circle Buttons</h2>
+    <p>Futuristic circular buttons with rotating technical rings and content animations.</p>
+    <div class="chart" id="circle-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=circle
+columns=3
+---
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584
+Kotlin | https://kotlinlang.org | Language | A modern programming language that makes developers happier. | #7f52ff
+GitHub | https://github.com | Platform | The world's leading AI-powered developer platform. | #24292f
+----
+    </pre>
+</section>
+
+<section>
+    <h2>Round Orb Buttons</h2>
+    <p>Tactile orb-style buttons with glow rings and specular highlights.</p>
+    <div class="chart" id="round-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=round
+columns=3
+---
+Cloud | # | SERVICE | | #0ea5e9
+Security | # | SHIELD | | #ef4444
+Database | # | STORAGE | | #8b5cf6
+----
+    </pre>
+</section>
+
+<section>
+    <h2>Rectangle Card Buttons</h2>
+    <p>Clean card-style buttons with accent bars and descriptive text.</p>
+    <div class="chart" id="rectangle-buttons"></div>
+    <pre>
+[docops,button]
+----
+shape=rectangle
+columns=2
+---
+Application Hub | # | APP | Central access point for all enterprise applications. | #3b82f6
+Security Gateway | # | AUTH | Secure authentication and authorization services. | #ef4444
+Data Analytics | # | DATA | Real-time insights and business intelligence dashboard. | #10b981
+Cloud Console | # | OPS | Manage your cloud infrastructure and resources. | #8b5cf6
+----
+    </pre>
+</section>
+
+<script type="text/plain" class="chart-source" data-target="large-buttons">
+[docops,button]
+----
+shape=large
+columns=3
+---
+Google | https://google.com | Search | The world's most popular search engine. | #4285F4 | 2024-09-06
+GitHub | https://github.com | DevOps | Where the world builds software. | #24292e | 2024-09-06
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584 | 2024-09-06
+----
+</script>
+
+<script type="text/plain" class="chart-source" data-target="hex-buttons">
+[docops,button]
+----
+shape=hex
+columns=3
+---
+Network | # | INFRA | | #3b82f6
+Database | # | DATA | | #10b981
+Security | # | SEC | | #ef4444
+Cloud | # | OPS | | #8b5cf6
+----
+</script>
+
+<script type="text/plain" class="chart-source" data-target="regular-buttons">
+[docops,button]
+----
+shape=regular
+columns=2
+---
+Standard Link | https://example.com
+Active Component | # | | | #f59e0b | true
+Disabled Action | # | | | | false | false
+Custom Color | # | | | #ec4899
+----
+</script>
+
+<script type="text/plain" class="chart-source" data-target="pill-buttons">
+[docops,button]
+----
+shape=pill
+columns=2
+---
+Primary Action | https://example.com | ACTION | | #2563eb
+Secondary Choice | # | INFO | | #64748b
+Warning State | # | WARN | | #f59e0b
+Success Flow | # | SUCCESS | | #10b981
+----
+</script>
+
+<script type="text/plain" class="chart-source" data-target="circle-buttons">
+[docops,button]
+----
+shape=circle
+columns=3
+---
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584
+Kotlin | https://kotlinlang.org | Language | A modern programming language that makes developers happier. | #7f52ff
+GitHub | https://github.com | Platform | The world's leading AI-powered developer platform. | #24292f
+----
+</script>
+
+    <script type="text/plain" class="chart-source" data-target="round-buttons">
+[docops,button]
+----
+shape=round
+columns=3
+---
+Cloud | # | SERVICE | | #0ea5e9
+Security | # | SHIELD | | #ef4444
+Database | # | STORAGE | | #8b5cf6
+----
+</script>
+
+<script type="text/plain" class="chart-source" data-target="rectangle-buttons">
+[docops,button]
+----
+shape=rectangle
+columns=2
+---
+Application Hub | # | APP | Central access point for all enterprise applications. | #3b82f6
+Security Gateway | # | AUTH | Secure authentication and authorization services. | #ef4444
+Data Analytics | # | DATA | Real-time insights and business intelligence dashboard. | #10b981
+Cloud Console | # | OPS | Manage your cloud infrastructure and resources. | #8b5cf6
+----
+</script>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.innerHTML = generate_svg(dsl);
+            }
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>

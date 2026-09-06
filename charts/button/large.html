@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Large Button Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 40px auto; background: #f8fafc; }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Large Card Buttons</h1>
+    <div class="chart" id="chart"></div>
+    <script type="text/plain" id="source">
+[docops,button]
+----
+shape=large
+columns=3
+---
+Google | https://google.com | Search | The world's most popular search engine. | #4285F4 | 2024-09-06
+GitHub | https://github.com | DevOps | Where the world builds software. | #24292e | 2024-09-06
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584 | 2024-09-06
+----
+    </script>
+    <script type="module">
+        import init, { generate_svg } from '../../pkg/docops_extension.js';
+        async function main() {
+            await init();
+            const dsl = document.getElementById('source').textContent.trim();
+            document.getElementById('chart').innerHTML = generate_svg(dsl);
+        }
+        main();
+    </script>
+</body>
+</html>

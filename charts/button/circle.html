@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Circle Button Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 40px auto; background: #f8fafc; }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Circle buttons</h1>
+    <div class="chart" id="chart"></div>
+    <script type="text/plain" id="source">
+[docops,button]
+----
+shape=circle
+columns=3
+---
+Rust | https://rust-lang.org | Language | A language empowering everyone to build reliable and efficient software. | #dea584
+Kotlin | https://kotlinlang.org | Language | A modern programming language that makes developers happier. | #7f52ff
+GitHub | https://github.com | Platform | The world's leading AI-powered developer platform. | #24292f
+----
+    </script>
+    <script type="module">
+        import init, { generate_svg } from '../../pkg/docops_extension.js';
+        async function main() {
+            await init();
+            const dsl = document.getElementById('source').textContent.trim();
+            document.getElementById('chart').innerHTML = generate_svg(dsl);
+        }
+        main();
+    </script>
+</body>
+</html>

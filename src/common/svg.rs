@@ -1,7 +1,9 @@
 /// Colors shared across visualization types. Any type can call `theme(name)`
 /// instead of reinventing its own palette lookup.
 pub struct ThemeColors {
+    #[allow(dead_code)]
     pub primary: &'static str,
+    #[allow(dead_code)]
     pub axis: &'static str,
     pub text: &'static str,
     pub background: &'static str,
@@ -51,6 +53,94 @@ pub fn escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+pub fn determine_text_color(hex_color: &str) -> &'static str {
+    let hex = hex_color.trim_start_matches('#');
+    if hex.len() != 6 {
+        return "#ffffff";
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+
+    let luminance = 0.2126 * (r as f64 / 255.0) + 0.7152 * (g as f64 / 255.0) + 0.0722 * (b as f64 / 255.0);
+    if luminance < 0.5 {
+        "#fcfcfc"
+    } else {
+        "#000000"
+    }
+}
+
+pub fn darken_color(hex_color: &str, factor: f64) -> String {
+    let hex = hex_color.trim_start_matches('#');
+    if hex.len() != 6 {
+        return hex_color.to_string();
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+
+    let r = (r as f64 * (1.0 - factor)).clamp(0.0, 255.0) as u8;
+    let g = (g as f64 * (1.0 - factor)).clamp(0.0, 255.0) as u8;
+    let b = (b as f64 * (1.0 - factor)).clamp(0.0, 255.0) as u8;
+
+    format!("#{:02x}{:02x}{:02x}", r, g, b)
+}
+
+pub fn brighten_color(hex_color: &str, factor: f64) -> String {
+    let hex = hex_color.trim_start_matches('#');
+    if hex.len() != 6 {
+        return hex_color.to_string();
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+
+    let r = (r as f64 + (255.0 - r as f64) * factor).clamp(0.0, 255.0) as u8;
+    let g = (g as f64 + (255.0 - g as f64) * factor).clamp(0.0, 255.0) as u8;
+    let b = (b as f64 + (255.0 - b as f64) * factor).clamp(0.0, 255.0) as u8;
+
+    format!("#{:02x}{:02x}{:02x}", r, g, b)
+}
+
+pub fn get_rgb(hex_color: &str) -> (f64, f64, f64) {
+    let hex = hex_color.trim_start_matches('#');
+    if hex.len() != 6 {
+        return (1.0, 1.0, 1.0);
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(255) as f64 / 255.0;
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(255) as f64 / 255.0;
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(255) as f64 / 255.0;
+
+    (r, g, b)
+}
+
+pub fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+
+    for word in text.split_whitespace() {
+        if current_line.is_empty() {
+            current_line.push_str(word);
+        } else if current_line.len() + 1 + word.len() <= max_chars {
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            lines.push(current_line);
+            current_line = word.to_string();
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    lines
 }
 
 /// The fallback rendered whenever any type's parser returns Err. Uses
