@@ -377,6 +377,9 @@
             <button id="copy-btn" class="btn-secondary" title="Copy current DSL code">
                 📋 Copy DSL
             </button>
+            <button id="copy-svg-btn" class="btn-secondary" title="Copy rendered SVG code">
+                🖼️ Copy SVG
+            </button>
             <button id="render-btn" class="btn-primary" title="Render current DSL into SVG">
                 ▶ Render SVG
             </button>
@@ -788,11 +791,11 @@ GitHub | https://github.com | Platform | The world's leading AI-powered develope
         button_round: `[docops,button]
 ----
 shape=round
-columns=3
+columns=1
 ---
-Cloud | # | SERVICE | | #0ea5e9
-Security | # | SHIELD | | #ef4444
-Database | # | STORAGE | | #8b5cf6
+Cloud | # | SERVICE | | #DF301C
+Security | # | SHIELD | | #F4D35E
+Database | # | STORAGE | | #66BB6A
 ----`,
 
         button_rectangle: `[docops,button]
@@ -829,6 +832,7 @@ Custom Color | # | | | #ec4899
         const output = document.getElementById('output');
         const renderBtn = document.getElementById('render-btn');
         const copyBtn = document.getElementById('copy-btn');
+        const copySvgBtn = document.getElementById('copy-svg-btn');
         const statusEl = document.getElementById('render-status');
         const toast = document.getElementById('toast');
 
@@ -865,11 +869,30 @@ Custom Color | # | | | #ec4899
             render();
         });
 
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
         copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(source.value);
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
+                showToast('✓ DSL copied to clipboard!');
+            } catch (e) {
+                console.error('Failed to copy', e);
+            }
+        });
+
+        copySvgBtn.addEventListener('click', async () => {
+            try {
+                const svg = output.innerHTML;
+                if (svg && svg.includes('<svg')) {
+                    await navigator.clipboard.writeText(svg);
+                    showToast('✓ SVG copied to clipboard!');
+                } else {
+                    showToast('✗ No SVG to copy');
+                }
             } catch (e) {
                 console.error('Failed to copy', e);
             }
