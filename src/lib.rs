@@ -111,6 +111,22 @@ April | 244.0
 May | 256.0
 June | 223.0
 ----"#,
+            // Quadrant Chart
+            r#"[docops,quadrant]
+----
+title=Magic Quadrant Test
+xAxis=Effort
+yAxis=Impact
+leaders=Leaders
+challengers=Challengers
+visionaries=Visionaries
+niche=Niche
+---
+Item A | 80 | 80 | Cat 1
+Item B | 20 | 80 | Cat 2
+Item C | 20 | 20 | Cat 1
+Item D | 80 | 20 | Cat 2
+----"#,
             // Bar Cylinder
             r#"[docops,bar]
 ----

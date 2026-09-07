@@ -238,18 +238,12 @@
             tab-size: 4;
             display: block;
         }
-
-        .output-card-body {
-            padding: 20px;
-            min-height: 480px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow-x: auto;
-            background: var(--bg);
+        #output {
+            width: 100%;
         }
 
         .output-card-body svg {
+            width: min(100%, 960px);
             max-width: 100%;
             height: auto;
             display: block;
@@ -343,6 +337,10 @@
                     <option value="bar_cylinder">Bar Chart — 3D Cylinder Shape</option>
                     <option value="bar_grouped">Bar Chart — Grouped Quarterly Comparison</option>
                     <option value="bar_stacked">Bar Chart — Stacked Regional Revenue</option>
+                </optgroup>
+                <optgroup label="Quadrant Charts">
+                    <option value="quadrant_default">Magic Quadrant — Default Impact vs Effort</option>
+                    <option value="quadrant_risk">Quadrant — Risk Assessment (Dark Mode)</option>
                 </optgroup>
                 <optgroup label="Pie & Donut Charts">
                     <option value="pie_donut_budget">Donut Chart — Budget Allocation with Percentages</option>
@@ -438,6 +436,10 @@
                 <p>Temporal trends and multi-metric comparisons with gradient fill areas via <code>[docops,line]</code>.</p>
             </div>
             <div class="feature-item">
+                <h3>Magic Quadrant</h3>
+                <p>2D priority mapping for strategic decision-making with customizable axes and quadrant labels via <code>[docops,quadrant]</code>.</p>
+            </div>
+            <div class="feature-item">
                 <h3>Comparison Scorecards</h3>
                 <p>Visual before-and-after release scorecards with status sections, checklist indicators, and dark mode support via <code>[docops,scorecard]</code>.</p>
             </div>
@@ -480,6 +482,40 @@ references=
 [[https://graphql.org/ GraphQL Official Documentation]]
 [[https://www.apollographql.com/docs/ Apollo GraphQL Documentation]]
 [[https://engineering.example.com/graphql-best-practices GraphQL Best Practices]]
+----`,
+
+        quadrant_default: `[docops,quadrant]
+----
+title= Feature Prioritization
+xAxis= EFFORT REQUIRED
+yAxis= IMPACT LEVEL
+leaders= BIG BETS
+challengers= QUICK WINS
+visionaries= FILL-INS
+niche= THANKLESS
+---
+Push Notifications | 30 | 80 | Marketing
+Dark Mode | 20 | 40 | UI/UX
+Offline Support | 70 | 90 | Core
+Social Login | 40 | 60 | Auth
+VR Interface | 90 | 20 | Future
+----`,
+
+        quadrant_risk: `[docops,quadrant]
+----
+title= Security Risk Assessment
+xAxis= PROBABILITY
+yAxis= SEVERITY
+leaders= CRITICAL
+challengers= MAJOR
+visionaries= MINOR
+niche= MODERATE
+---
+SQL Injection | 20 | 95 | Web
+Phishing | 80 | 60 | Human
+DDoS Attack | 40 | 70 | Network
+Stolen Laptop | 10 | 50 | Physical
+Expired Cert | 60 | 30 | Ops
 ----`,
 
         adr_microservices: `[docops,adr]
