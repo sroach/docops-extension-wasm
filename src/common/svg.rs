@@ -14,11 +14,11 @@ pub struct ThemeColors {
 pub fn theme(name: &str) -> ThemeColors {
     match name {
         "premium" => ThemeColors {
-            primary: "#6366f1",
+            primary: "#3b82f6",
             axis: "#94a3b8",
-            text: "#1e293b",
-            background: "#f8fafc",
-            palette: &["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"],
+            text: "#111827",
+            background: "#ffffff",
+            palette: &["#3b82f6", "#8b5cf6", "#22c55e", "#f59e0b", "#ef4444", "#6b7280"],
         },
         "dark" => ThemeColors {
             primary: "#38bdf8",

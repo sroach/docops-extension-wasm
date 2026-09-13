@@ -366,6 +366,7 @@
                     <option value="gauge_default">Gauge Chart — System Performance (Default)</option>
                     <option value="gauge_premium">Gauge Chart — Premium Style (85%)</option>
                     <option value="gauge_inverse">Gauge Chart — Inverse (Latency Demo)</option>
+                    <option value="gauge_labels">Gauge Chart — Custom Labels (Atmospheric)</option>
                     <hr>
                     <option value="release_default">Release Strategy — Product Timeline</option>
                     <option value="release_vertical">Release Roadmap — Vertical Layout</option>
@@ -456,6 +457,10 @@
             <div class="feature-item">
                 <h3>BDD Gherkin Visuals</h3>
                 <p>Visualize Cucumber/Gherkin feature files with scenarios, steps, and examples tables using <code>[docops,gherkin]</code>.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Gauge Charts</h3>
+                <p>Premium Apple-inspired radial gauges for performance metrics with configurable ranges, directions, and labels via <code>[docops,gauge]</code>.</p>
             </div>
         </div>
     </div>
@@ -927,6 +932,17 @@ max=100
 suffix=ms
 ---
 Latency | 18
+----`,
+        gauge_labels: `[docops,gauge]
+----
+theme=premium
+title=Atmospheric Pressure
+labels=LOW,STABLE,HIGH
+min=950
+max=1050
+suffix= hPa
+---
+Pressure | 1013
 ----`,
         release_default: `[docops,release]
 ----

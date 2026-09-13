@@ -121,6 +121,25 @@
             ----
         </script>
     </div>
+
+    <!-- Chart 6: Custom Labels -->
+    <div>
+        <h3>Custom Labels</h3>
+        <div class="chart" id="gauge-6"></div>
+        <script type="text/plain" class="chart-source" data-target="gauge-6">
+            [docops,gauge]
+            ----
+            theme=premium
+            title=Atmospheric Pressure
+            labels=LOW,STABLE,HIGH
+            min=950
+            max=1050
+            suffix= hPa
+            ---
+            Pressure | 1013
+            ----
+        </script>
+    </div>
 </div>
 
 <script type="module">
