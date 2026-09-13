@@ -366,6 +366,9 @@
                     <option value="gauge_default">Gauge Chart — System Performance (Default)</option>
                     <option value="gauge_premium">Gauge Chart — Premium Style (85%)</option>
                     <option value="gauge_inverse">Gauge Chart — Inverse (Latency Demo)</option>
+                    <hr>
+                    <option value="release_default">Release Strategy — Product Timeline</option>
+                    <option value="release_vertical">Release Roadmap — Vertical Layout</option>
                 </optgroup>
                 <optgroup label="Buttons">
                     <option value="button_large">Buttons — Large Card Style</option>
@@ -924,6 +927,28 @@ max=100
 suffix=ms
 ---
 Latency | 18
+----`,
+        release_default: `[docops,release]
+----
+title=Product Release Strategy
+subtitle=Premium glass timeline visual
+---
+M1 | 2023-01-15 | Complete | Initial Planning | Project timeline | Resource allocation
+M2 | 2023-02-15 | Complete | Development Phase | Core features | API integration
+RC1 | 2023-03-15 | In Progress | Testing Phase | Functional testing | Performance testing
+GA | 2023-04-15 | Upcoming | Official Launch | Public release | Documentation
+----`,
+        release_vertical: `[docops,release]
+----
+title=Cloud Platform Roadmap
+subtitle=Premium release timeline with glass milestones
+layout=vertical
+---
+M1 | 2023-Q1 | Complete | Infrastructure Foundation | Core infrastructure setup | Containerization platform | CI/CD pipeline implementation | Monitoring and logging framework
+M2 | 2023-Q2 | In Progress | Service Mesh | Service discovery | Load balancing | Traffic management | Security policies
+M3 | 2023-Q3 | Upcoming | Data Services | Managed database services | Data warehousing | ETL pipelines | Data analytics platform
+RC1 | 2023-Q4 | Upcoming | Developer Tools | Self-service portal | API gateway | Developer documentation | SDK and client libraries
+GA | 2024-Q1 | Upcoming | Enterprise Features | Multi-region support | Compliance certifications | Enterprise SLAs | Advanced security features
 ----`
     };
 

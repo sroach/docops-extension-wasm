@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Release Strategy Visuals</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 40px; background: #f9fafb; color: #111827; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .chart { margin-bottom: 60px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: auto; }
+        h3 { margin-top: 0; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        pre { background: #f3f4f6; padding: 12px; border-radius: 6px; font-size: 14px; }
+        .dark-mode-container { background: #111827; color: white; padding: 20px; border-radius: 12px; }
+        .dark-mode-container h3 { color: #f3f4f6; border-color: #374151; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Release Strategy Visuals</h1>
+    <p>Demonstrating the <code>[docops,release]</code> visual type.</p>
+
+    <!-- Chart 1: Default Strategy -->
+    <div>
+        <h3>Product Release Strategy (Default)</h3>
+        <div class="chart" id="release-1"></div>
+        <script type="text/plain" class="chart-source" data-target="release-1">
+            [docops,release]
+            ----
+            title=Product Release Strategy
+            ---
+            M1 | 2023-01-15 | Complete | Initial Planning | Project timeline | Resource allocation
+            M2 | 2023-02-15 | Complete | Development Phase | Core features | API integration
+            RC1 | 2023-03-15 | In Progress | Testing Phase | Functional testing | Performance testing | Security testing
+            GA | 2023-04-15 | Upcoming | Official Launch | Public release | Documentation | Marketing
+            ----
+        </script>
+    </div>
+
+    <!-- Chart 2: Extended Milestones -->
+    <div>
+        <h3>Extended Milestones (M1-M4, RC1-RC2, GA)</h3>
+        <div class="chart" id="release-2"></div>
+        <script type="text/plain" class="chart-source" data-target="release-2">
+            [docops,release]
+            ----
+            title=Project roadmap 2026
+            subtitle=Premium horizontal roadmap with glass cards
+            theme=premium
+            ---
+            M1 | 2026-01 | Complete | Kickoff
+            M2 | 2026-02 | Complete | Alpha
+            M3 | 2026-03 | In Progress | Beta | Feature parity | Bug fixes
+            M4 | 2026-04 | Upcoming | Feature Freeze
+            RC1 | 2026-05 | Upcoming | Release Candidate 1
+            RC2 | 2026-06 | Upcoming | Release Candidate 2
+            GA | 2026-07 | Upcoming | General Availability
+            ----
+        </script>
+    </div>
+
+    <!-- Chart 3: Dark Mode -->
+    <div class="dark-mode-container">
+        <h3>Dark Mode</h3>
+        <div class="chart" style="background: #1f2937;" id="release-3"></div>
+        <script type="text/plain" class="chart-source" data-target="release-3">
+            [docops,release]
+            ----
+            title=Service Mesh Release
+            theme=dark
+            ---
+            M1 | 2023-06-01 | Complete | Design | Specs | Prototypes
+            RC1 | 2023-07-15 | In Progress | Beta | Performance | Stability
+            GA | 2023-08-30 | Upcoming | GA | Rollout | Monitoring
+            ----
+        </script>
+    </div>
+    <!-- Chart 4: Vertical Layout -->
+    <div>
+        <h3>Vertical Roadmap Layout (Premium Apple Inspired)</h3>
+        <div class="chart" id="release-4" style="background: transparent; padding: 0; box-shadow: none;"></div>
+        <script type="text/plain" class="chart-source" data-target="release-4">
+            [docops,release]
+            ----
+            title=Cloud Platform Roadmap
+            subtitle=A premium release timeline with glass milestones and delivery scope
+            layout=vertical
+            ---
+            M1 | 2023-Q1 | Complete | Infrastructure Foundation | Core infrastructure setup | Containerization platform | CI/CD pipeline implementation | Monitoring and logging framework
+            M2 | 2023-Q2 | In Progress | Service Mesh | Service discovery | Load balancing | Traffic management | Security policies
+            M3 | 2023-Q3 | Upcoming | Data Services | Managed database services | Data warehousing | ETL pipelines | Data analytics platform
+            RC1 | 2023-Q4 | Upcoming | Developer Tools | Self-service portal | API gateway | Developer documentation | SDK and client libraries
+            GA | 2024-Q1 | Upcoming | Enterprise Features | Multi-region support | Compliance certifications | Enterprise SLAs | Advanced security features
+            ----
+        </script>
+    </div>
+</div>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.innerHTML = generate_svg(dsl);
+            }
+        });
+    }
+    main();
+</script>
+
+</body>
+</html>

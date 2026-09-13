@@ -10,6 +10,7 @@ pub mod button;
 pub mod quadrant_chart;
 pub mod gherkin;
 pub mod gauge_chart;
+pub mod release_strategy;
 
 pub mod metrics_card;
 
@@ -30,9 +31,10 @@ pub fn render(viz_type: &str, body: &str, controls: &HashMap<String, String>) ->
         "quadrant" | "magic" => quadrant_chart::render(body, controls),
         "gherkin" => gherkin::render(body, controls),
         "gauge" | "gaugechart" => gauge_chart::render(body, controls),
+        "release" | "releasestrategy" => release_strategy::render(body, controls),
         "metrics" | "metricscard" => metrics_card::render(body, controls),
         other => Err(format!(
-            "unknown visualization type '{other}' — expected one of: bar, pieslice, badge, adr, gherkin, scorecard, button, quadrant, metrics, gauge"
+            "unknown visualization type '{other}' — expected one of: bar, pieslice, badge, adr, gherkin, scorecard, button, quadrant, metrics, gauge, release"
         )),
     }
 }
