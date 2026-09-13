@@ -1,3 +1,7 @@
+use ed25519_dalek::{SigningKey, Signer};
+use sha2::{Sha256, Digest};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+
 /// Colors shared across visualization types. Any type can call `theme(name)`
 /// instead of reinventing its own palette lookup.
 pub struct ThemeColors {
@@ -53,6 +57,74 @@ pub fn escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+pub struct Metadata {
+    pub creator: String,
+    pub rights: String,
+    pub source: String,
+    pub date: String,
+    pub signature: Option<String>,
+}
+
+impl Metadata {
+    /// Creates metadata from header controls, falling back to project defaults
+    pub fn from_controls(controls: &std::collections::HashMap<String, String>) -> Self {
+        let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let signature = if controls.contains_key("sign") || controls.contains_key("privkey") {
+            Some("SIGNATURE_PLACEHOLDER".to_string())
+        } else {
+            None
+        };
+        Self {
+            creator: controls.get("creator").cloned().unwrap_or_else(|| "DocOps.io".to_string()),
+            rights: controls.get("rights").cloned().unwrap_or_else(|| "MIT License".to_string()),
+            source: controls.get("source").cloned().unwrap_or_else(|| "https://roach.gy".to_string()),
+            date,
+            signature,
+        }
+    }
+
+    /// Generates the RDF XML block requested
+    pub fn to_rdf_xml(&self) -> String {
+        let sig_tag = match &self.signature {
+            Some(s) => format!(r#"<dc:signature rdf:resource="sha256-ed25519:{}"/>"#, s),
+            None => "".to_string(),
+        };
+        format!(
+            r#"<metadata><rdf:rdf xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#"><cc:work rdf:about=""><dc:creator>{}</dc:creator><dc:rights>{}</dc:rights><dc:source>{}</dc:source><dc:date>{}</dc:date>{}</cc:work></rdf:rdf></metadata>"#,
+            escape(&self.creator),
+            escape(&self.rights),
+            escape(&self.source),
+            escape(&self.date),
+            sig_tag
+        )
+    }
+}
+
+pub fn sign_svg(svg: &mut String, private_key_hex: &str) -> Result<(), String> {
+    let placeholder = "SIGNATURE_PLACEHOLDER";
+    if !svg.contains(placeholder) {
+        return Ok(());
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(svg.as_bytes());
+    let hash = hasher.finalize();
+
+    let key_bytes = hex::decode(private_key_hex.trim())
+        .map_err(|e| format!("Invalid private key hex: {}", e))?;
+    
+    let key_arr: [u8; 32] = key_bytes.try_into()
+        .map_err(|_| "Private key must be exactly 32 bytes (64 hex characters)")?;
+        
+    let signing_key = SigningKey::from_bytes(&key_arr);
+    let signature = signing_key.sign(&hash);
+    let sig_base64 = BASE64.encode(signature.to_bytes());
+
+    *svg = svg.replace(placeholder, &sig_base64);
+
+    Ok(())
 }
 
 pub fn determine_text_color(hex_color: &str) -> &'static str {

@@ -17,8 +17,22 @@ fn init_panic_hook() {
 /// dispatch on type now happens internally via envelope + types::render.
 #[wasm_bindgen]
 pub fn generate_svg(input: &str) -> String {
-    let result = envelope::parse_envelope(input)
-        .and_then(|env| types::render(&env.viz_type, env.body, &env.controls));
+    let result = envelope::parse_envelope(input).and_then(|env| {
+        let mut svg = types::render(&env.viz_type, env.body, &env.controls)?;
+
+        let meta = common::svg::Metadata::from_controls(&env.controls);
+        let meta_block = meta.to_rdf_xml();
+
+        if let Some(pos) = svg.find('>') {
+            svg.insert_str(pos + 1, &meta_block);
+        }
+
+        if let Some(privkey) = env.controls.get("privkey") {
+            common::svg::sign_svg(&mut svg, privkey)?;
+        }
+
+        Ok(svg)
+    });
 
     result.unwrap_or_else(|e| common::svg::error_svg(&e))
 }
@@ -373,5 +387,90 @@ Feature: User Authentication
             );
             assert!(svg.starts_with("<svg"), "Sample {} produced invalid SVG output", i);
         }
+    }
+}
+
+#[cfg(test)]
+mod metadata_tests {
+    use super::*;
+
+    #[test]
+    fn test_metadata_injection_defaults() {
+        let input = "[docops,badge] ---- Label | Message ----";
+        let svg = generate_svg(input);
+        let expected_date = chrono::Local::now().format("%Y-%m-%d").to_string();
+        
+        assert!(svg.contains("<metadata>"));
+        assert!(svg.contains("<dc:creator>DocOps.io</dc:creator>"));
+        assert!(svg.contains("<dc:rights>MIT License</dc:rights>"));
+        assert!(svg.contains("<dc:source>https://roach.gy</dc:source>"));
+        assert!(svg.contains(&format!("<dc:date>{}</dc:date>", expected_date)));
+    }
+
+    #[test]
+    fn test_metadata_injection_custom_override_prevention() {
+        let input = "[docops,badge, creator=Jane Doe, date=2026-12-25] ---- Label | Message ----";
+        let svg = generate_svg(input);
+        let expected_date = chrono::Local::now().format("%Y-%m-%d").to_string();
+
+        assert!(svg.contains("<metadata>"));
+        assert!(svg.contains("<dc:creator>Jane Doe</dc:creator>"));
+        // Date should NOT be overridden, should be system date
+        assert!(svg.contains(&format!("<dc:date>{}</dc:date>", expected_date)));
+        assert!(!svg.contains("<dc:date>2026-12-25</dc:date>"));
+        // Defaults should still be there for others
+        assert!(svg.contains("<dc:rights>MIT License</dc:rights>"));
+    }
+    
+    #[test]
+    fn test_digital_signature_injection() {
+        // 32-byte hex private key (64 characters)
+        let priv_key = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        let input = format!("[docops,badge, privkey={}] ---- Label | Message ----", priv_key);
+        let svg = generate_svg(&input);
+        
+        assert!(svg.contains("<dc:signature"));
+        assert!(svg.contains("sha256-ed25519:"));
+        
+        // Ensure it's not the placeholder anymore
+        assert!(!svg.contains("SIGNATURE_PLACEHOLDER"));
+        
+        // The signature should be a base64 string (88 or 86 chars for Ed25519 signature of 64 bytes)
+        // Ed25519 signature is 64 bytes. Base64 of 64 bytes is (64/3) * 4 = 85.33 -> 88 characters.
+        // Let's just check it contains a reasonable length signature or at least doesn't contain the placeholder.
+    }
+
+    #[test]
+    fn test_signature_verification() {
+        use ed25519_dalek::{SigningKey, Verifier, Signature};
+        use sha2::{Sha256, Digest};
+        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+
+        let priv_key_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        let input = format!("[docops,badge, privkey={}] ---- Label | Message ----", priv_key_hex);
+        let svg = generate_svg(&input);
+
+        // 1. Extract signature from SVG
+        let sig_prefix = "sha256-ed25519:";
+        let start = svg.find(sig_prefix).expect("Signature prefix not found") + sig_prefix.len();
+        let end = svg[start..].find('"').expect("Closing quote not found") + start;
+        let sig_base64 = &svg[start..end];
+        let sig_bytes = BASE64.decode(sig_base64).expect("Invalid base64 signature");
+        let signature = Signature::from_slice(&sig_bytes).expect("Invalid signature bytes");
+
+        // 2. Prepare SVG for verification (replace signature with placeholder)
+        let svg_for_hash = svg.replace(sig_base64, "SIGNATURE_PLACEHOLDER");
+
+        // 3. Hash
+        let mut hasher = Sha256::new();
+        hasher.update(svg_for_hash.as_bytes());
+        let hash = hasher.finalize();
+
+        // 4. Verify
+        let key_bytes = hex::decode(priv_key_hex).unwrap();
+        let signing_key = SigningKey::from_bytes(&key_bytes.try_into().unwrap());
+        let verifying_key = signing_key.verifying_key();
+        
+        verifying_key.verify(&hash, &signature).expect("Signature verification failed");
     }
 }

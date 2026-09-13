@@ -47,3 +47,32 @@ wasm-pack build --target web --out-dir docs/pkg
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+## Signing
+
+The svg can be signed using one of the following approaches: 
+
+control is privkey
+
+You can generate a compatible key using any of the following methods:
+
+### Using OpenSSL
+   This is the fastest method if you have OpenSSL installed (standard on macOS and Linux):
+```shell
+openssl rand -hex 32
+```
+
+Output: A 64-character hex string like 0001020304...
+
+### Using Python
+   If you have Python installed, you can generate a random hex string with a one-liner:
+
+```shell
+python3 -c "import os; print(os.urandom(32).hex())"
+````
+
+### Using Node.js
+```shell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
