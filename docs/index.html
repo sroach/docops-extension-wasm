@@ -365,6 +365,7 @@
                     <hr>
                     <option value="gauge_default">Gauge Chart — System Performance (Default)</option>
                     <option value="gauge_premium">Gauge Chart — Premium Style (85%)</option>
+                    <option value="gauge_inverse">Gauge Chart — Inverse (Latency Demo)</option>
                 </optgroup>
                 <optgroup label="Buttons">
                     <option value="button_large">Buttons — Large Card Style</option>
@@ -896,7 +897,8 @@ Custom Color | # | | | #ec4899
 
         gauge_default: `[docops,gauge]
 ----
-title=System Health
+title=Service Health
+subtitle=Current operational score
 ---
 Score | 68
 ----`,
@@ -905,10 +907,23 @@ Score | 68
 ----
 theme=premium
 title=Performance Index
+subtitle=Aggregated system performance
 min=0
 max=100
 ---
 Value | 85
+----`,
+
+        gauge_inverse: `[docops,gauge]
+----
+title=Network Latency
+subtitle=Lower latency is better
+direction=inverse
+min=0
+max=100
+suffix=ms
+---
+Latency | 18
 ----`
     };
 
