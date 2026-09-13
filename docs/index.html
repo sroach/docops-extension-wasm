@@ -346,6 +346,9 @@
                     <option value="pie_donut_budget">Donut Chart — Budget Allocation with Percentages</option>
                     <option value="pie_traffic">Pie Chart — Website Traffic Distribution</option>
                 </optgroup>
+                <optgroup label="BDD & Gherkin">
+                    <option value="gherkin_default">Gherkin — User Authentication Scenarios</option>
+                </optgroup>
                 <optgroup label="Shields & Badges">
                     <option value="badge_status">Project Badges — Multi-column Grid</option>
                     <option value="badge_styles">Shield Styles — Flat, Square, Plastic & Icons</option>
@@ -443,6 +446,10 @@
                 <h3>Comparison Scorecards</h3>
                 <p>Visual before-and-after release scorecards with status sections, checklist indicators, and dark mode support via <code>[docops,scorecard]</code>.</p>
             </div>
+            <div class="feature-item">
+                <h3>BDD Gherkin Visuals</h3>
+                <p>Visualize Cucumber/Gherkin feature files with scenarios, steps, and examples tables using <code>[docops,gherkin]</code>.</p>
+            </div>
         </div>
     </div>
 </div>
@@ -520,7 +527,6 @@ Expired Cert | 60 | 30 | Ops
 
         adr_microservices: `[docops,adr]
 ----
-visualVersion=2
 theme=dark
 title= Adopt Microservices Architecture
 status= Superseded
@@ -548,6 +554,35 @@ David Wilson | Dev Manager | d.wilson@example.com | #8B5CF6
 references=
 [[https://martinfowler.com/articles/microservices.html Martin Fowler on Microservices]]
 [[https://kubernetes.io/docs/ Kubernetes Docs]]
+----`,
+
+        gherkin_default: `[docops,gherkin]
+----
+theme=premium
+---
+Feature: User Authentication
+  As a registered user
+  I want to log in to my account
+  So that I can access my private dashboard
+
+  Scenario: Successful Login with Valid Credentials
+    Given the user is on the login page
+    When the user enters valid username and password
+    And clicks the "Login" button
+    Then the user should be redirected to the dashboard
+    And a welcome message should be displayed
+
+  Scenario Outline: Failed Login with Invalid Credentials
+    Given the user is on the login page
+    When the user enters "<username>" and "<password>"
+    And clicks the "Login" button
+    Then an error message "<message>" should be displayed
+    
+    Examples:
+      | username | password | message                  |
+      | invalid  | password | Invalid credentials      |
+      | user     | wrong    | Invalid credentials      |
+      |          | password | Username is required     |
 ----`,
 
         bar_vertical: `[docops,bar]

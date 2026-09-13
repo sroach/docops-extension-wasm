@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Gherkin Demo</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --text: #0f172a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #f8fafc;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 20px;
+        }
+        .chart svg { max-width: 100%; height: auto; border-radius: 26px; margin-bottom: 40px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+
+<h1>DocOps Gherkin Visuals</h1>
+
+<!-- Chart 1: Simple Feature -->
+<div class="chart" id="chart-1"></div>
+<script type="text/plain" class="chart-source" data-target="chart-1">
+[docops,gherkin]
+----
+theme=premium
+---
+Feature: User Authentication
+  Scenario: Successful Login
+    Given the user is on the login page
+    When they enter valid credentials
+    Then they should be redirected to dashboard
+    And the login attempt should be logged
+
+  Scenario: Failed Login
+    Given the user is on the login page
+    When they enter invalid credentials
+    Then they should see an error message
+    And they should remain on the login page
+----
+</script>
+
+<!-- Chart 2: Scenario Outline -->
+<div class="chart" id="chart-2"></div>
+<script type="text/plain" class="chart-source" data-target="chart-2">
+[docops,gherkin]
+----
+theme=premium
+---
+Feature: Shopping Cart Discounts
+  Scenario Outline: Apply Coupon and Member Discount
+    Given there are <start> items in the cart
+    When I eat <eat> cucumbers
+    Then I should have <left> cucumbers
+
+    Examples:
+      | start | eat | left |
+      |  12   |  5  |  7   |
+      |  20   |  5  |  15  |
+----
+</script>
+
+<!-- Chart 3: Complex Steps -->
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+[docops,gherkin]
+----
+theme=premium
+---
+Feature: Search Suggestions
+  Scenario: Show Suggestions While Typing
+    Given a user is on the search page
+    When they type the first three characters
+    Then the top 5 matching suggestions should appear
+    And selecting a suggestion should populate the input
+    But the suggestions should disappear if the input is cleared
+----
+</script>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) return;
+
+            const svgString = generate_svg(dsl);
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>

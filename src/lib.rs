@@ -341,6 +341,17 @@ GitOps CI/CD | Automated zero-downtime canary deployments
 Multi-Zone Redundancy | Self-healing cluster with 99.99% uptime
 Automated Failover | Instant failover with MTTR under 5 minutes
 ----"#,
+            // Gherkin
+            r#"[docops,gherkin]
+----
+theme=premium
+---
+Feature: User Authentication
+  Scenario: Successful Login
+    Given the user is on the login page
+    When they enter valid credentials
+    Then they should be redirected to dashboard
+----"#,
         ];
 
         for (i, sample) in samples.iter().enumerate() {
