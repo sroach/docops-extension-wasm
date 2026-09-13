@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Metrics Card</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 40px auto; background: #f8fafc; }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: white; }
+    </style>
+</head>
+<body>
+    <h1>Metrics Card</h1>
+    <div class="chart" id="chart-1"></div>
+    <script type="text/plain" class="chart-source" data-target="chart-1">
+[docops,metrics]
+----
+title= Q2 2024 Business Metrics
+---
+Metric | Value | Sublabel
+Revenue | $4.2M | 18% YoY Growth
+New Customers | 156 | 42 Enterprise
+Customer Retention | 94% | 2% Improvement
+NPS Score | 72 | Industry Leading
+----
+    </script>
+    <div class="chart" id="chart-2"></div>
+    <script type="text/plain" class="chart-source" data-target="chart-2">
+        [docops,metrics]
+        ----
+        title= Sustainability Achievements
+        ---
+            Metric | Value | Sublabel
+        Carbon Reduction | 28% | vs. 2020 Baseline
+        Renewable Energy | 72% | Of Total Consumption
+        Water Conservation | 350K | Gallons Saved
+        Waste Diverted | 94% | From Landfill
+        Paper Reduction | 65% | Digital Transformation
+        ----
+    </script>
+
+    <div class="chart" id="chart-3"></div>
+    <script type="text/plain" class="chart-source" data-target="chart-3">
+        [docops,metrics]
+        ----
+        title= Customer Satisfaction
+        ---
+            Metric | Value | Sublabel
+        Customer Retention | 94% | 2% Improvement
+        NPS Score | 72 | Industry Leading
+        ----
+    </script>
+    <script type="module">
+        import init, { generate_svg } from '../../pkg/docops_extension.js';
+        async function main() {
+            await init(); // loads and instantiates the .wasm binary
+
+            // Find every embedded chart source and render it into its target div.
+            document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+                const dsl = sourceEl.textContent.trim();
+                const targetId = sourceEl.dataset.target;
+                const target = document.getElementById(targetId);
+
+                if (!target) {
+                    console.error(`No target element #${targetId} for chart source`);
+                    return;
+                }
+
+                const svgString = generate_svg(dsl); // wasm returns raw SVG markup as a string
+                target.innerHTML = svgString;
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>

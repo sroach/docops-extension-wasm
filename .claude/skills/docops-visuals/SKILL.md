@@ -1,6 +1,6 @@
 ---
 name: docops-visuals
-description: Generate DocOps visualization DSL blocks for charts, ADRs, scorecards, badges, buttons, and quadrant visuals when chatting with Claude.
+description: Generate DocOps visualization DSL blocks for visuals, ADRs, scorecards, badges, buttons, and quadrant visuals when chatting with Claude.
 ---
 
 # DocOps Visuals Skill

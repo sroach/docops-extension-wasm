@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 /// Grammar: `[docops,badge] ---- Label|Message|Style|LabelColor|MessageColor|Icon|FontColor ----`
 ///
-/// This is intentionally NOT the key=value grammar bar/pie charts use.
+/// This is intentionally NOT the key=value grammar bar/pie visuals use.
 /// Badges are shields.io-style: one line, fixed field positions separated
 /// by '|'. Empty fields fall back to sensible defaults.
 struct Badge {

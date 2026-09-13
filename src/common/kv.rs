@@ -2,7 +2,7 @@ use regex::Regex;
 use std::collections::HashMap;
 
 /// Result of parsing the `---- key=value ... --- Label | value ... ----`
-/// grammar. Bar charts and pie charts share this exact body syntax and only
+/// grammar. Bar visuals and pie visuals share this exact body syntax and only
 /// differ in how they *render* the parsed data — so they both call
 /// `parse_kv_body` instead of each having their own copy of this logic.
 pub struct KvBody {
