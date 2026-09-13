@@ -362,6 +362,9 @@
                 <optgroup label="Scorecards">
                     <option value="scorecard_release">Scorecard — Release Migration Summary</option>
                     <option value="scorecard_dark">Scorecard — Dark Mode System Comparison</option>
+                    <hr>
+                    <option value="gauge_default">Gauge Chart — System Performance (Default)</option>
+                    <option value="gauge_premium">Gauge Chart — Premium Style (85%)</option>
                 </optgroup>
                 <optgroup label="Buttons">
                     <option value="button_large">Buttons — Large Card Style</option>
@@ -889,6 +892,23 @@ Standard Link | https://example.com
 Active Component | # | | | #f59e0b | true
 Disabled Action | # | | | | false | false
 Custom Color | # | | | #ec4899
+----`,
+
+        gauge_default: `[docops,gauge]
+----
+title=System Health
+---
+Score | 68
+----`,
+
+        gauge_premium: `[docops,gauge]
+----
+theme=premium
+title=Performance Index
+min=0
+max=100
+---
+Value | 85
 ----`
     };
 

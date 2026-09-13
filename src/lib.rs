@@ -109,7 +109,16 @@ February | 334.0
 March | 455.0
 April | 244.0
 May | 256.0
-June | 223.0
+----"#,
+            // Gauge
+            r#"[docops,gauge]
+----
+title=Performance Score
+min=0
+max=100
+suffix=%
+---
+Result | 75.0
 ----"#,
             // Quadrant Chart
             r#"[docops,quadrant]

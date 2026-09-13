@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gauge Chart Demo</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111827;
+            --card-border: #e5e7eb;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #e2e8f0;
+                --card-border: #334155;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 20px;
+        }
+        .chart svg { max-width: 100%; height: auto; border: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        h1 { margin-bottom: 32px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+    </style>
+</head>
+<body>
+
+<h1>Gauge Chart Visuals</h1>
+
+<div class="grid">
+    <!-- Chart 1: Default -->
+    <div>
+        <h3>Default Gauge (68%)</h3>
+        <div class="chart" id="gauge-1"></div>
+        <script type="text/plain" class="chart-source" data-target="gauge-1">
+            [docops,gauge]
+            ----
+            title=System Health
+            ---
+            Score | 68
+            ----
+        </script>
+    </div>
+
+    <!-- Chart 2: Premium Theme -->
+    <div>
+        <h3>Premium Theme</h3>
+        <div class="chart" id="gauge-2"></div>
+        <script type="text/plain" class="chart-source" data-target="gauge-2">
+            [docops,gauge]
+            ----
+            theme=premium
+            title=Performance Index
+            min=0
+            max=100
+            ---
+            Value | 85
+            ----
+        </script>
+    </div>
+
+    <!-- Chart 3: Custom Range -->
+    <div>
+        <h3>Custom Range (0-200)</h3>
+        <div class="chart" id="gauge-3"></div>
+        <script type="text/plain" class="chart-source" data-target="gauge-3">
+            [docops,gauge]
+            ----
+            title=Velocity
+            min=0
+            max=200
+            suffix= km/h
+            ---
+            Speed | 145
+            ----
+        </script>
+    </div>
+
+    <!-- Chart 4: Dark Theme -->
+    <div>
+        <h3>Dark Theme</h3>
+        <div class="chart" id="gauge-4"></div>
+        <script type="text/plain" class="chart-source" data-target="gauge-4">
+            [docops,gauge]
+            ----
+            theme=dark
+            title=Disk Usage
+            suffix= GB
+            ---
+            Used | 42
+            ----
+        </script>
+    </div>
+</div>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.innerHTML = generate_svg(dsl);
+            }
+        });
+    }
+    main();
+</script>
+</body>
+</html>
