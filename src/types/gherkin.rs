@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::common::svg::escape;
-use uuid::Uuid;
 use regex::Regex;
+use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum StepType {
@@ -139,7 +139,7 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
     let mut feature_title = "Feature".to_string();
     let mut feature_tags = Vec::new();
     let mut scenarios = Vec::new();
-    
+
     let mut pending_tags = Vec::new();
     let mut current_scenario_title: Option<String> = None;
     let mut current_scenario_tags: Vec<GherkinTag> = Vec::new();
@@ -156,7 +156,13 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
 
     let status_regex = Regex::new(r"^\[(PASSING|FAILING|PENDING|SKIPPED)\]\s*(.*)$").unwrap();
 
-    let mut flush_scenario = |title: Option<String>, tags: Vec<GherkinTag>, steps: Vec<Step>, mut status: Status, outline: bool, headers: Option<Vec<String>>, rows: Vec<Vec<String>>| {
+    let mut flush_scenario = |title: Option<String>,
+                              tags: Vec<GherkinTag>,
+                              steps: Vec<Step>,
+                              mut status: Status,
+                              outline: bool,
+                              headers: Option<Vec<String>>,
+                              rows: Vec<Vec<String>>| {
         if let Some(mut t) = title {
             if let Some(caps) = status_regex.captures(&t) {
                 status = match caps.get(1).unwrap().as_str() {
@@ -170,10 +176,7 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
             }
 
             let examples = if outline {
-                headers.map(|h| Examples {
-                    headers: h,
-                    rows,
-                })
+                headers.map(|h| Examples { headers: h, rows })
             } else {
                 None
             };
@@ -192,9 +195,12 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
 
     for line in gherkin_part.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
-        if line.starts_with('@') && !feature_regex.is_match(line) && !scenario_regex.is_match(line) {
+        if line.starts_with('@') && !feature_regex.is_match(line) && !scenario_regex.is_match(line)
+        {
             pending_tags.extend(extract_tags(line));
             continue;
         }
@@ -223,7 +229,7 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
             let keyword = caps.get(1).unwrap().as_str().to_lowercase();
             let mut text = caps.get(2).unwrap().as_str().trim().to_string();
             let mut step_status = Status::Passing;
-            
+
             if let Some(s_caps) = status_regex.captures(&text) {
                 step_status = match s_caps.get(1).unwrap().as_str() {
                     "PASSING" => Status::Passing,
@@ -310,7 +316,7 @@ fn wrap_text(text: &str, max_width_px: i32, font_size_px: i32) -> Vec<String> {
     }
     let avg_char_width = font_size_px as f32 * 0.6;
     let max_chars = (max_width_px as f32 / avg_char_width).max(1.0) as usize;
-    
+
     let words = text.split_whitespace();
     let mut lines = Vec::new();
     let mut current_line = String::new();
@@ -336,20 +342,29 @@ fn wrap_text(text: &str, max_width_px: i32, font_size_px: i32) -> Vec<String> {
 
 fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String {
     let _theme = &spec.theme;
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false);
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false);
     let id = Uuid::new_v4().simple().to_string()[..8].to_string();
     let id_full = format!("gherkin_{}", id);
-    
+
     let canvas_width = 800;
     let padding = 40;
     let inner_width = canvas_width - (padding * 2);
-    
+
     // Feature Header Height
     let feature_lines = wrap_text(&format!("FEATURE: {}", spec.feature), inner_width - 160, 27);
     let feature_line_height = 32;
     let feature_title_bottom = 72 + (feature_lines.len() as i32 * feature_line_height);
 
-    let (feat_tags_svg, feat_tags_height) = render_tags(&spec.feature_tags, 84, feature_title_bottom + 4, inner_width - 108, use_dark);
+    let (feat_tags_svg, feat_tags_height) = render_tags(
+        &spec.feature_tags,
+        84,
+        feature_title_bottom + 4,
+        inner_width - 108,
+        use_dark,
+    );
     let feature_bg_height = if spec.feature_tags.is_empty() {
         (feature_title_bottom + 24).max(96)
     } else {
@@ -360,16 +375,24 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
     let mut scenarios_svg = String::new();
 
     for (idx, scenario) in spec.scenarios.iter().enumerate() {
-        let (scenario_svg, scenario_height) = render_scenario(scenario, y_offset, idx + 1, inner_width, use_dark, &id);
+        let (scenario_svg, scenario_height) =
+            render_scenario(scenario, y_offset, idx + 1, inner_width, use_dark, &id);
         scenarios_svg.push_str(&scenario_svg);
         y_offset += scenario_height + 40;
     }
 
     let total_height = y_offset + 20;
     let extra_class = if use_dark { " dark-mode" } else { "" };
+    let num_scenarios = spec.scenarios.len();
+    let desc_text = format!(
+        "Gherkin specification for {} with {} scenarios",
+        spec.feature, num_scenarios
+    );
 
     format!(
-        r##"<svg width="{canvas_width}" height="{total_height}" viewBox="0 0 {canvas_width} {total_height}" xmlns="http://www.w3.org/2000/svg" id="{id_full}" class="gherkin-container{extra_class}">
+        r##"<svg width="{canvas_width}" height="{total_height}" viewBox="0 0 {canvas_width} {total_height}" xmlns="http://www.w3.org/2000/svg" id="{id_full}" class="gherkin-container{extra_class}" role="graphics-document document" aria-labelledby="{id_full}_title {id_full}_desc">
+    <title id="{id_full}_title">{feature_title_esc}</title>
+    <desc id="{id_full}_desc">{desc_esc}</desc>
     <defs>
         <style>
             #{id_full} {{
@@ -457,16 +480,16 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
             <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="var(--shadow-color)" flood-opacity="var(--shadow-opacity)"/>
         </filter>
     </defs>
-    <rect width="{canvas_width}" height="{total_height}" fill="url(#bgGradient_{id})" rx="26"/>
+    <rect width="{canvas_width}" height="{total_height}" fill="url(#bgGradient_{id})" rx="26" aria-hidden="true"/>
     
     <!-- Feature Header -->
-    <g transform="translate(40, 40)" filter="url(#softCardShadow_{id})">
-        <rect width="{inner_width}" height="{feature_bg_height}" rx="24" fill="url(#cardSheen_{id})" class="card-outline"/>
-        <g transform="translate(24, 22)">
+    <g transform="translate(40, 40)" filter="url(#softCardShadow_{id})" role="region" aria-label="Feature: {feature_title_esc}">
+        <rect width="{inner_width}" height="{feature_bg_height}" rx="24" fill="url(#cardSheen_{id})" class="card-outline" aria-hidden="true"/>
+        <g transform="translate(24, 22)" aria-hidden="true">
             <rect width="44" height="44" rx="14" fill="url(#premiumAccent_{id})"/>
             <path d="M17 24.5 L22 29.5 L31 18.5" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
-        <text x="84" y="38" class="eyebrow">FEATURE</text>
+        <text x="84" y="38" class="eyebrow" aria-hidden="true">FEATURE</text>
         {feature_text_svg}
         {feat_tags_svg}
     </g>
@@ -480,16 +503,38 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
         id = id,
         id_full = id_full,
         extra_class = extra_class,
-        feature_text_svg = feature_lines.iter().enumerate().map(|(i, line)| {
-            format!(r##"<text x="84" y="{}" class="feature-title">{}</text>"##, 72 + (i as i32 * feature_line_height), escape(line))
-        }).collect::<Vec<_>>().join("\n"),
+        feature_title_esc = escape(&format!("Feature: {}", spec.feature)),
+        desc_esc = escape(&desc_text),
+        feature_text_svg = feature_lines
+            .iter()
+            .enumerate()
+            .map(|(i, line)| {
+                format!(
+                    r##"<text x="84" y="{}" class="feature-title">{}</text>"##,
+                    72 + (i as i32 * feature_line_height),
+                    escape(line)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
         feat_tags_svg = feat_tags_svg,
         scenarios_svg = scenarios_svg
     )
 }
 
-fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_dark: bool, id: &str) -> (String, i32) {
-    let title_lines = wrap_text(&format!("SCENARIO: {}", scenario.title.to_uppercase()), width - 180, 14);
+fn render_scenario(
+    scenario: &Scenario,
+    y: i32,
+    index: usize,
+    width: i32,
+    use_dark: bool,
+    id: &str,
+) -> (String, i32) {
+    let title_lines = wrap_text(
+        &format!("SCENARIO: {}", scenario.title.to_uppercase()),
+        width - 180,
+        14,
+    );
     let title_line_height = 18;
     let title_bottom_y = 46 + (title_lines.len() as i32 * title_line_height);
 
@@ -501,7 +546,7 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
     } else {
         tags_y + tags_height + 20
     };
-    
+
     // Steps Calculation
     let mut step_data = Vec::new();
     for step in &scenario.steps {
@@ -519,7 +564,7 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
         let h = lines_h + table_h;
         step_data.push((step, lines, h, table_svg));
     }
-    
+
     let total_steps_height = if !step_data.is_empty() {
         step_data.iter().map(|(_, _, h, _)| h + 12).sum::<i32>() - 12
     } else {
@@ -533,23 +578,44 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
     };
 
     let scenario_height = steps_group_y + total_steps_height + examples_height + 20;
+    let idx_str = if index < 10 {
+        format!("0{}", index)
+    } else {
+        index.to_string()
+    };
+    let status_name = format!("{:?}", scenario.status).to_uppercase();
+    let status_colors = get_status_colors(scenario.status, use_dark);
 
     let mut sb = String::new();
-    sb.push_str(&format!(r##"<g transform="translate(40, {y})" filter="url(#softCardShadow_{id})">"##, y = y, id = id));
-    sb.push_str(&format!(r##"<rect width="{width}" height="{scenario_height}" rx="26" fill="url(#cardSheen_{id})" class="card-outline"/>"##, width = width, scenario_height = scenario_height, id = id));
-    
+    sb.push_str(&format!(
+        r##"<g transform="translate(40, {y})" filter="url(#softCardShadow_{id})" role="region" aria-label="Scenario {idx_str}: {title_esc}, Status: {status_name}">"##,
+        y = y,
+        id = id,
+        idx_str = idx_str,
+        title_esc = escape(&scenario.title),
+        status_name = status_name
+    ));
+    sb.push_str(&format!(r##"<rect width="{width}" height="{scenario_height}" rx="26" fill="url(#cardSheen_{id})" class="card-outline" aria-hidden="true"/>"##, width = width, scenario_height = scenario_height, id = id));
+
     // Index Badge
-    let idx_str = if index < 10 { format!("0{}", index) } else { index.to_string() };
-    sb.push_str(&format!(r##"
-        <g transform="translate(24, 24)">
+    sb.push_str(&format!(
+        r##"
+        <g transform="translate(24, 24)" aria-hidden="true">
             <rect width="34" height="34" rx="12" fill="url(#premiumAccent_{id})"/>
             <text x="17" y="22" class="scenario-index" text-anchor="middle">{idx_str}</text>
         </g>
-    "##, id = id, idx_str = idx_str));
+    "##,
+        id = id,
+        idx_str = idx_str
+    ));
 
     // Title
     for (idx, line) in title_lines.iter().enumerate() {
-        sb.push_str(&format!(r##"<text x="72" y="{}" class="scenario-title">{}</text>"##, 46 + (idx as i32 * title_line_height), escape(line)));
+        sb.push_str(&format!(
+            r##"<text x="72" y="{}" class="scenario-title">{}</text>"##,
+            46 + (idx as i32 * title_line_height),
+            escape(line)
+        ));
     }
 
     // Tags
@@ -558,40 +624,63 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
     }
 
     // Status Badge
-    let status_colors = get_status_colors(scenario.status, use_dark);
     sb.push_str(&format!(r##"
-        <g transform="translate({status_x}, 24)">
+        <g transform="translate({status_x}, 24)" role="status" aria-label="Status: {status_name}">
             <rect width="78" height="28" rx="14" fill="{bg}" stroke="{stroke}" stroke-width="1"/>
-            <circle cx="17" cy="14" r="5" fill="{text_c}"/>
+            <circle cx="17" cy="14" r="5" fill="{text_c}" aria-hidden="true"/>
             <text x="48" y="18" class="status-text" text-anchor="middle" style="fill: {text_c}">{status_name}</text>
         </g>
-    "##, status_x = width - 102, bg = status_colors.0, stroke = status_colors.1, text_c = status_colors.2, status_name = format!("{:?}", scenario.status).to_uppercase()));
+    "##, status_x = width - 102, bg = status_colors.0, stroke = status_colors.1, text_c = status_colors.2, status_name = status_name));
 
     // Steps
-    sb.push_str(&format!(r##"<g transform="translate(35, {steps_group_y})">"##, steps_group_y = steps_group_y));
+    sb.push_str(&format!(
+        r##"<g transform="translate(35, {steps_group_y})" role="list" aria-label="Steps">"##,
+        steps_group_y = steps_group_y
+    ));
     if step_data.len() > 1 {
-        sb.push_str(&format!(r##"<path d="M0 16 L0 {}" class="step-subtle"/>"##, total_steps_height - 16));
+        sb.push_str(&format!(
+            r##"<path d="M0 16 L0 {}" class="step-subtle" aria-hidden="true"/>"##,
+            total_steps_height - 16
+        ));
     }
 
     let mut current_step_y = 0;
     for (step, lines, h, table_svg) in step_data {
         let style = get_step_style(step.step_type, use_dark);
-        sb.push_str(&format!(r##"<g transform="translate(0, {current_step_y})">"##, current_step_y = current_step_y));
-        sb.push_str(&format!(r##"<rect x="-14" y="-14" width="28" height="28" rx="10" fill="{}" stroke="{}"/>"##, style.bg, style.stroke));
+        let keyword = format!("{:?}", step.step_type);
+        let step_full_text = format!("{}: {}", keyword, step.text);
+
+        sb.push_str(&format!(
+            r##"<g transform="translate(0, {current_step_y})" role="listitem" aria-label="{step_label}">"##,
+            current_step_y = current_step_y,
+            step_label = escape(&step_full_text)
+        ));
+        sb.push_str(&format!(r##"<rect x="-14" y="-14" width="28" height="28" rx="10" fill="{}" stroke="{}" aria-hidden="true"/>"##, style.bg, style.stroke));
         if style.is_stroke {
-            sb.push_str(&format!(r##"<path d="{}" fill="none" stroke="{}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>"##, style.icon_path, style.icon_color));
+            sb.push_str(&format!(r##"<path d="{}" fill="none" stroke="{}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/>"##, style.icon_path, style.icon_color));
         } else {
-            sb.push_str(&format!(r##"<path d="{}" fill="{}"/>"##, style.icon_path, style.icon_color));
+            sb.push_str(&format!(
+                r##"<path d="{}" fill="{}" aria-hidden="true"/>"##,
+                style.icon_path, style.icon_color
+            ));
         }
 
-        let keyword = format!("{:?}", step.step_type);
         for (l_idx, line) in lines.iter().enumerate() {
             let content = if l_idx == 0 {
-                format!(r##"<tspan class="step-keyword" fill="{}">{}</tspan> {}"##, style.icon_color, keyword, escape(line))
+                format!(
+                    r##"<tspan class="step-keyword" fill="{}">{}</tspan> {}"##,
+                    style.icon_color,
+                    keyword,
+                    escape(line)
+                )
             } else {
                 escape(line)
             };
-            sb.push_str(&format!(r##"<text x="26" y="5" dy="{}" class="step-text">{}</text>"##, l_idx as i32 * 22, content));
+            sb.push_str(&format!(
+                r##"<text x="26" y="5" dy="{}" class="step-text">{}</text>"##,
+                l_idx as i32 * 22,
+                content
+            ));
         }
         if !table_svg.is_empty() {
             sb.push_str(&table_svg);
@@ -603,7 +692,12 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
 
     // Examples
     if let Some(ex) = &scenario.examples {
-        sb.push_str(&render_examples(ex, width, steps_group_y + current_step_y + 10, use_dark));
+        sb.push_str(&render_examples(
+            ex,
+            width,
+            steps_group_y + current_step_y + 10,
+            use_dark,
+        ));
     }
 
     sb.push_str("</g>");
@@ -618,23 +712,39 @@ fn render_step_table(table: &[Vec<String>], max_width: i32, start_y: i32) -> (St
     let table_width = (max_width - 40).min((num_cols as i32 * 140).max(160));
     let cell_width = table_width / num_cols as i32;
     let row_height = 24;
-    
+
     let mut sb = String::new();
-    sb.push_str(&format!(r##"<g transform="translate(26, {start_y})">"##, start_y = start_y));
-    
+    sb.push_str(&format!(
+        r##"<g transform="translate(26, {start_y})" role="table" aria-label="Step data table">"##,
+        start_y = start_y
+    ));
+
     for (r_idx, row) in table.iter().enumerate() {
         let row_y = r_idx as i32 * row_height;
         let is_header = table.len() > 1 && r_idx == 0;
-        let bg_var = if is_header { "var(--table-header-bg)" } else { "var(--table-row-bg)" };
+        let bg_var = if is_header {
+            "var(--table-header-bg)"
+        } else {
+            "var(--table-row-bg)"
+        };
         let stroke_w = if is_header { "1" } else { "0.5" };
-        let text_cls = if is_header { "table-header" } else { "table-cell" };
-        
+        let text_cls = if is_header {
+            "table-header"
+        } else {
+            "table-cell"
+        };
+        let cell_role = if is_header { "columnheader" } else { "cell" };
+
+        sb.push_str(r##"<g role="row">"##);
         for c_idx in 0..num_cols {
             let x = c_idx as i32 * cell_width;
             let text = row.get(c_idx).map(|s| s.as_str()).unwrap_or("");
             sb.push_str(&format!(
-                r##"<rect x="{x}" y="{row_y}" width="{cell_width}" height="{row_height}" fill="{bg_var}" stroke="var(--table-border)" stroke-width="{stroke_w}"/>
-<text x="{text_x}" y="{text_y}" class="{text_cls}" text-anchor="middle">{esc_text}</text>"##,
+                r##"<g role="{cell_role}" aria-label="{esc_text}">
+<rect x="{x}" y="{row_y}" width="{cell_width}" height="{row_height}" fill="{bg_var}" stroke="var(--table-border)" stroke-width="{stroke_w}"/>
+<text x="{text_x}" y="{text_y}" class="{text_cls}" text-anchor="middle">{esc_text}</text>
+</g>"##,
+                cell_role = cell_role,
                 x = x,
                 row_y = row_y,
                 cell_width = cell_width,
@@ -647,6 +757,7 @@ fn render_step_table(table: &[Vec<String>], max_width: i32, start_y: i32) -> (St
                 esc_text = escape(text)
             ));
         }
+        sb.push_str("</g>");
     }
     sb.push_str("</g>");
     let total_h = table.len() as i32 * row_height + 8;
@@ -660,36 +771,102 @@ enum TagIconType {
     Dot,
 }
 
-fn get_boolean_tag_style(name_lower: &str, use_dark: bool) -> (String, String, String, TagIconType) {
-    if name_lower.contains("conditional") || name_lower.contains("condition") || name_lower.contains("branch") {
+fn get_boolean_tag_style(
+    name_lower: &str,
+    use_dark: bool,
+) -> (String, String, String, TagIconType) {
+    if name_lower.contains("conditional")
+        || name_lower.contains("condition")
+        || name_lower.contains("branch")
+    {
         if use_dark {
-            ("rgba(139, 92, 246, 0.22)".into(), "rgba(167, 139, 250, 0.45)".into(), "#C4B5FD".into(), TagIconType::Branch)
+            (
+                "rgba(139, 92, 246, 0.22)".into(),
+                "rgba(167, 139, 250, 0.45)".into(),
+                "#C4B5FD".into(),
+                TagIconType::Branch,
+            )
         } else {
-            ("rgba(139, 92, 246, 0.12)".into(), "rgba(139, 92, 246, 0.35)".into(), "#7C3AED".into(), TagIconType::Branch)
+            (
+                "rgba(139, 92, 246, 0.12)".into(),
+                "rgba(139, 92, 246, 0.35)".into(),
+                "#7C3AED".into(),
+                TagIconType::Branch,
+            )
         }
-    } else if name_lower.contains("assembly") || name_lower.contains("component") || name_lower.contains("module") {
+    } else if name_lower.contains("assembly")
+        || name_lower.contains("component")
+        || name_lower.contains("module")
+    {
         if use_dark {
-            ("rgba(59, 130, 246, 0.22)".into(), "rgba(96, 165, 250, 0.45)".into(), "#93C5FD".into(), TagIconType::Assembly)
+            (
+                "rgba(59, 130, 246, 0.22)".into(),
+                "rgba(96, 165, 250, 0.45)".into(),
+                "#93C5FD".into(),
+                TagIconType::Assembly,
+            )
         } else {
-            ("rgba(59, 130, 246, 0.10)".into(), "rgba(59, 130, 246, 0.35)".into(), "#2563EB".into(), TagIconType::Assembly)
+            (
+                "rgba(59, 130, 246, 0.10)".into(),
+                "rgba(59, 130, 246, 0.35)".into(),
+                "#2563EB".into(),
+                TagIconType::Assembly,
+            )
         }
-    } else if name_lower.contains("flaky") || name_lower.contains("manual") || name_lower.contains("wip") || name_lower.contains("warning") {
+    } else if name_lower.contains("flaky")
+        || name_lower.contains("manual")
+        || name_lower.contains("wip")
+        || name_lower.contains("warning")
+    {
         if use_dark {
-            ("rgba(217, 119, 6, 0.22)".into(), "rgba(251, 191, 36, 0.45)".into(), "#FCD34D".into(), TagIconType::Warning)
+            (
+                "rgba(217, 119, 6, 0.22)".into(),
+                "rgba(251, 191, 36, 0.45)".into(),
+                "#FCD34D".into(),
+                TagIconType::Warning,
+            )
         } else {
-            ("rgba(217, 119, 6, 0.12)".into(), "rgba(217, 119, 6, 0.35)".into(), "#D97706".into(), TagIconType::Warning)
+            (
+                "rgba(217, 119, 6, 0.12)".into(),
+                "rgba(217, 119, 6, 0.35)".into(),
+                "#D97706".into(),
+                TagIconType::Warning,
+            )
         }
-    } else if name_lower.contains("smoke") || name_lower.contains("regression") || name_lower.contains("critical") {
+    } else if name_lower.contains("smoke")
+        || name_lower.contains("regression")
+        || name_lower.contains("critical")
+    {
         if use_dark {
-            ("rgba(16, 185, 129, 0.22)".into(), "rgba(52, 211, 153, 0.45)".into(), "#6EE7B7".into(), TagIconType::Dot)
+            (
+                "rgba(16, 185, 129, 0.22)".into(),
+                "rgba(52, 211, 153, 0.45)".into(),
+                "#6EE7B7".into(),
+                TagIconType::Dot,
+            )
         } else {
-            ("rgba(16, 185, 129, 0.12)".into(), "rgba(16, 185, 129, 0.35)".into(), "#059669".into(), TagIconType::Dot)
+            (
+                "rgba(16, 185, 129, 0.12)".into(),
+                "rgba(16, 185, 129, 0.35)".into(),
+                "#059669".into(),
+                TagIconType::Dot,
+            )
         }
     } else {
         if use_dark {
-            ("#1E293B".into(), "#475569".into(), "#CBD5E1".into(), TagIconType::Dot)
+            (
+                "#1E293B".into(),
+                "#475569".into(),
+                "#CBD5E1".into(),
+                TagIconType::Dot,
+            )
         } else {
-            ("#F1F5F9".into(), "#CBD5E1".into(), "#475569".into(), TagIconType::Dot)
+            (
+                "#F1F5F9".into(),
+                "#CBD5E1".into(),
+                "#475569".into(),
+                TagIconType::Dot,
+            )
         }
     }
 }
@@ -697,26 +874,45 @@ fn get_boolean_tag_style(name_lower: &str, use_dark: bool) -> (String, String, S
 fn render_tag_icon(icon_type: TagIconType, color: &str) -> String {
     match icon_type {
         TagIconType::Branch => {
-            format!(r##"<g transform="translate(7, 4)"><path d="M2 3 L2 9 M2 6 Q4 6 6 4 L6 3" fill="none" stroke="{c}" stroke-width="1.3" stroke-linecap="round"/><circle cx="2" cy="3" r="1" fill="{c}"/><circle cx="6" cy="3" r="1" fill="{c}"/><circle cx="2" cy="9" r="1" fill="{c}"/></g>"##, c = color)
+            format!(
+                r##"<g transform="translate(7, 4)"><path d="M2 3 L2 9 M2 6 Q4 6 6 4 L6 3" fill="none" stroke="{c}" stroke-width="1.3" stroke-linecap="round"/><circle cx="2" cy="3" r="1" fill="{c}"/><circle cx="6" cy="3" r="1" fill="{c}"/><circle cx="2" cy="9" r="1" fill="{c}"/></g>"##,
+                c = color
+            )
         }
         TagIconType::Assembly => {
-            format!(r##"<g transform="translate(7, 4)"><rect x="1" y="1" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="6.5" y="1" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="1" y="6.5" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="6.5" y="6.5" width="3.5" height="3.5" rx="0.8" fill="{c}"/></g>"##, c = color)
+            format!(
+                r##"<g transform="translate(7, 4)"><rect x="1" y="1" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="6.5" y="1" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="1" y="6.5" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="6.5" y="6.5" width="3.5" height="3.5" rx="0.8" fill="{c}"/></g>"##,
+                c = color
+            )
         }
         TagIconType::Warning => {
-            format!(r##"<g transform="translate(7, 4)"><path d="M5.5 1 L10 9 L1 9 Z" fill="none" stroke="{c}" stroke-width="1.1" stroke-linejoin="round"/><line x1="5.5" y1="4" x2="5.5" y2="6.5" stroke="{c}" stroke-width="1.1" stroke-linecap="round"/><circle cx="5.5" cy="8" r="0.6" fill="{c}"/></g>"##, c = color)
+            format!(
+                r##"<g transform="translate(7, 4)"><path d="M5.5 1 L10 9 L1 9 Z" fill="none" stroke="{c}" stroke-width="1.1" stroke-linejoin="round"/><line x1="5.5" y1="4" x2="5.5" y2="6.5" stroke="{c}" stroke-width="1.1" stroke-linecap="round"/><circle cx="5.5" cy="8" r="0.6" fill="{c}"/></g>"##,
+                c = color
+            )
         }
         TagIconType::Dot => {
-            format!(r##"<g transform="translate(7, 4)"><circle cx="5" cy="6" r="2.5" fill="{c}" opacity="0.85"/></g>"##, c = color)
+            format!(
+                r##"<g transform="translate(7, 4)"><circle cx="5" cy="6" r="2.5" fill="{c}" opacity="0.85"/></g>"##,
+                c = color
+            )
         }
     }
 }
 
-fn render_tags(tags: &[GherkinTag], start_x: i32, start_y: i32, max_width: i32, use_dark: bool) -> (String, i32) {
+fn render_tags(
+    tags: &[GherkinTag],
+    start_x: i32,
+    start_y: i32,
+    max_width: i32,
+    use_dark: bool,
+) -> (String, i32) {
     if tags.is_empty() {
         return (String::new(), 0);
     }
 
     let mut sb = String::new();
+    sb.push_str(r##"<g role="list" aria-label="Tags">"##);
     let mut current_x = 0;
     let mut current_y = 0;
     let row_height = 20;
@@ -742,15 +938,19 @@ fn render_tags(tags: &[GherkinTag], start_x: i32, start_y: i32, max_width: i32, 
 
                 let key_bg = if use_dark { "#334155" } else { "#F1F5F9" };
                 let val_bg = if use_dark { "#1E293B" } else { "#FFFFFF" };
-                let border_c = if use_dark { "rgba(255, 255, 255, 0.12)" } else { "rgba(148, 163, 184, 0.4)" };
+                let border_c = if use_dark {
+                    "rgba(255, 255, 255, 0.12)"
+                } else {
+                    "rgba(148, 163, 184, 0.4)"
+                };
                 let key_text_c = if use_dark { "#94A3B8" } else { "#475569" };
                 let val_text_c = if use_dark { "#F8FAFC" } else { "#0F172A" };
 
                 sb.push_str(&format!(
-                    r##"<g transform="translate({x}, {y})">
-    <rect x="0" y="0" width="{chip_w}" height="{row_height}" rx="6" fill="{val_bg}" stroke="{border_c}" stroke-width="1"/>
-    <path d="M0 6 Q0 0 6 0 L{key_w} 0 L{key_w} {row_height} L6 {row_height} Q0 {row_height} 0 {row_height_sub_6} Z" fill="{key_bg}"/>
-    <line x1="{key_w}" y1="0" x2="{key_w}" y2="{row_height}" stroke="{border_c}" stroke-width="1"/>
+                    r##"<g transform="translate({x}, {y})" role="listitem" aria-label="Tag {key_esc}: {val_esc}">
+    <rect x="0" y="0" width="{chip_w}" height="{row_height}" rx="6" fill="{val_bg}" stroke="{border_c}" stroke-width="1" aria-hidden="true"/>
+    <path d="M0 6 Q0 0 6 0 L{key_w} 0 L{key_w} {row_height} L6 {row_height} Q0 {row_height} 0 {row_height_sub_6} Z" fill="{key_bg}" aria-hidden="true"/>
+    <line x1="{key_w}" y1="0" x2="{key_w}" y2="{row_height}" stroke="{border_c}" stroke-width="1" aria-hidden="true"/>
     <text x="{key_mid}" y="14" class="tag-key-text" text-anchor="middle" fill="{key_text_c}">{key_esc}</text>
     <text x="{val_mid}" y="14" class="tag-val-text" text-anchor="middle" fill="{val_text_c}">{val_esc}</text>
 </g>"##,
@@ -789,8 +989,8 @@ fn render_tags(tags: &[GherkinTag], start_x: i32, start_y: i32, max_width: i32, 
                 let (bg, stroke, text_c, icon_type) = get_boolean_tag_style(&name_lower, use_dark);
 
                 sb.push_str(&format!(
-                    r##"<g transform="translate({x}, {y})">
-    <rect x="0" y="0" width="{chip_w}" height="{row_height}" rx="10" fill="{bg}" stroke="{stroke}" stroke-width="1"/>
+                    r##"<g transform="translate({x}, {y})" role="listitem" aria-label="Tag: {name_esc}">
+    <rect x="0" y="0" width="{chip_w}" height="{row_height}" rx="10" fill="{bg}" stroke="{stroke}" stroke-width="1" aria-hidden="true"/>
     {icon_svg}
     <text x="22" y="14" class="tag-bool-text" fill="{text_c}">{name_esc}</text>
 </g>"##,
@@ -810,6 +1010,7 @@ fn render_tags(tags: &[GherkinTag], start_x: i32, start_y: i32, max_width: i32, 
         }
     }
 
+    sb.push_str("</g>");
     let total_height = current_y + row_height;
     (sb, total_height)
 }
@@ -817,16 +1018,25 @@ fn render_tags(tags: &[GherkinTag], start_x: i32, start_y: i32, max_width: i32, 
 fn get_status_colors(status: Status, use_dark: bool) -> (String, String, String) {
     match status {
         Status::Passing => {
-            if use_dark { ("#064e3b".into(), "#059669".into(), "#34d399".into()) }
-            else { ("#dcfce7".into(), "#16a34a".into(), "#15803d".into()) }
-        },
+            if use_dark {
+                ("#064e3b".into(), "#059669".into(), "#34d399".into())
+            } else {
+                ("#dcfce7".into(), "#16a34a".into(), "#15803d".into())
+            }
+        }
         Status::Failing => {
-            if use_dark { ("#450a0a".into(), "#dc2626".into(), "#f87171".into()) }
-            else { ("#fee2e2".into(), "#dc2626".into(), "#b91c1c".into()) }
-        },
+            if use_dark {
+                ("#450a0a".into(), "#dc2626".into(), "#f87171".into())
+            } else {
+                ("#fee2e2".into(), "#dc2626".into(), "#b91c1c".into())
+            }
+        }
         _ => {
-            if use_dark { ("#1e293b".into(), "#475569".into(), "#94a3b8".into()) }
-            else { ("#f1f5f9".into(), "#94a3b8".into(), "#475569".into()) }
+            if use_dark {
+                ("#1e293b".into(), "#475569".into(), "#94a3b8".into())
+            } else {
+                ("#f1f5f9".into(), "#94a3b8".into(), "#475569".into())
+            }
         }
     }
 }
@@ -841,33 +1051,65 @@ struct StepStyle {
 
 fn get_step_style(st: StepType, use_dark: bool) -> StepStyle {
     match st {
-        StepType::Given => StepStyle { 
-            bg: if use_dark { "#1e293b".into() } else { "#EEF6FF".into() }, 
-            stroke: if use_dark { "#3b82f6".into() } else { "#BFDBFE".into() }, 
-            icon_color: "#007AFF".into(), 
-            icon_path: "M-5 0 L-1 4 L7 -6".into(), 
-            is_stroke: true 
+        StepType::Given => StepStyle {
+            bg: if use_dark {
+                "#1e293b".into()
+            } else {
+                "#EEF6FF".into()
+            },
+            stroke: if use_dark {
+                "#3b82f6".into()
+            } else {
+                "#BFDBFE".into()
+            },
+            icon_color: "#007AFF".into(),
+            icon_path: "M-5 0 L-1 4 L7 -6".into(),
+            is_stroke: true,
         },
-        StepType::When => StepStyle { 
-            bg: if use_dark { "#451a03".into() } else { "#FFF7ED".into() }, 
-            stroke: if use_dark { "#d97706".into() } else { "#FED7AA".into() }, 
-            icon_color: "#FF9500".into(), 
-            icon_path: "M-2 -8 L6 0 L1 0 L3 8 L-6 -1 L-1 -1Z".into(), 
-            is_stroke: false 
+        StepType::When => StepStyle {
+            bg: if use_dark {
+                "#451a03".into()
+            } else {
+                "#FFF7ED".into()
+            },
+            stroke: if use_dark {
+                "#d97706".into()
+            } else {
+                "#FED7AA".into()
+            },
+            icon_color: "#FF9500".into(),
+            icon_path: "M-2 -8 L6 0 L1 0 L3 8 L-6 -1 L-1 -1Z".into(),
+            is_stroke: false,
         },
-        StepType::Then => StepStyle { 
-            bg: if use_dark { "#064e3b".into() } else { "#ECFDF5".into() }, 
-            stroke: if use_dark { "#059669".into() } else { "#BBF7D0".into() }, 
-            icon_color: "#34C759".into(), 
-            icon_path: "M-6 0 L-1 5 L8 -6".into(), 
-            is_stroke: true 
+        StepType::Then => StepStyle {
+            bg: if use_dark {
+                "#064e3b".into()
+            } else {
+                "#ECFDF5".into()
+            },
+            stroke: if use_dark {
+                "#059669".into()
+            } else {
+                "#BBF7D0".into()
+            },
+            icon_color: "#34C759".into(),
+            icon_path: "M-6 0 L-1 5 L8 -6".into(),
+            is_stroke: true,
         },
-        _ => StepStyle { 
-            bg: if use_dark { "#1e293b".into() } else { "#F8FAFC".into() }, 
-            stroke: if use_dark { "#475569".into() } else { "#CBD5E1".into() }, 
-            icon_color: "#64748B".into(), 
-            icon_path: "M-5 0 L5 0 M0 -5 L0 5".into(), 
-            is_stroke: true 
+        _ => StepStyle {
+            bg: if use_dark {
+                "#1e293b".into()
+            } else {
+                "#F8FAFC".into()
+            },
+            stroke: if use_dark {
+                "#475569".into()
+            } else {
+                "#CBD5E1".into()
+            },
+            icon_color: "#64748B".into(),
+            icon_path: "M-5 0 L5 0 M0 -5 L0 5".into(),
+            is_stroke: true,
         },
     }
 }
@@ -876,26 +1118,37 @@ fn render_examples(examples: &Examples, width: i32, y: i32, _use_dark: bool) -> 
     let cell_width = (width - 60) / (examples.headers.len() as i32).max(1);
     let row_height = 25;
     let mut sb = String::new();
-    sb.push_str(&format!(r##"<g transform="translate(45, {y})">"##, y = y));
-    sb.push_str(r##"<text x="0" y="-10" font-size="10" font-weight="bold" fill="var(--accent)" style="text-transform: uppercase; letter-spacing: 0.05em;">EXAMPLES:</text>"##);
-    
+    sb.push_str(&format!(
+        r##"<g transform="translate(45, {y})" role="table" aria-label="Scenario Examples">"##,
+        y = y
+    ));
+    sb.push_str(r##"<text x="0" y="-10" font-size="10" font-weight="bold" fill="var(--accent)" style="text-transform: uppercase; letter-spacing: 0.05em;" aria-hidden="true">EXAMPLES:</text>"##);
+
     // Headers
+    sb.push_str(r##"<g role="row">"##);
     for (i, h) in examples.headers.iter().enumerate() {
         sb.push_str(&format!(r##"
-            <rect x="{x}" y="0" width="{cell_width}" height="{row_height}" fill="var(--table-header-bg)" stroke="var(--table-border)" stroke-width="1"/>
-            <text x="{text_x}" y="17" class="table-header" text-anchor="middle">{text}</text>
+            <g role="columnheader" aria-label="{text}">
+                <rect x="{x}" y="0" width="{cell_width}" height="{row_height}" fill="var(--table-header-bg)" stroke="var(--table-border)" stroke-width="1"/>
+                <text x="{text_x}" y="17" class="table-header" text-anchor="middle">{text}</text>
+            </g>
         "##, x = i as i32 * cell_width, cell_width = cell_width, row_height = row_height, text_x = i as i32 * cell_width + cell_width / 2, text = escape(h)));
     }
-    
+    sb.push_str("</g>");
+
     // Rows
     for (r_idx, row) in examples.rows.iter().enumerate() {
         let row_y = (r_idx + 1) as i32 * row_height;
+        sb.push_str(r##"<g role="row">"##);
         for (c_idx, cell) in row.iter().enumerate() {
             sb.push_str(&format!(r##"
-                <rect x="{x}" y="{row_y}" width="{cell_width}" height="{row_height}" fill="var(--table-row-bg)" stroke="var(--table-border)" stroke-width="0.5"/>
-                <text x="{text_x}" y="{text_y}" class="table-cell" text-anchor="middle">{text}</text>
+                <g role="cell" aria-label="{text}">
+                    <rect x="{x}" y="{row_y}" width="{cell_width}" height="{row_height}" fill="var(--table-row-bg)" stroke="var(--table-border)" stroke-width="0.5"/>
+                    <text x="{text_x}" y="{text_y}" class="table-cell" text-anchor="middle">{text}</text>
+                </g>
             "##, x = c_idx as i32 * cell_width, row_y = row_y, cell_width = cell_width, text_x = c_idx as i32 * cell_width + cell_width / 2, text_y = row_y + 17, text = escape(cell)));
         }
+        sb.push_str("</g>");
     }
     sb.push_str("</g>");
     sb
@@ -954,9 +1207,9 @@ Feature: Dark Mode
 ----"##;
         let mut controls = HashMap::new();
         controls.insert("useDark".to_string(), "true".to_string());
-        
+
         let svg = render(body, &controls).unwrap();
-        
+
         // Check for dark mode class
         assert!(svg.contains("class=\"gherkin-container dark-mode\""));
         // Check for CSS variable overrides in dark-mode class
@@ -965,7 +1218,7 @@ Feature: Dark Mode
         assert!(svg.contains("stop-color=\"var(--bg-gradient-0)\""));
         // Check for dynamic status colors
         assert!(svg.contains("fill=\"#064e3b\"")); // Status Passing BG in dark mode
-        
+
         // Check Examples colors
         assert!(svg.contains("fill=\"var(--table-header-bg)\""));
         assert!(svg.contains("fill=\"var(--table-row-bg)\""));

@@ -18,22 +18,37 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let data = parse_kv_body(body)?;
     let cfg = &data.config;
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
-    
+
     let theme_name = cfg.get("theme").map(|s| s.as_str()).unwrap_or("default");
     let colors = theme(theme_name);
     let dark_colors = theme("dark");
 
-    let title = cfg.get("title").map(String::as_str).unwrap_or("Gauge Chart");
-    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Performance metric");
-    let min_val = cfg.get("min").and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
-    let max_val = cfg.get("max").and_then(|s| s.parse::<f64>().ok()).unwrap_or(100.0);
+    let title = cfg
+        .get("title")
+        .map(String::as_str)
+        .unwrap_or("Gauge Chart");
+    let subtitle = cfg
+        .get("subtitle")
+        .map(String::as_str)
+        .unwrap_or("Performance metric");
+    let min_val = cfg
+        .get("min")
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    let max_val = cfg
+        .get("max")
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(100.0);
     let suffix = cfg.get("suffix").map(String::as_str).unwrap_or("%");
     let direction = cfg.get("direction").map(String::as_str).unwrap_or("normal");
 
     let val = data.points.first().map(|p| p.1).unwrap_or(0.0);
-    
+
     let range = max_val - min_val;
     let normalized_val = if range > 0.0 {
         ((val - min_val) / range * 100.0).clamp(0.0, 100.0)
@@ -41,26 +56,48 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         0.0
     };
 
-    let labels_str = cfg.get("labels").map(String::as_str).unwrap_or("LOW,WATCH,HEALTHY");
-    let labels: Vec<String> = labels_str.split(',')
+    let labels_str = cfg
+        .get("labels")
+        .map(String::as_str)
+        .unwrap_or("LOW,WATCH,HEALTHY");
+    let labels: Vec<String> = labels_str
+        .split(',')
         .map(|s| s.trim().to_uppercase())
         .collect();
-    
-    let l1 = labels.get(0).cloned().unwrap_or_else(|| "LOW".to_string());
-    let l2 = labels.get(1).cloned().unwrap_or_else(|| "WATCH".to_string());
-    let l3 = labels.get(2).cloned().unwrap_or_else(|| "HEALTHY".to_string());
+
+    let l1 = labels.first().cloned().unwrap_or_else(|| "LOW".to_string());
+    let l2 = labels
+        .get(1)
+        .cloned()
+        .unwrap_or_else(|| "WATCH".to_string());
+    let l3 = labels
+        .get(2)
+        .cloned()
+        .unwrap_or_else(|| "HEALTHY".to_string());
 
     let (level_by_val, status_default) = if direction == "inverse" {
-        if normalized_val <= 33.0 { (3, l3.clone()) }
-        else if normalized_val <= 66.0 { (2, l2.clone()) }
-        else { (1, l1.clone()) }
+        if normalized_val <= 33.0 {
+            (3, l3.clone())
+        } else if normalized_val <= 66.0 {
+            (2, l2.clone())
+        } else {
+            (1, l1.clone())
+        }
     } else {
-        if normalized_val >= 66.0 { (3, l3.clone()) }
-        else if normalized_val >= 33.0 { (2, l2.clone()) }
-        else { (1, l1.clone()) }
+        if normalized_val >= 66.0 {
+            (3, l3.clone())
+        } else if normalized_val >= 33.0 {
+            (2, l2.clone())
+        } else {
+            (1, l1.clone())
+        }
     };
 
-    let status = cfg.get("status").map(String::as_str).map(|s| s.to_uppercase()).unwrap_or(status_default);
+    let status = cfg
+        .get("status")
+        .map(String::as_str)
+        .map(|s| s.to_uppercase())
+        .unwrap_or(status_default);
 
     let level = if status == l3 || status == "HEALTHY" {
         3
@@ -112,7 +149,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let cx = 240.0;
     // Needle angle: -90 (left) to 90 (right), 0 is up
     let rotate = (normalized_val * 1.8) - 90.0;
-    
+
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
     let tick_positions = [
@@ -131,7 +168,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     }
 
     let svg = format!(
-        r##"<svg width="480" height="440" viewBox="0 0 480 440" xmlns="http://www.w3.org/2000/svg" id="{chart_id}" class="gauge-container{extra_class}" role="img" aria-labelledby="{chart_id}_title {chart_id}_desc">
+        r##"<svg width="480" height="440" viewBox="0 0 480 440" xmlns="http://www.w3.org/2000/svg" id="{chart_id}" class="gauge-container{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
   <title id="{chart_id}_title">{title}</title>
   <desc id="{chart_id}_desc">{subtitle}</desc>
   <defs>
@@ -208,55 +245,59 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
   </style>
 
   <!-- Background Card -->
-  <g filter="url(#{chart_id}_shadow)">
+  <g filter="url(#{chart_id}_shadow)" aria-hidden="true">
     <rect x="24" y="24" width="432" height="392" rx="24" fill="var(--bg)"/>
     <rect x="24.5" y="24.5" width="431" height="391" rx="23.5" fill="none" stroke="var(--border)" stroke-width="1"/>
   </g>
   
-  <text x="240" y="60" font-size="24" font-weight="700" fill="var(--text)" text-anchor="middle">{title}</text>
-  <text x="240" y="88" font-size="14" font-weight="400" fill="var(--muted)" text-anchor="middle">{subtitle}</text>
-
-  <!-- Decorative Dial Circles -->
-  <circle cx="240" cy="260" r="150" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
-  <circle cx="240" cy="260" r="120" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
-
-  <!-- Gauge segments -->
-  <path d="M 110 260 A 130 130 0 0 1 370 260" fill="none" stroke="var(--border)" stroke-width="30" stroke-linecap="round" opacity="0.1" />
-  <path d="M 110 260 A 130 130 0 0 1 175 147.4" fill="none" stroke="url(#{chart_id}_s1_arc)" stroke-width="30" stroke-linecap="round" />
-  <path d="M 175 147.4 A 130 130 0 0 1 305 147.4" fill="none" stroke="url(#{chart_id}_s2_arc)" stroke-width="30" stroke-linecap="round" />
-  <path d="M 305 147.4 A 130 130 0 0 1 370 260" fill="none" stroke="url(#{chart_id}_s3_arc)" stroke-width="30" stroke-linecap="round" />
-
-  <!-- Region Labels -->
-  <text x="144" y="210" font-size="9" font-weight="800" fill="{s1_color}" text-anchor="middle" letter-spacing="0.05em">{s1_label}</text>
-  <text x="240" y="160" font-size="9" font-weight="800" fill="{s2_color}" text-anchor="middle" letter-spacing="0.05em">{s2_label}</text>
-  <text x="336" y="210" font-size="9" font-weight="800" fill="{s3_color}" text-anchor="middle" letter-spacing="0.05em">{s3_label}</text>
-
-  <!-- Inner cover -->
-  <circle cx="240" cy="260" r="82" fill="var(--bg)"/>
-
-  <!-- Tick labels -->
-{ticks}
-  <!-- Needle -->
-  <g transform="translate({cx}, {cy}) rotate({rotate})">
-    <line x1="0" y1="0" x2="0" y2="-105" stroke="var(--text)" opacity="0.08" stroke-width="11" stroke-linecap="round" />
-    <line x1="0" y1="0" x2="0" y2="-105" stroke="var(--text)" stroke-width="6" stroke-linecap="round" />
-    <g filter="url(#{chart_id}_softGlow)">
-      <circle cx="0" cy="-105" r="4.5" fill="#3B82F6"/>
-    </g>
+  <g aria-hidden="true">
+    <text x="240" y="60" font-size="24" font-weight="700" fill="var(--text)" text-anchor="middle">{title}</text>
+    <text x="240" y="88" font-size="14" font-weight="400" fill="var(--muted)" text-anchor="middle">{subtitle}</text>
   </g>
 
-  <!-- Needle center -->
-  <circle cx="{cx}" cy="{cy}" r="21" fill="var(--bg)" stroke="var(--border)" stroke-width="1"/>
-  <circle cx="{cx}" cy="{cy}" r="15" fill="var(--text)"/>
-  <circle cx="{cx}" cy="{cy}" r="6" fill="var(--bg)"/>
+  <!-- Decorative Dial Circles -->
+  <circle cx="240" cy="260" r="150" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.4" aria-hidden="true"/>
+  <circle cx="240" cy="260" r="120" fill="none" stroke="var(--border)" stroke-width="0.5" opacity="0.4" aria-hidden="true"/>
 
-  <!-- Value text -->
-  <text x="240" y="350" font-size="36" font-weight="800" fill="var(--text)" text-anchor="middle">{val}{suffix}</text>
+  <!-- Gauge segments -->
+  <g role="graphics-symbol" aria-roledescription="gauge" tabindex="0" aria-label="Gauge: {val}{suffix}, Status: {status}">
+    <path d="M 110 260 A 130 130 0 0 1 370 260" fill="none" stroke="var(--border)" stroke-width="30" stroke-linecap="round" opacity="0.1" aria-hidden="true"/>
+    <path d="M 110 260 A 130 130 0 0 1 175 147.4" fill="none" stroke="url(#{chart_id}_s1_arc)" stroke-width="30" stroke-linecap="round" aria-hidden="true"/>
+    <path d="M 175 147.4 A 130 130 0 0 1 305 147.4" fill="none" stroke="url(#{chart_id}_s2_arc)" stroke-width="30" stroke-linecap="round" aria-hidden="true"/>
+    <path d="M 305 147.4 A 130 130 0 0 1 370 260" fill="none" stroke="url(#{chart_id}_s3_arc)" stroke-width="30" stroke-linecap="round" aria-hidden="true"/>
+
+    <!-- Region Labels -->
+    <text x="144" y="210" font-size="9" font-weight="800" fill="{s1_color}" text-anchor="middle" letter-spacing="0.05em" aria-hidden="true">{s1_label}</text>
+    <text x="240" y="160" font-size="9" font-weight="800" fill="{s2_color}" text-anchor="middle" letter-spacing="0.05em" aria-hidden="true">{s2_label}</text>
+    <text x="336" y="210" font-size="9" font-weight="800" fill="{s3_color}" text-anchor="middle" letter-spacing="0.05em" aria-hidden="true">{s3_label}</text>
+
+    <!-- Inner cover -->
+    <circle cx="240" cy="260" r="82" fill="var(--bg)" aria-hidden="true"/>
+
+    <!-- Tick labels -->
+{ticks}
+    <!-- Needle -->
+    <g transform="translate({cx}, {cy}) rotate({rotate})" aria-hidden="true">
+      <line x1="0" y1="0" x2="0" y2="-105" stroke="var(--text)" opacity="0.08" stroke-width="11" stroke-linecap="round" />
+      <line x1="0" y1="0" x2="0" y2="-105" stroke="var(--text)" stroke-width="6" stroke-linecap="round" />
+      <g filter="url(#{chart_id}_softGlow)">
+        <circle cx="0" cy="-105" r="4.5" fill="#3B82F6"/>
+      </g>
+    </g>
+
+    <!-- Needle center -->
+    <circle cx="{cx}" cy="{cy}" r="21" fill="var(--bg)" stroke="var(--border)" stroke-width="1" aria-hidden="true"/>
+    <circle cx="{cx}" cy="{cy}" r="15" fill="var(--text)" aria-hidden="true"/>
+    <circle cx="{cx}" cy="{cy}" r="6" fill="var(--bg)" aria-hidden="true"/>
+
+    <!-- Value text -->
+    <text x="240" y="350" font-size="36" font-weight="800" fill="var(--text)" text-anchor="middle">{val}{suffix}</text>
+  </g>
   
   <!-- Status Pill -->
-  <g transform="translate(180, 370)">
+  <g transform="translate(180, 370)" role="status" aria-label="Status: {status}">
     <rect x="0" y="0" width="120" height="28" rx="14" fill="var(--status-bg)" stroke="var(--status-border)" stroke-width="1"/>
-    <circle cx="20" cy="14" r="5" fill="var(--status-text)"/>
+    <circle cx="20" cy="14" r="5" fill="var(--status-text)" aria-hidden="true"/>
     <text x="68" y="19" font-size="12" font-weight="700" fill="var(--status-text)" text-anchor="middle" letter-spacing="0.05em">{status}</text>
   </g>
 
@@ -314,14 +355,14 @@ title=Dark Mode Test
 ---
 Score | 42
 ----"#;
-        
+
         // Default mode (should have variables and media query)
         let svg_light = render(body, &HashMap::new()).unwrap();
         assert!(svg_light.contains("gauge_"));
         assert!(svg_light.contains("@media (prefers-color-scheme: dark)"));
         assert!(svg_light.contains("class=\"gauge-container\""));
         assert!(svg_light.contains("var(--bg)"));
-        
+
         // Forced dark mode
         let mut controls = HashMap::new();
         controls.insert("useDark".to_string(), "true".to_string());

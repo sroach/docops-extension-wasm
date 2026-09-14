@@ -79,11 +79,20 @@ fn parse_combo_body(body: &str) -> Result<(HashMap<String, String>, Vec<ComboPoi
 pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, String> {
     let (cfg, points) = parse_combo_body(body)?;
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
 
-    let title = cfg.get("title").map(String::as_str).unwrap_or("Combination Chart");
-    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Visualized data report");
+    let title = cfg
+        .get("title")
+        .map(String::as_str)
+        .unwrap_or("Combination Chart");
+    let subtitle = cfg
+        .get("subtitle")
+        .map(String::as_str)
+        .unwrap_or("Visualized data report");
     let x_axis_label = cfg.get("xLabel").map(String::as_str).unwrap_or("");
     let y_axis_label = cfg.get("yLabel").map(String::as_str).unwrap_or("");
     let y_axis_secondary_label = cfg.get("yLabelSecondary").map(String::as_str).unwrap_or("");
@@ -173,14 +182,25 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
 
     let mut content = String::new();
     render_grid(&ctx, &mut content);
-    render_axes(&ctx, &mut content, y_axis_label, y_axis_secondary_label, x_axis_label);
+    render_axes(
+        &ctx,
+        &mut content,
+        y_axis_label,
+        y_axis_secondary_label,
+        x_axis_label,
+    );
     render_series(&ctx, &mut content);
     render_legend(&ctx, &mut content);
 
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
+    let title_esc = escape(title);
+    let desc_esc = escape(subtitle);
+
     Ok(format!(
-        r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" id="{chart_id}" class="combo-chart-container{extra_class}" preserveAspectRatio="xMidYMid meet">
+        r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="graphics-document document" id="{chart_id}" class="combo-chart-container{extra_class}" preserveAspectRatio="xMidYMid meet" aria-labelledby="{chart_id}_title {chart_id}_desc">
+    <title id="{chart_id}_title">{title_esc}</title>
+    <desc id="{chart_id}_desc">{desc_esc}</desc>
     <defs>
         <filter id="{chart_id}__premiumShadow" x="-20%" y="-20%" width="140%" height="150%">
             <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op)"/>
@@ -254,24 +274,27 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         #{chart_id} .point {{ fill: var(--secondary); stroke: var(--point-stroke); stroke-width: 2; }}
     </style>
     
-    <rect width="{width}" height="{height}" fill="var(--bg)" rx="16"/>
+    <rect width="{width}" height="{height}" fill="var(--bg)" rx="16" aria-hidden="true"/>
     
-    <text x="40" y="50" class="title">{title}</text>
-    <text x="40" y="75" class="subtitle">{subtitle}</text>
+    <g aria-hidden="true">
+        <text x="40" y="50" class="title">{title_esc}</text>
+        <text x="40" y="75" class="subtitle">{desc_esc}</text>
+    </g>
     
     {content}
 </svg>"##,
         width = width,
         height = height,
         chart_id = chart_id,
-        title = escape(title),
-        subtitle = escape(subtitle),
+        title_esc = title_esc,
+        desc_esc = desc_esc,
         extra_class = extra_class,
         content = content
     ))
 }
 
 fn render_grid(ctx: &CombinationContext, content: &mut String) {
+    content.push_str(r##"<g class="chart-grid" aria-hidden="true">"##);
     for i in 0..=5 {
         let frac = i as f64 / 5.0;
         let y = ctx.plot_y + ctx.plot_h - frac * ctx.plot_h;
@@ -282,6 +305,7 @@ fn render_grid(ctx: &CombinationContext, content: &mut String) {
             x2 = ctx.plot_x + ctx.plot_w
         ));
     }
+    content.push_str("</g>");
 }
 
 fn render_axes(
@@ -291,6 +315,7 @@ fn render_axes(
     y_label_sec: &str,
     x_label: &str,
 ) {
+    content.push_str(r##"<g class="axes" aria-hidden="true">"##);
     // Primary Y Axis
     for i in 0..=5 {
         let frac = i as f64 / 5.0;
@@ -348,6 +373,7 @@ fn render_axes(
         y = ctx.plot_y + ctx.plot_h + 50.0,
         label = escape(x_label)
     ));
+    content.push_str("</g>");
 }
 
 fn render_series(ctx: &CombinationContext, content: &mut String) {
@@ -359,12 +385,20 @@ fn render_series(ctx: &CombinationContext, content: &mut String) {
             let bar_width = x_step * 0.6;
             for (i, val_opt) in series.values.iter().enumerate() {
                 if let Some(val) = val_opt {
-                    let max = if series.axis == "SECONDARY" { ctx.max_secondary } else { ctx.max_primary };
+                    let max = if series.axis == "SECONDARY" {
+                        ctx.max_secondary
+                    } else {
+                        ctx.max_primary
+                    };
                     let h = (val / max) * ctx.plot_h;
                     let x = ctx.plot_x + (i as f64 + 0.5) * x_step - bar_width / 2.0;
                     let y = ctx.plot_y + ctx.plot_h - h;
+                    let x_label = ctx.x_labels.get(i).map(String::as_str).unwrap_or("");
                     content.push_str(&format!(
-                        r##"<rect class="bar" x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="url(#{id}__barGradient)"/>"##,
+                        r##"<rect class="bar" role="graphics-symbol" aria-roledescription="bar" tabindex="0" aria-label="{series_name} - {x_label}: {val}" x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="url(#{id}__barGradient)"/>"##,
+                        series_name = escape(&series.name),
+                        x_label = escape(x_label),
+                        val = val,
                         x = x,
                         y = y,
                         w = bar_width,
@@ -385,10 +419,15 @@ fn render_series(ctx: &CombinationContext, content: &mut String) {
 
             for (i, val_opt) in series.values.iter().enumerate() {
                 if let Some(val) = val_opt {
-                    let max = if series.axis == "SECONDARY" { ctx.max_secondary } else { ctx.max_primary };
+                    let max = if series.axis == "SECONDARY" {
+                        ctx.max_secondary
+                    } else {
+                        ctx.max_primary
+                    };
                     let h = (val / max) * ctx.plot_h;
                     let x = ctx.plot_x + (i as f64 + 0.5) * x_step;
                     let y = ctx.plot_y + ctx.plot_h - h;
+                    let x_label = ctx.x_labels.get(i).map(String::as_str).unwrap_or("");
 
                     if first {
                         path_data.push_str(&format!("M {} {}", x, y));
@@ -397,14 +436,18 @@ fn render_series(ctx: &CombinationContext, content: &mut String) {
                         path_data.push_str(&format!(" L {} {}", x, y));
                     }
                     points_svg.push_str(&format!(
-                        r##"<circle class="point" cx="{x}" cy="{y}" r="5"/>"##,
+                        r##"<circle class="point" role="graphics-symbol" aria-roledescription="data point" tabindex="0" aria-label="{series_name} - {x_label}: {val}" cx="{x}" cy="{y}" r="5"/>"##,
+                        series_name = escape(&series.name),
+                        x_label = escape(x_label),
+                        val = val,
                         x = x,
                         y = y
                     ));
                 }
             }
             content.push_str(&format!(
-                r##"<path class="line" d="{d}"/>"##,
+                r##"<path class="line" role="graphics-symbol" aria-roledescription="line" aria-label="{series_name} trend line" d="{d}"/>"##,
+                series_name = escape(&series.name),
                 d = path_data
             ));
             content.push_str(&points_svg);
@@ -415,26 +458,35 @@ fn render_series(ctx: &CombinationContext, content: &mut String) {
 fn render_legend(ctx: &CombinationContext, content: &mut String) {
     let mut x = ctx.plot_x;
     let y = 95.0;
-    
+
+    content.push_str(r##"<g class="legend" role="list" aria-label="Legend">"##);
     for series in &ctx.series_map {
-        let color = if series.chart_type == "BAR" { "var(--primary)" } else { "var(--secondary)" };
+        let color = if series.chart_type == "BAR" {
+            "var(--primary)"
+        } else {
+            "var(--secondary)"
+        };
+        content.push_str(&format!(
+            r##"<g class="legend-item" role="listitem" aria-label="{name}">"##,
+            name = escape(&series.name)
+        ));
         if series.chart_type == "BAR" {
             content.push_str(&format!(
-                r##"<rect x="{x}" y="{y}" width="12" height="12" rx="3" fill="{color}"/>"##,
+                r##"<rect x="{x}" y="{y}" width="12" height="12" rx="3" fill="{color}" aria-hidden="true"/>"##,
                 x = x,
                 y = y - 10.0,
                 color = color
             ));
         } else {
             content.push_str(&format!(
-                r##"<line x1="{x}" y1="{y}" x2="{x2}" y2="{y}" stroke="{color}" stroke-width="3"/>"##,
+                r##"<line x1="{x}" y1="{y}" x2="{x2}" y2="{y}" stroke="{color}" stroke-width="3" aria-hidden="true"/>"##,
                 x = x,
                 y = y - 4.0,
                 x2 = x + 12.0,
                 color = color
             ));
             content.push_str(&format!(
-                r##"<circle cx="{x}" cy="{y}" r="3" fill="{color}"/>"##,
+                r##"<circle cx="{x}" cy="{y}" r="3" fill="{color}" aria-hidden="true"/>"##,
                 x = x + 6.0,
                 y = y - 4.0,
                 color = color
@@ -446,10 +498,12 @@ fn render_legend(ctx: &CombinationContext, content: &mut String) {
             y = y,
             name = escape(&series.name)
         ));
-        
+        content.push_str("</g>");
+
         // Approximate width of legend item
         x += 25.0 + series.name.len() as f64 * 7.0 + 20.0;
     }
+    content.push_str("</g>");
 }
 
 #[cfg(test)]

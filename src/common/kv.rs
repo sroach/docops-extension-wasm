@@ -58,8 +58,7 @@ pub fn parse_kv_body(body: &str) -> Result<KvBody, String> {
     let tokens: Vec<&str> = data_str.split('|').map(|s| s.trim()).collect();
     if tokens.len() >= 2 {
         let mut current_label = tokens[0].to_string();
-        for i in 1..tokens.len() {
-            let token = tokens[i];
+        for token in tokens.iter().skip(1) {
             if let Some(cap) = val_re.captures(token) {
                 let val: f64 = cap[1].parse().unwrap();
                 points.push((current_label.clone(), val));

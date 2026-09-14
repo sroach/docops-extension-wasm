@@ -385,7 +385,11 @@ Feature: User Authentication
                 i,
                 svg
             );
-            assert!(svg.starts_with("<svg"), "Sample {} produced invalid SVG output", i);
+            assert!(
+                svg.starts_with("<svg"),
+                "Sample {} produced invalid SVG output",
+                i
+            );
         }
     }
 }
@@ -399,7 +403,7 @@ mod metadata_tests {
         let input = "[docops,badge] ---- Label | Message ----";
         let svg = generate_svg(input);
         let expected_date = chrono::Local::now().format("%Y-%m-%d").to_string();
-        
+
         assert!(svg.contains("<metadata>"));
         assert!(svg.contains("<dc:creator>DocOps.io</dc:creator>"));
         assert!(svg.contains("<dc:rights>MIT License</dc:rights>"));
@@ -421,20 +425,23 @@ mod metadata_tests {
         // Defaults should still be there for others
         assert!(svg.contains("<dc:rights>MIT License</dc:rights>"));
     }
-    
+
     #[test]
     fn test_digital_signature_injection() {
         // 32-byte hex private key (64 characters)
         let priv_key = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        let input = format!("[docops,badge, privkey={}] ---- Label | Message ----", priv_key);
+        let input = format!(
+            "[docops,badge, privkey={}] ---- Label | Message ----",
+            priv_key
+        );
         let svg = generate_svg(&input);
-        
+
         assert!(svg.contains("<dc:signature"));
         assert!(svg.contains("sha256-ed25519:"));
-        
+
         // Ensure it's not the placeholder anymore
         assert!(!svg.contains("SIGNATURE_PLACEHOLDER"));
-        
+
         // The signature should be a base64 string (88 or 86 chars for Ed25519 signature of 64 bytes)
         // Ed25519 signature is 64 bytes. Base64 of 64 bytes is (64/3) * 4 = 85.33 -> 88 characters.
         // Let's just check it contains a reasonable length signature or at least doesn't contain the placeholder.
@@ -442,12 +449,15 @@ mod metadata_tests {
 
     #[test]
     fn test_signature_verification() {
-        use ed25519_dalek::{SigningKey, Verifier, Signature};
-        use sha2::{Sha256, Digest};
-        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+        use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+        use ed25519_dalek::{Signature, SigningKey, Verifier};
+        use sha2::{Digest, Sha256};
 
         let priv_key_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-        let input = format!("[docops,badge, privkey={}] ---- Label | Message ----", priv_key_hex);
+        let input = format!(
+            "[docops,badge, privkey={}] ---- Label | Message ----",
+            priv_key_hex
+        );
         let svg = generate_svg(&input);
 
         // 1. Extract signature from SVG
@@ -470,7 +480,9 @@ mod metadata_tests {
         let key_bytes = hex::decode(priv_key_hex).unwrap();
         let signing_key = SigningKey::from_bytes(&key_bytes.try_into().unwrap());
         let verifying_key = signing_key.verifying_key();
-        
-        verifying_key.verify(&hash, &signature).expect("Signature verification failed");
+
+        verifying_key
+            .verify(&hash, &signature)
+            .expect("Signature verification failed");
     }
 }

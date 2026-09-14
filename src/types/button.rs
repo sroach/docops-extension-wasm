@@ -1,5 +1,7 @@
 use crate::common::kv::parse_kv_header;
-use crate::common::svg::{brighten_color, darken_color, determine_text_color, escape, get_rgb, wrap_text};
+use crate::common::svg::{
+    brighten_color, darken_color, determine_text_color, escape, get_rgb, wrap_text,
+};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -44,11 +46,30 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     }
 
     let config = ButtonConfig {
-        shape: config_map.get("shape").cloned().unwrap_or_else(|| "regular".to_string()),
-        columns: config_map.get("columns").and_then(|s| s.parse().ok()).unwrap_or(3),
-        scale: config_map.get("scale").and_then(|s| s.parse().ok()).unwrap_or(1.0),
-        use_dark: config_map.get("useDark").map(|s| s == "true").unwrap_or(false) || config_map.get("theme").map(|s| s == "dark").unwrap_or(false),
-        new_win: config_map.get("newWin").map(|s| s == "true").unwrap_or(true),
+        shape: config_map
+            .get("shape")
+            .cloned()
+            .unwrap_or_else(|| "regular".to_string()),
+        columns: config_map
+            .get("columns")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(3),
+        scale: config_map
+            .get("scale")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0),
+        use_dark: config_map
+            .get("useDark")
+            .map(|s| s == "true")
+            .unwrap_or(false)
+            || config_map
+                .get("theme")
+                .map(|s| s == "dark")
+                .unwrap_or(false),
+        new_win: config_map
+            .get("newWin")
+            .map(|s| s == "true")
+            .unwrap_or(true),
     };
 
     let mut buttons = Vec::new();
@@ -64,7 +85,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         }
 
         buttons.push(Button {
-            label: fields.get(0).unwrap_or(&"").to_string(),
+            label: fields.first().unwrap_or(&"").to_string(),
             link: fields.get(1).unwrap_or(&"").to_string(),
             button_type: fields.get(2).unwrap_or(&"").to_string(),
             description: fields.get(3).unwrap_or(&"").to_string(),
@@ -107,7 +128,7 @@ fn get_styles(id: &str, shape: &str) -> String {
             .headerGlyph { font-size: 54px; font-weight: 900; fill: #ffffff; opacity: 0.95; }
             .headerSubtle { font-size: 13px; font-weight: 750; letter-spacing: 2px; fill: #ffffff; opacity: 0.78; }
             "##);
-        },
+        }
         "hex" => {
             extra.push_str(r##"
             .hex-button { cursor: pointer; transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease; transform-box: fill-box; transform-origin: center; }
@@ -121,7 +142,7 @@ fn get_styles(id: &str, shape: &str) -> String {
             .outer-halo { transition: opacity 260ms ease; }
             .hex-button:hover .outer-halo { opacity: 0.28; }
             "##);
-        },
+        }
         "circle" => {
             extra.push_str(&format!(r##"
             [id='btn_{id}'] .orb-body, [id='btn_{id}'] .orb-glass, [id='btn_{id}'] .tech-ring {{
@@ -146,9 +167,10 @@ fn get_styles(id: &str, shape: &str) -> String {
                 transform: translate(-4px, -4px);
             }}
             "##, id=id));
-        },
+        }
         "round" => {
-            extra.push_str(&format!(r##"
+            extra.push_str(&format!(
+                r##"
             [id='btn_{id}'] .moving-group {{
                 transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
             }}
@@ -164,24 +186,31 @@ fn get_styles(id: &str, shape: &str) -> String {
             [id='btn_{id}'] .button-hover:hover .moving-group {{
                 transform: translate(-4px, -4px);
             }}
-            "##, id=id));
-        },
+            "##,
+                id = id
+            ));
+        }
         "rectangle" => {
-            extra.push_str(r##"
+            extra.push_str(
+                r##"
             .button-hover { transition: all 0.3s ease; }
             .button-hover:hover { transform: translateY(-3px); }
             .link-chip { transition: fill-opacity 0.2s ease; }
             .link-chip:hover { fill-opacity: 0.2; }
-            "##);
-        },
+            "##,
+            );
+        }
         _ => {
-            extra.push_str(r##"
+            extra.push_str(
+                r##"
             .button-hover { transition: transform 0.2s ease; }
             .button-hover:hover { transform: translateY(-2px); }
-            "##);
+            "##,
+            );
         }
     }
-    format!(r##"
+    format!(
+        r##"
         <style>
             #btn_{id} {{
                 font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -225,15 +254,23 @@ fn get_styles(id: &str, shape: &str) -> String {
             .button-hover:focus {{ outline: none; }}
             {extra}
         </style>
-    "##, id=id, extra=extra)
+    "##,
+        id = id,
+        extra = extra
+    )
 }
 
 fn compute_title_font_size(label: &str) -> i32 {
     let len = label.trim().len();
-    if len > 35 { 20 }
-    else if len > 25 { 24 }
-    else if len > 15 { 28 }
-    else { 31 }
+    if len > 35 {
+        20
+    } else if len > 25 {
+        24
+    } else if len > 15 {
+        28
+    } else {
+        31
+    }
 }
 
 fn render_regular(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -244,10 +281,18 @@ fn render_regular(buttons: &[Button], config: &ButtonConfig, id: &str) -> String
     let start_y = 20.0;
 
     let rows: Vec<&[Button]> = buttons.chunks(config.columns).collect();
-    let max_in_row = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.len()).max().unwrap_or(0) };
-    
-    let width = (start_x + max_in_row as f64 * button_width + (max_in_row as f64) * button_padding + 10.0) * config.scale;
-    let height = (start_y + rows.len() as f64 * button_height + (rows.len() as f64) * button_padding + 10.0) * config.scale;
+    let max_in_row = if rows.is_empty() {
+        0
+    } else {
+        rows.iter().map(|r| r.len()).max().unwrap_or(0)
+    };
+
+    let width =
+        (start_x + max_in_row as f64 * button_width + (max_in_row as f64) * button_padding + 10.0)
+            * config.scale;
+    let height =
+        (start_y + rows.len() as f64 * button_height + (rows.len() as f64) * button_padding + 10.0)
+            * config.scale;
 
     let svg_width = format!("{:.1}", width / 1.77);
     let svg_height = format!("{:.1}", height / 1.77);
@@ -259,20 +304,36 @@ fn render_regular(buttons: &[Button], config: &ButtonConfig, id: &str) -> String
         let y = start_y + r_idx as f64 * (button_height + button_padding);
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * (button_width + button_padding);
-            let accent = if btn.color.is_empty() { "var(--accent)".to_string() } else { escape(&btn.color) };
+            let accent = if btn.color.is_empty() {
+                "var(--accent)".to_string()
+            } else {
+                escape(&btn.color)
+            };
             let opacity = if btn.enabled { "1.0" } else { "0.55" };
             let interaction = if btn.enabled {
-                format!(r##"onclick="window.open('{}', '{}')" style="cursor: pointer;" "##, btn.link, win)
+                format!(
+                    r##"onclick="window.open('{}', '{}')" style="cursor: pointer;" "##,
+                    btn.link, win
+                )
             } else {
                 r##"style="cursor: not-allowed;" "##.to_string()
             };
 
             let active_state = if btn.active {
                 let r = 10.0;
-                format!(r##"
+                format!(
+                    r##"
                     <rect x="2" y="2" width="{}" height="{}" rx="{}" fill="{}" opacity="var(--active-opacity)"/>
                     <rect x="4" y="{}" width="{}" height="2" fill="{}"/>
-                "##, button_width - 4.0, button_height - 4.0, r, accent, button_height - 2.0, button_width - 8.0, accent)
+                "##,
+                    button_width - 4.0,
+                    button_height - 4.0,
+                    r,
+                    accent,
+                    button_height - 2.0,
+                    button_width - 8.0,
+                    accent
+                )
             } else {
                 "".to_string()
             };
@@ -299,18 +360,31 @@ fn render_regular(buttons: &[Button], config: &ButtonConfig, id: &str) -> String
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Action Buttons" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Action Buttons</title>
+    <desc id="btn_{id}_desc">Interactive action button group</desc>
     <defs>
         <filter id="cardShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="var(--shadow-opacity)"/>
         </filter>
         {styles}
     </defs>
-    <rect width="100%" height="100%" fill="var(--bg)" rx="12"/>
+    <rect width="100%" height="100%" fill="var(--bg)" rx="12" aria-hidden="true"/>
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, elements=elements, scale=config.scale, styles=get_styles(id, "regular"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "regular"),
+        extra_class = extra_class
+    )
 }
 
 fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -322,10 +396,16 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     let start_y = 30.0;
 
     let rows: Vec<&[Button]> = buttons.chunks(config.columns).collect();
-    let max_in_row = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.len()).max().unwrap_or(0) };
+    let max_in_row = if rows.is_empty() {
+        0
+    } else {
+        rows.iter().map(|r| r.len()).max().unwrap_or(0)
+    };
 
-    let width = (start_x + max_in_row as f64 * (button_width + button_spacing) + 20.0) * config.scale;
-    let height = (start_y + rows.len() as f64 * (button_height + row_spacing) + 20.0) * config.scale;
+    let width =
+        (start_x + max_in_row as f64 * (button_width + button_spacing) + 20.0) * config.scale;
+    let height =
+        (start_y + rows.len() as f64 * (button_height + row_spacing) + 20.0) * config.scale;
 
     let svg_width = format!("{:.1}", width / 1.77);
     let svg_height = format!("{:.1}", height / 1.77);
@@ -338,25 +418,49 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
         let y = start_y + r_idx as f64 * (button_height + row_spacing);
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * (button_width + button_spacing);
-            let accent = if btn.color.is_empty() { "var(--accent)".to_string() } else { escape(&btn.color) };
+            let accent = if btn.color.is_empty() {
+                "var(--accent)".to_string()
+            } else {
+                escape(&btn.color)
+            };
             let gradient_id = format!("btn_{}_{}_grad", id, r_idx * config.columns + c_idx);
-            
-            let darker = darken_color(if btn.color.is_empty() { "#2563eb" } else { &btn.color }, 0.4);
-            gradients.push_str(&format!(r##"
+
+            let darker = darken_color(
+                if btn.color.is_empty() {
+                    "#2563eb"
+                } else {
+                    &btn.color
+                },
+                0.4,
+            );
+            gradients.push_str(&format!(
+                r##"
         <linearGradient id="{grad_id}" x1="0%" y1="0%" x2="1" y2="1">
             <stop offset="0%" stop-color="{accent}"/>
             <stop offset="50%" stop-color="{accent}" stop-opacity="0.8"/>
             <stop offset="100%" stop-color="{darker}"/>
-        </linearGradient>"##, grad_id=gradient_id, accent=accent, darker=darker));
+        </linearGradient>"##,
+                grad_id = gradient_id,
+                accent = accent,
+                darker = darker
+            ));
 
-            let type_text = if btn.button_type.is_empty() { "COMPONENT" } else { &btn.button_type.to_uppercase() };
+            let type_text = if btn.button_type.is_empty() {
+                "COMPONENT"
+            } else {
+                &btn.button_type.to_uppercase()
+            };
             let badge_width = (type_text.len() * 8 + 24).max(82);
-            
+
             let title_lines = wrap_text(&btn.label, 16);
             let mut title_svg = String::new();
             for (idx, line) in title_lines.iter().take(2).enumerate() {
                 let dy = if idx == 0 { "0" } else { "1.1em" };
-                title_svg.push_str(&format!(r##"<tspan x="0" dy="{}">{}</tspan>"##, dy, escape(line)));
+                title_svg.push_str(&format!(
+                    r##"<tspan x="0" dy="{}">{}</tspan>"##,
+                    dy,
+                    escape(line)
+                ));
             }
             let title_font_size = compute_title_font_size(&btn.label);
 
@@ -366,12 +470,22 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
                 desc_svg.push_str(r##"<text x="0" y="82" class="description">"##);
                 for (idx, line) in desc_lines.iter().take(3).enumerate() {
                     let dy = if idx == 0 { "0" } else { "20" };
-                    desc_svg.push_str(&format!(r##"<tspan x="0" dy="{}">{}</tspan>"##, dy, escape(line)));
+                    desc_svg.push_str(&format!(
+                        r##"<tspan x="0" dy="{}">{}</tspan>"##,
+                        dy,
+                        escape(line)
+                    ));
                 }
                 desc_svg.push_str("</text>");
             }
 
-            let glyph = if btn.label.len() >= 2 { &btn.label[0..2] } else if !btn.label.is_empty() { &btn.label[0..1] } else { "BT" };
+            let glyph = if btn.label.len() >= 2 {
+                &btn.label[0..2]
+            } else if !btn.label.is_empty() {
+                &btn.label[0..1]
+            } else {
+                "BT"
+            };
 
             elements.push_str(&format!(r##"
             <g transform="translate({x}, {y})">
@@ -423,7 +537,10 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Large Button Cards" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Large Button Cards</title>
+    <desc id="btn_{id}_desc">Interactive card buttons collection</desc>
     <defs>
         <linearGradient id="glassCard_{id}" x1="0%" y1="0%" x2="0%" y2="1">
             <stop offset="0%" stop-color="var(--surface)" stop-opacity="var(--glass-opacity)"/>
@@ -452,7 +569,20 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, bw=button_width, bh=button_height, gradients=gradients, elements=elements, scale=config.scale, styles=get_styles(id, "large"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        bw = button_width,
+        bh = button_height,
+        gradients = gradients,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "large"),
+        extra_class = extra_class
+    )
 }
 
 fn render_hex(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -460,9 +590,13 @@ fn render_hex(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     let mut rows = Vec::new();
     let mut current_row = Vec::new();
     let mut row_count = 0;
-    
+
     for btn in buttons {
-        let cols_this_row = if row_count % 2 == 0 { config.columns } else { (config.columns as isize - 1).max(1) as usize };
+        let cols_this_row = if row_count % 2 == 0 {
+            config.columns
+        } else {
+            (config.columns as isize - 1).max(1) as usize
+        };
         current_row.push(btn.clone());
         if current_row.len() == cols_this_row {
             rows.push(current_row);
@@ -487,38 +621,56 @@ fn render_hex(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     for (r_idx, row) in rows.iter().enumerate() {
         let start_x = if r_idx % 2 == 0 { 38.5 } else { 186.0 };
         let y = 20.0 + r_idx as f64 * 255.0;
-        
+
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * button_width;
-            let accent_raw = if btn.color.is_empty() { "#2563eb" } else { &btn.color };
+            let accent_raw = if btn.color.is_empty() {
+                "#2563eb"
+            } else {
+                &btn.color
+            };
             let accent = escape(accent_raw);
             let button_idx = r_idx * config.columns + c_idx;
             let orb_id = format!("orb_{}_{}", id, button_idx);
             let glow_id = format!("glow_{}_{}", id, button_idx);
-            
+
             let (_r, _g, _b) = get_rgb(accent_raw);
-            
-            gradients.push_str(&format!(r##"
+
+            gradients.push_str(&format!(
+                r##"
         <radialGradient id="{orb_id}" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stop-color="{accent}" stop-opacity="0.48"/>
             <stop offset="100%" stop-color="{accent}" stop-opacity="0"/>
         </radialGradient>
         <filter id="{glow_id}" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="20"/>
-        </filter>"##, orb_id=orb_id, glow_id=glow_id, accent=accent));
+        </filter>"##,
+                orb_id = orb_id,
+                glow_id = glow_id,
+                accent = accent
+            ));
 
             let type_text = btn.button_type.to_uppercase();
             let desc_text = btn.description.to_uppercase();
-            
+
             let accent_dark = darken_color(accent_raw, 0.4);
             let grad_id = format!("hexGrad_{}_{}", id, button_idx);
-            gradients.push_str(&format!(r##"
+            gradients.push_str(&format!(
+                r##"
         <linearGradient id="{grad_id}" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="{accent}"/>
             <stop offset="100%" stop-color="{accent_dark}"/>
-        </linearGradient>"##, grad_id=grad_id, accent=accent, accent_dark=accent_dark));
+        </linearGradient>"##,
+                grad_id = grad_id,
+                accent = accent,
+                accent_dark = accent_dark
+            ));
 
-            let glyph = if btn.label.len() >= 1 { &btn.label[0..1] } else { "B" };
+            let glyph = if !btn.label.is_empty() {
+                &btn.label[0..1]
+            } else {
+                "B"
+            };
 
             elements.push_str(&format!(r##"
             <g transform="translate({x}, {y})">
@@ -558,7 +710,10 @@ fn render_hex(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Hexagonal Buttons" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Hexagonal Buttons</title>
+    <desc id="btn_{id}_desc">Hexagonal interactive buttons collection</desc>
     <defs>
         <linearGradient id="premiumBg_{id}" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="var(--bg)"/>
@@ -585,7 +740,18 @@ fn render_hex(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, gradients=gradients, elements=elements, scale=config.scale, styles=get_styles(id, "hex"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        gradients = gradients,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "hex"),
+        extra_class = extra_class
+    )
 }
 
 fn render_pill(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -596,10 +762,16 @@ fn render_pill(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     let start_y = 26.0;
 
     let rows: Vec<&[Button]> = buttons.chunks(config.columns).collect();
-    let max_in_row = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.len()).max().unwrap_or(0) };
+    let max_in_row = if rows.is_empty() {
+        0
+    } else {
+        rows.iter().map(|r| r.len()).max().unwrap_or(0)
+    };
 
-    let width = (start_x + max_in_row as f64 * (button_width + button_padding) + 20.0) * config.scale;
-    let height = (start_y + rows.len() as f64 * (button_height + button_padding) + 20.0) * config.scale;
+    let width =
+        (start_x + max_in_row as f64 * (button_width + button_padding) + 20.0) * config.scale;
+    let height =
+        (start_y + rows.len() as f64 * (button_height + button_padding) + 20.0) * config.scale;
 
     let svg_width = format!("{:.1}", width / 1.77);
     let svg_height = format!("{:.1}", height / 1.77);
@@ -608,25 +780,39 @@ fn render_pill(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     let mut gradients = String::new();
     let win = if config.new_win { "_blank" } else { "_top" };
 
-    gradients.push_str(r##"
+    gradients.push_str(
+        r##"
         <linearGradient id="topshineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4" />
             <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-        </linearGradient>"##);
+        </linearGradient>"##,
+    );
 
     for (r_idx, row) in rows.iter().enumerate() {
         let y = start_y + r_idx as f64 * (button_height + button_padding);
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * (button_width + button_padding);
-            let accent = if btn.color.is_empty() { "var(--accent)".to_string() } else { escape(&btn.color) };
+            let accent = if btn.color.is_empty() {
+                "var(--accent)".to_string()
+            } else {
+                escape(&btn.color)
+            };
             let gradient_id = format!("pillGrad_{}_{}", id, elements.len());
-            let text_color = if btn.color.is_empty() { "var(--text)".to_string() } else { determine_text_color(&btn.color).to_string() };
+            let text_color = if btn.color.is_empty() {
+                "var(--text)".to_string()
+            } else {
+                determine_text_color(&btn.color).to_string()
+            };
 
-            gradients.push_str(&format!(r##"
+            gradients.push_str(&format!(
+                r##"
         <linearGradient id="{grad_id}" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="{accent}" />
             <stop offset="100%" stop-color="{accent}" stop-opacity="0.7" />
-        </linearGradient>"##, grad_id=gradient_id, accent=accent));
+        </linearGradient>"##,
+                grad_id = gradient_id,
+                accent = accent
+            ));
 
             elements.push_str(&format!(r##"
             <g transform="translate({x}, {y})">
@@ -646,7 +832,10 @@ fn render_pill(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Pill Buttons" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Pill Buttons</title>
+    <desc id="btn_{id}_desc">Pill-shaped action buttons</desc>
     <defs>
         {gradients}
         <filter id="cardShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
@@ -654,11 +843,22 @@ fn render_pill(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
         </filter>
         {styles}
     </defs>
-    <rect width="100%" height="100%" fill="var(--bg)" rx="12"/>
+    <rect width="100%" height="100%" fill="var(--bg)" rx="12" aria-hidden="true"/>
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, gradients=gradients, elements=elements, scale=config.scale, styles=get_styles(id, "pill"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        gradients = gradients,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "pill"),
+        extra_class = extra_class
+    )
 }
 
 fn render_circle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -667,7 +867,11 @@ fn render_circle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String 
     let start_y = 35.0;
 
     let rows: Vec<&[Button]> = buttons.chunks(config.columns).collect();
-    let max_in_row = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.len()).max().unwrap_or(0) };
+    let max_in_row = if rows.is_empty() {
+        0
+    } else {
+        rows.iter().map(|r| r.len()).max().unwrap_or(0)
+    };
 
     let width = (start_x + max_in_row as f64 * circle_size + 30.0) * config.scale;
     let height = (start_y + rows.len() as f64 * circle_size + 30.0) * config.scale;
@@ -679,31 +883,51 @@ fn render_circle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String 
     let mut gradients = String::new();
     let win = if config.new_win { "_blank" } else { "_top" };
 
-    gradients.push_str(r##"
+    gradients.push_str(
+        r##"
         <linearGradient id="glassReflectionCircle" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="white" stop-opacity="0.2"/>
             <stop offset="100%" stop-color="white" stop-opacity="0"/>
-        </linearGradient>"##);
+        </linearGradient>"##,
+    );
 
     for (r_idx, row) in rows.iter().enumerate() {
         let y = start_y + r_idx as f64 * circle_size;
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * circle_size;
-            let accent = if btn.color.is_empty() { "var(--accent)".to_string() } else { escape(&btn.color) };
+            let accent = if btn.color.is_empty() {
+                "var(--accent)".to_string()
+            } else {
+                escape(&btn.color)
+            };
             let button_idx = r_idx * config.columns + c_idx;
             let gradient_id = format!("circleGrad_{}_{}", id, button_idx);
-            let text_color = if btn.color.is_empty() { "var(--text)".to_string() } else { determine_text_color(&btn.color).to_string() };
+            let text_color = if btn.color.is_empty() {
+                "var(--text)".to_string()
+            } else {
+                determine_text_color(&btn.color).to_string()
+            };
 
-            let base_color = if btn.color.is_empty() { "#3b82f6" } else { &btn.color };
+            let base_color = if btn.color.is_empty() {
+                "#3b82f6"
+            } else {
+                &btn.color
+            };
             let darker = darken_color(base_color, 0.3);
             let lighter = brighten_color(base_color, 0.2);
 
-            gradients.push_str(&format!(r##"
+            gradients.push_str(&format!(
+                r##"
         <radialGradient id="{grad_id}" cx="30%" cy="25%" r="80%">
             <stop offset="0%" style="stop-color:{lighter};stop-opacity:1" />
             <stop offset="50%" style="stop-color:{base};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{darker};stop-opacity:1" />
-        </radialGradient>"##, grad_id=gradient_id, lighter=lighter, base=escape(base_color), darker=darker));
+        </radialGradient>"##,
+                grad_id = gradient_id,
+                lighter = lighter,
+                base = escape(base_color),
+                darker = darker
+            ));
 
             let lines = wrap_text(&btn.label, 12);
             let mut title_svg = String::new();
@@ -714,8 +938,14 @@ fn render_circle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String 
                 _ => vec![0],
             };
             for (i, line) in lines.iter().take(4).enumerate() {
-                title_svg.push_str(&format!(r##"<tspan x="60" dy="{}">{}</tspan>"##, dy_values[i], escape(line)));
+                title_svg.push_str(&format!(
+                    r##"<tspan x="60" dy="{}">{}</tspan>"##,
+                    dy_values[i],
+                    escape(line)
+                ));
             }
+
+            let hex_id = format!("{:x}", button_idx + 100);
 
             elements.push_str(&format!(r##"
             <g transform="translate({x}, {y})">
@@ -737,14 +967,17 @@ fn render_circle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String 
             </g>"##,
                 x=x, y=y, id=id, desc=escape(&btn.description),
                 link=btn.link, win=win, grad_id=gradient_id, accent=accent, text_color=text_color,
-                title_svg=title_svg, hex_id=format!("{:x}", button_idx + 100)
+                title_svg=title_svg, hex_id=hex_id
             ));
         }
     }
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Orb Buttons" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Orb Buttons</title>
+    <desc id="btn_{id}_desc">Orb interactive buttons collection</desc>
     <defs>
         {gradients}
         <filter id="cardShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
@@ -752,11 +985,22 @@ fn render_circle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String 
         </filter>
         {styles}
     </defs>
-    <rect width="100%" height="100%" fill="var(--bg)" rx="12"/>
+    <rect width="100%" height="100%" fill="var(--bg)" rx="12" aria-hidden="true"/>
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, gradients=gradients, elements=elements, scale=config.scale, styles=get_styles(id, "circle"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        gradients = gradients,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "circle"),
+        extra_class = extra_class
+    )
 }
 
 fn render_round(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -765,7 +1009,11 @@ fn render_round(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     let start_y = 80.0;
 
     let rows: Vec<&[Button]> = buttons.chunks(config.columns).collect();
-    let max_in_row = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.len()).max().unwrap_or(0) };
+    let max_in_row = if rows.is_empty() {
+        0
+    } else {
+        rows.iter().map(|r| r.len()).max().unwrap_or(0)
+    };
 
     let width = (start_x + (max_in_row as f64 - 1.0) * orb_spacing + 80.0) * config.scale;
     let height = (start_y + (rows.len() as f64 - 1.0) * orb_spacing + 80.0) * config.scale;
@@ -777,37 +1025,64 @@ fn render_round(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
     let mut gradients = String::new();
     let win = if config.new_win { "_blank" } else { "_top" };
 
-    gradients.push_str(r##"
+    gradients.push_str(
+        r##"
         <linearGradient id="glassReflectionRound" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="white" stop-opacity="0.4"/>
             <stop offset="50%" stop-color="white" stop-opacity="0.05"/>
             <stop offset="100%" stop-color="white" stop-opacity="0"/>
-        </linearGradient>"##);
+        </linearGradient>"##,
+    );
 
     for (r_idx, row) in rows.iter().enumerate() {
         let y = start_y + r_idx as f64 * orb_spacing;
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * orb_spacing;
-            let accent = if btn.color.is_empty() { "var(--accent)".to_string() } else { escape(&btn.color) };
+            let accent = if btn.color.is_empty() {
+                "var(--accent)".to_string()
+            } else {
+                escape(&btn.color)
+            };
             let button_idx = r_idx * config.columns + c_idx;
             let gradient_id = format!("roundGrad_{}_{}", id, button_idx);
-            let text_color = if btn.color.is_empty() { "var(--text)".to_string() } else { determine_text_color(&btn.color).to_string() };
+            let text_color = if btn.color.is_empty() {
+                "var(--text)".to_string()
+            } else {
+                determine_text_color(&btn.color).to_string()
+            };
 
-            let base_color = if btn.color.is_empty() { "#3b82f6" } else { &btn.color };
+            let base_color = if btn.color.is_empty() {
+                "#3b82f6"
+            } else {
+                &btn.color
+            };
             let darker = darken_color(base_color, 0.4);
 
-            gradients.push_str(&format!(r##"
+            gradients.push_str(&format!(
+                r##"
         <radialGradient id="{grad_id}" cx="35%" cy="30%" r="65%">
             <stop offset="0%" style="stop-color:{base};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{darker};stop-opacity:1" />
-        </radialGradient>"##, grad_id=gradient_id, base=escape(base_color), darker=darker));
+        </radialGradient>"##,
+                grad_id = gradient_id,
+                base = escape(base_color),
+                darker = darker
+            ));
 
             let lines = wrap_text(&btn.label, 15);
-            let line_y = if lines.is_empty() { 0 } else { (lines.len() as i32) * -6 };
+            let line_y = if lines.is_empty() {
+                0
+            } else {
+                (lines.len() as i32) * -6
+            };
             let mut title_svg = String::new();
             for (i, line) in lines.iter().enumerate() {
                 let dy = if i == 0 { "0" } else { "12" };
-                title_svg.push_str(&format!(r##"<tspan x="0" dy="{}">{}</tspan>"##, dy, escape(line)));
+                title_svg.push_str(&format!(
+                    r##"<tspan x="0" dy="{}">{}</tspan>"##,
+                    dy,
+                    escape(line)
+                ));
             }
 
             elements.push_str(&format!(r##"
@@ -830,7 +1105,7 @@ fn render_round(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
                     </g>
                 </g>
             </g>"##,
-                x=x, y=y, id=id, label=escape(&btn.label), link=btn.link, win=win, 
+                x=x, y=y, id=id, label=escape(&btn.label), link=btn.link, win=win,
                 grad_id=gradient_id, accent=accent, text_color=text_color, line_y=line_y, title_svg=title_svg
             ));
         }
@@ -838,7 +1113,10 @@ fn render_round(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Round Buttons" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Round Buttons</title>
+    <desc id="btn_{id}_desc">Round interactive buttons collection</desc>
     <defs>
         {gradients}
         <filter id="cardShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
@@ -846,11 +1124,22 @@ fn render_round(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
         </filter>
         {styles}
     </defs>
-    <rect width="100%" height="100%" fill="var(--bg)" rx="12"/>
+    <rect width="100%" height="100%" fill="var(--bg)" rx="12" aria-hidden="true"/>
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, gradients=gradients, elements=elements, scale=config.scale, styles=get_styles(id, "round"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        gradients = gradients,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "round"),
+        extra_class = extra_class
+    )
 }
 
 fn render_rectangle(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
@@ -861,7 +1150,11 @@ fn render_rectangle(buttons: &[Button], config: &ButtonConfig, id: &str) -> Stri
     let start_y = 22.5;
 
     let rows: Vec<&[Button]> = buttons.chunks(config.columns).collect();
-    let max_in_row = if rows.is_empty() { 0 } else { rows.iter().map(|r| r.len()).max().unwrap_or(0) };
+    let max_in_row = if rows.is_empty() {
+        0
+    } else {
+        rows.iter().map(|r| r.len()).max().unwrap_or(0)
+    };
 
     let width = (start_x + max_in_row as f64 * (card_width + card_padding) + 10.0) * config.scale;
     let height = (start_y + rows.len() as f64 * (card_height + card_padding) + 10.0) * config.scale;
@@ -876,10 +1169,18 @@ fn render_rectangle(buttons: &[Button], config: &ButtonConfig, id: &str) -> Stri
         let y = start_y + r_idx as f64 * (card_height + card_padding);
         for (c_idx, btn) in row.iter().enumerate() {
             let x = start_x + c_idx as f64 * (card_width + card_padding);
-            let accent = if btn.color.is_empty() { "var(--accent)".to_string() } else { escape(&btn.color) };
-            
+            let accent = if btn.color.is_empty() {
+                "var(--accent)".to_string()
+            } else {
+                escape(&btn.color)
+            };
+
             let label = escape(&btn.label);
-            let desc = if btn.description.is_empty() { &btn.label } else { &btn.description };
+            let desc = if btn.description.is_empty() {
+                &btn.label
+            } else {
+                &btn.description
+            };
 
             elements.push_str(&format!(r##"
             <g transform="translate({x}, {y})">
@@ -902,25 +1203,42 @@ fn render_rectangle(buttons: &[Button], config: &ButtonConfig, id: &str) -> Stri
 
     let extra_class = if config.use_dark { " dark-mode" } else { "" };
 
-    format!(r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}">
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {width} {height}" xmlns:xlink="http://www.w3.org/1999/xlink" id="btn_{id}" class="button-container{extra_class}" role="group" aria-label="Rectangle Buttons" aria-labelledby="btn_{id}_title btn_{id}_desc">
+    <title id="btn_{id}_title">Rectangle Buttons</title>
+    <desc id="btn_{id}_desc">Rectangle interactive card buttons</desc>
     <defs>
         <filter id="cardShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="var(--shadow-opacity)"/>
         </filter>
         {styles}
     </defs>
-    <rect width="100%" height="100%" fill="var(--bg)" rx="12"/>
+    <rect width="100%" height="100%" fill="var(--bg)" rx="12" aria-hidden="true"/>
     <g transform="scale({scale})">
         {elements}
     </g>
-</svg>"##, svg_width=svg_width, svg_height=svg_height, width=width, height=height, id=id, elements=elements, scale=config.scale, styles=get_styles(id, "rectangle"), extra_class=extra_class)
+</svg>"##,
+        svg_width = svg_width,
+        svg_height = svg_height,
+        width = width,
+        height = height,
+        id = id,
+        elements = elements,
+        scale = config.scale,
+        styles = get_styles(id, "rectangle"),
+        extra_class = extra_class
+    )
 }
 
 fn wrap_rectangle_desc(text: &str) -> String {
     let lines = wrap_text(text, 45);
     let mut result = String::new();
     for (i, line) in lines.iter().take(3).enumerate() {
-        result.push_str(&format!(r##"<tspan x="20" dy="{}">{}</tspan>"##, if i == 0 { 0 } else { 14 }, escape(line)));
+        result.push_str(&format!(
+            r##"<tspan x="20" dy="{}">{}</tspan>"##,
+            if i == 0 { 0 } else { 14 },
+            escape(line)
+        ));
     }
     result
 }
@@ -955,7 +1273,7 @@ Large Button | https://example.com | Type A | A large button description | #ff00
         assert!(result.contains("A large button description"));
         assert!(result.contains("#ff0000"));
     }
-    
+
     #[test]
     fn test_render_pill() {
         let body = "----
@@ -1004,7 +1322,9 @@ Rust | https://rust-lang.org | Language | A language empowering everyone to buil
 ----";
         let result = render(body, &HashMap::new()).unwrap();
         // The description should be wrapped
-        assert!(result.contains("<tspan x=\"0\" dy=\"0\">A language empowering everyone to</tspan>"));
+        assert!(
+            result.contains("<tspan x=\"0\" dy=\"0\">A language empowering everyone to</tspan>")
+        );
         assert!(result.contains("<tspan x=\"0\" dy=\"20\">build reliable and efficient</tspan>"));
         assert!(result.contains("<tspan x=\"0\" dy=\"20\">software.</tspan>"));
     }

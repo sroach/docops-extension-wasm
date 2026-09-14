@@ -54,14 +54,14 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
         let color = t.palette[i % t.palette.len()];
 
         slices.push_str(&format!(
-            r##"<path d="M {cx:.1},{cy:.1} L {x1:.2},{y1:.2} A {r:.1},{r:.1} 0 {large_arc} 1 {x2:.2},{y2:.2} Z" fill="{color}" stroke="{bg}" stroke-width="1"><title>{label}: {value} ({pct:.1}%)</title></path>"##,
+            r##"<path role="graphics-symbol" aria-roledescription="slice" tabindex="0" aria-label="{label}: {value} ({pct:.1}%)" d="M {cx:.1},{cy:.1} L {x1:.2},{y1:.2} A {r:.1},{r:.1} 0 {large_arc} 1 {x2:.2},{y2:.2} Z" fill="{color}" stroke="{bg}" stroke-width="1"><title>{label}: {value} ({pct:.1}%)</title></path>"##,
             cx = cx, cy = cy, r = r, large_arc = large_arc, color = color, bg = t.background,
             label = escape(label), value = value, pct = frac * 100.0,
         ));
 
         let ly = 40.0 + (i as f64) * 22.0;
         legend.push_str(&format!(
-            r##"<rect x="380" y="{ly:.1}" width="14" height="14" fill="{color}"/><text x="400" y="{ty:.1}" font-size="12" fill="{text}">{label} ({pct:.0}%)</text>"##,
+            r##"<g role="listitem" aria-label="{label} ({pct:.0}%)"><rect x="380" y="{ly:.1}" width="14" height="14" fill="{color}" aria-hidden="true"/><text x="400" y="{ty:.1}" font-size="12" fill="{text}">{label} ({pct:.0}%)</text></g>"##,
             ly = ly, ty = ly + 11.0, color = color, text = t.text,
             label = escape(label), pct = frac * 100.0,
         ));
@@ -70,31 +70,49 @@ pub fn render(body: &str, _controls: &HashMap<String, String>) -> Result<String,
     }
 
     Ok(format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" font-family="system-ui, sans-serif">
-  <rect width="600" height="400" fill="{bg}"/>
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" font-family="system-ui, sans-serif" role="graphics-document document" aria-labelledby="pie_title pie_desc">
+  <title id="pie_title">{title}</title>
+  <desc id="pie_desc">Pie chart with {n} slices, total: {total}</desc>
+  <rect width="600" height="400" fill="{bg}" aria-hidden="true"/>
   <text x="300" y="28" text-anchor="middle" font-size="18" font-weight="600" fill="{text}">{title}</text>
-  {slices}
-  {legend}
+  <g class="slices">{slices}</g>
+  <g class="legend" role="list" aria-label="Legend">{legend}</g>
 </svg>"##,
         bg = t.background,
         text = t.text,
         title = escape(title),
+        n = data.points.len(),
+        total = total,
         slices = slices,
         legend = legend,
     ))
 }
 
-fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<String, String>) -> Result<String, String> {
+fn render_donut(
+    data: &crate::common::kv::KvBody,
+    total: f64,
+    controls: &HashMap<String, String>,
+) -> Result<String, String> {
     let chart_id = format!("id_{}", Uuid::new_v4());
     let cfg = &data.config;
-    let title = cfg.get("title").map(String::as_str).unwrap_or("Donut Chart");
-    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Rounded donut · bottom legend");
+    let title = cfg
+        .get("title")
+        .map(String::as_str)
+        .unwrap_or("Donut Chart");
+    let subtitle = cfg
+        .get("subtitle")
+        .map(String::as_str)
+        .unwrap_or("Rounded donut · bottom legend");
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
     let _id_full = format!("donut_{}", chart_id);
 
-    let mut defs = format!(r##"
+    let mut defs = format!(
+        r##"
         <linearGradient id="donut_bg_{chart_id}" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="var(--donut-bg-1)"/><stop offset="48%" stop-color="var(--donut-bg-2)"/><stop offset="100%" stop-color="var(--donut-bg-3)"/>
         </linearGradient>
@@ -111,7 +129,7 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
             <stop offset="0%" stop-color="var(--donut-lst1)" stop-opacity="var(--donut-lsto1)"/><stop offset="100%" stop-color="var(--donut-lst2)" stop-opacity="var(--donut-lsto2)"/>
         </linearGradient>
 "##,
-        chart_id=chart_id
+        chart_id = chart_id
     );
 
     let mut segments_html = String::new();
@@ -144,8 +162,8 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
 
         let delay = (i as f64) * 90.0;
         segments_html.push_str(&format!(
-            r##"        <g class="reveal" style="animation-delay: {delay}ms">
-            <g class="slice-shell">
+            r##"        <g class="reveal" style="animation-delay: {delay}ms;">
+            <g class="slice-shell" role="graphics-symbol" aria-roledescription="slice" tabindex="0" aria-label="{label}: {value} ({pct:.1}%)">
                 <path d="M {x1:.2} {y1:.2} A {r:.2} {r:.2} 0 {large_arc} 1 {x2:.2} {y2:.2}" fill="none" stroke="url(#orbit_seg_{chart_id}_{i})" stroke-width="52.0" stroke-linecap="round">
                     <title>{label}: {value} ({pct:.1}%)</title>
                 </path>
@@ -161,8 +179,8 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
         let lx = 32.0 + col * 300.0;
         let ly = 58.0 + row * 30.0;
         legend_html.push_str(&format!(
-            r##"        <g class="legend-item" transform="translate({lx}, {ly})">
-            <rect width="14" height="14" rx="4" fill="url(#orbit_seg_{chart_id}_{i})"/>
+            r##"        <g class="legend-item" role="listitem" aria-label="{label}: {value} ({pct:.0}%)" transform="translate({lx}, {ly})">
+            <rect width="14" height="14" rx="4" fill="url(#orbit_seg_{chart_id}_{i})" aria-hidden="true"/>
             <text x="24" y="11" fill="var(--donut-item-text)" font-size="13" font-weight="850">{label}</text>
             <text x="260" y="11" text-anchor="end" fill="var(--donut-item-val)" font-size="12" font-weight="800">{value} · {pct:.0}%</text>
         </g>
@@ -181,10 +199,18 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
 
         let line_delay = 800.0 + (i as f64) * 100.0;
         let badge_delay = 900.0 + (i as f64) * 100.0;
-        let badge_x = if is_right { ex3 + 4.0 } else { ex3 - 4.0 - 42.0 };
+        let badge_x = if is_right {
+            ex3 + 4.0
+        } else {
+            ex3 - 4.0 - 42.0
+        };
         let badge_y = ey2 - 10.0;
         let text_anchor = if is_right { "start" } else { "end" };
-        let label_text_x = if is_right { badge_x + 50.0 } else { badge_x - 10.0 };
+        let label_text_x = if is_right {
+            badge_x + 50.0
+        } else {
+            badge_x - 10.0
+        };
 
         external_labels.push_str(&format!(
             r##"        <path class="label-line" d="M {ex1:.1} {ey1:.1} L {ex2:.1} {ey2:.1} L {ex3:.1} {ey2:.1}" fill="none" stroke="var(--donut-label-line)" stroke-width="1.2" stroke-opacity="0.4" style="animation-delay: {line_delay}ms;"/>
@@ -206,7 +232,9 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
     let _badge_anim_x = if use_dark { "-10px" } else { "10px" }; // Still need this for now or use CSS vars
 
     Ok(format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 760 660" id="{chart_id}" class="donut-container{extra_class}" role="img">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 760 660" id="{chart_id}" class="donut-container{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
+    <title id="{chart_id}_title">{title_esc}</title>
+    <desc id="{chart_id}_desc">{subtitle_esc} - Total: {total}</desc>
     <defs>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;850;900&amp;display=swap');
@@ -292,61 +320,78 @@ fn render_donut(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap
         </filter>
         {defs}
     </defs>
-    <rect width="760" height="660" rx="28" fill="url(#donut_bg_{chart_id})"/>
-    <rect width="760" height="660" rx="28" fill="url(#donut_ticks_{chart_id})" opacity="0.50"/>
-    <rect width="760" height="660" rx="28" fill="url(#donut_halo_{chart_id})"/>
-    <text x="56" y="50" fill="var(--donut-header-prefix)" font-size="10" font-weight="900" letter-spacing="2.2">PIE CHART</text>
-    <text x="56" y="74" fill="var(--donut-header-title)" font-size="28" font-weight="900" letter-spacing="-0.6">{title_esc}</text>
-    <rect x="56" y="88" width="64" height="4" rx="2" fill="#a37acc"/>
-    <rect x="128" y="88" width="18" height="4" rx="2" fill="#84cc16"/>
-    <text x="56" y="116" fill="var(--donut-header-sub)" font-size="12" font-weight="700">{subtitle_esc}</text>
+    <rect width="760" height="660" rx="28" fill="url(#donut_bg_{chart_id})" aria-hidden="true"/>
+    <rect width="760" height="660" rx="28" fill="url(#donut_ticks_{chart_id})" opacity="0.50" aria-hidden="true"/>
+    <rect width="760" height="660" rx="28" fill="url(#donut_halo_{chart_id})" aria-hidden="true"/>
+    <g aria-hidden="true">
+        <text x="56" y="50" fill="var(--donut-header-prefix)" font-size="10" font-weight="900" letter-spacing="2.2">PIE CHART</text>
+        <text x="56" y="74" fill="var(--donut-header-title)" font-size="28" font-weight="900" letter-spacing="-0.6">{title_esc}</text>
+        <rect x="56" y="88" width="64" height="4" rx="2" fill="#a37acc"/>
+        <rect x="128" y="88" width="18" height="4" rx="2" fill="#84cc16"/>
+        <text x="56" y="116" fill="var(--donut-header-sub)" font-size="12" font-weight="700">{subtitle_esc}</text>
+    </g>
     
-    <g transform="translate(604 48)">
+    <g transform="translate(604 48)" aria-hidden="true">
         <rect width="104" height="46" rx="12" fill="var(--donut-total-box-bg)" stroke="var(--donut-total-box-stroke)" stroke-width="1"/>
         <text x="18" y="17" fill="var(--donut-total-prefix)" font-size="9" font-weight="900" letter-spacing="1.8">TOTAL</text>
         <text x="18" y="35" fill="var(--donut-total-val)" font-size="17" font-weight="900">{total}</text>
     </g>
 
     <g transform="translate(0 0)">
-        <circle cx="{cx}" cy="{cy}" r="168" fill="var(--donut-inner-fill)" opacity="0.42" filter="url(#donut_lift_{chart_id})"/>
-        <circle cx="{cx}" cy="{cy}" r="154" fill="none" stroke="var(--donut-tick-color)" stroke-width="1.1" stroke-dasharray="2 8"/>
-        <circle cx="{cx}" cy="{cy}" r="106" fill="var(--donut-inner-fill)" stroke="var(--donut-tick-color)" stroke-width="1"/>
+        <circle cx="{cx}" cy="{cy}" r="168" fill="var(--donut-inner-fill)" opacity="0.42" filter="url(#donut_lift_{chart_id})" aria-hidden="true"/>
+        <circle cx="{cx}" cy="{cy}" r="154" fill="none" stroke="var(--donut-tick-color)" stroke-width="1.1" stroke-dasharray="2 8" aria-hidden="true"/>
+        <circle cx="{cx}" cy="{cy}" r="106" fill="var(--donut-inner-fill)" stroke="var(--donut-tick-color)" stroke-width="1" aria-hidden="true"/>
         <g transform="translate({cx} {cy})">
             {segments_html}
         </g>
-        <circle cx="{cx}" cy="{cy}" r="74" fill="var(--donut-inner-fill)" stroke="var(--donut-tick-color)" stroke-width="1.4"/>
-        <circle cx="{cx}" cy="{cy}" r="58" fill="none" stroke="var(--donut-tick-color)" stroke-width="0.8" opacity="0.72"/>
-        <text x="{cx}" y="294" text-anchor="middle" fill="var(--donut-center-label)" font-size="11" font-weight="900" letter-spacing="1.4">TOTAL</text>
-        <text x="{cx}" y="324" text-anchor="middle" fill="var(--donut-center-text)" font-size="34" font-weight="900" letter-spacing="-1.2">{total}</text>
-        <text x="{cx}" y="346" text-anchor="middle" fill="var(--donut-center-label)" font-size="12" font-weight="700">{segments_count} segments</text>
+        <circle cx="{cx}" cy="{cy}" r="74" fill="var(--donut-inner-fill)" stroke="var(--donut-tick-color)" stroke-width="1.4" aria-hidden="true"/>
+        <circle cx="{cx}" cy="{cy}" r="58" fill="none" stroke="var(--donut-tick-color)" stroke-width="0.8" opacity="0.72" aria-hidden="true"/>
+        <text x="{cx}" y="294" text-anchor="middle" fill="var(--donut-center-label)" font-size="11" font-weight="900" letter-spacing="1.4" aria-hidden="true">TOTAL</text>
+        <text x="{cx}" y="324" text-anchor="middle" fill="var(--donut-center-text)" font-size="34" font-weight="900" letter-spacing="-1.2" aria-hidden="true">{total}</text>
+        <text x="{cx}" y="346" text-anchor="middle" fill="var(--donut-center-label)" font-size="12" font-weight="700" aria-hidden="true">{segments_count} segments</text>
     </g>
 
-    <g class="external-labels" pointer-events="none">
+    <g class="external-labels" pointer-events="none" aria-hidden="true">
         {external_labels}
     </g>
 
-    <g transform="translate(80, 480)" filter="url(#donut_lift_{chart_id})">
-        <rect x="0" y="0" width="600" height="164" rx="18" fill="url(#legend_surface_{chart_id})" stroke="url(#legend_stroke_{chart_id})" stroke-width="1.2"/>
-        <text x="32" y="28" fill="var(--donut-header-sub)" font-size="10" font-weight="900" letter-spacing="1.5">LEGEND</text>
-        <text x="568" y="28" text-anchor="end" fill="var(--donut-legend-val-header)" font-size="10" font-weight="900" letter-spacing="0.9">VALUES / SHARE</text>
-        <line x1="32" y1="40" x2="568" y2="40" stroke="var(--donut-legend-line)" stroke-opacity="0.70"/>
+    <g transform="translate(80, 480)" filter="url(#donut_lift_{chart_id})" role="list" aria-label="Legend">
+        <rect x="0" y="0" width="600" height="164" rx="18" fill="url(#legend_surface_{chart_id})" stroke="url(#legend_stroke_{chart_id})" stroke-width="1.2" aria-hidden="true"/>
+        <text x="32" y="28" fill="var(--donut-header-sub)" font-size="10" font-weight="900" letter-spacing="1.5" aria-hidden="true">LEGEND</text>
+        <text x="568" y="28" text-anchor="end" fill="var(--donut-legend-val-header)" font-size="10" font-weight="900" letter-spacing="0.9" aria-hidden="true">VALUES / SHARE</text>
+        <line x1="32" y1="40" x2="568" y2="40" stroke="var(--donut-legend-line)" stroke-opacity="0.70" aria-hidden="true"/>
         {legend_html}
     </g>
 </svg>"##,
-        chart_id=chart_id, title_esc=escape(title), subtitle_esc=escape(subtitle),
-        total=total, cx=cx, cy=cy, segments_html=segments_html,
-        segments_count=data.points.len(), external_labels=external_labels,
-        legend_html=legend_html, extra_class=extra_class, defs=defs
+        chart_id = chart_id,
+        title_esc = escape(title),
+        subtitle_esc = escape(subtitle),
+        total = total,
+        cx = cx,
+        cy = cy,
+        segments_html = segments_html,
+        segments_count = data.points.len(),
+        external_labels = external_labels,
+        legend_html = legend_html,
+        extra_class = extra_class,
+        defs = defs
     ))
 }
 
-fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<String, String>) -> Result<String, String> {
+fn render_v1(
+    data: &crate::common::kv::KvBody,
+    total: f64,
+    controls: &HashMap<String, String>,
+) -> Result<String, String> {
     let chart_id = format!("id_{}", Uuid::new_v4());
     let cfg = &data.config;
     let title = cfg.get("title").map(String::as_str).unwrap_or("Pie Chart");
     let desc = format!("Pie Chart with {} segments.", data.points.len());
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
     let _id_full = format!("v1_{}", chart_id);
 
@@ -372,7 +417,9 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
     <stop offset="52%" stop-color="var(--v1-pal-{palette_idx}-2)"/>
     <stop offset="100%" stop-color="var(--v1-pal-{palette_idx}-3)"/>
 </linearGradient>"##,
-            chart_id = chart_id, i = i, palette_idx = palette_idx
+            chart_id = chart_id,
+            i = i,
+            palette_idx = palette_idx
         ));
 
         // Path coordinates
@@ -384,20 +431,27 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
 
         let path_d = format!(
             "M {cx} {cy} L {x1:.2} {y1:.2} A {r} {r} 0 {large_arc} 1 {x2:.2} {y2:.2} Z",
-            cx = cx, cy = cy, x1 = x1, y1 = y1, r = r, large_arc = large_arc, x2 = x2, y2 = y2
+            cx = cx,
+            cy = cy,
+            x1 = x1,
+            y1 = y1,
+            r = r,
+            large_arc = large_arc,
+            x2 = x2,
+            y2 = y2
         );
 
         let delay = 0.12 + (i as f64) * 0.1;
         slices_html.push_str(&format!(
             r##"<g class="pie-segment" style="animation-delay: {delay:.2}s;">
-    <g class="slice-motion">
+    <g class="slice-motion" role="graphics-symbol" aria-roledescription="slice" tabindex="0" aria-label="{label}: {value} ({pct:.1}%)">
         <path d="{path_d}" fill="url(#slice_{chart_id}_{i})" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.2">
             <title>{label}: {value}</title>
         </path>
-        <path d="{path_d}" fill="url(#sliceGlass_{chart_id})" opacity="0.54" pointer-events="none"/>
+        <path d="{path_d}" fill="url(#sliceGlass_{chart_id})" opacity="0.54" pointer-events="none" aria-hidden="true"/>
     </g>
 </g>"##,
-            delay = delay, path_d = path_d, chart_id = chart_id, i = i, label = escape(label), value = value
+            delay = delay, path_d = path_d, chart_id = chart_id, i = i, label = escape(label), value = value, pct = frac * 100.0
         ));
 
         // Label logic
@@ -408,13 +462,21 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
         let ly2 = cy + (r + 25.0) * mid_angle.sin();
         let is_right = lx2 > cx;
         let lx3 = if is_right { lx2 + 20.0 } else { lx2 - 20.0 };
-        
+
         let label_delay = 0.8 + (i as f64) * 0.1;
         let badge_delay = 0.9 + (i as f64) * 0.1;
 
-        let badge_x = if is_right { lx3 + 4.0 } else { lx3 - 4.0 - 45.0 };
+        let badge_x = if is_right {
+            lx3 + 4.0
+        } else {
+            lx3 - 4.0 - 45.0
+        };
         let text_anchor = if is_right { "start" } else { "end" };
-        let label_text_x = if is_right { badge_x + 53.0 } else { badge_x - 8.0 };
+        let label_text_x = if is_right {
+            badge_x + 53.0
+        } else {
+            badge_x - 8.0
+        };
 
         labels_html.push_str(&format!(
             r##"<path class="label-line" d="M {lx1:.1} {ly1:.1} L {lx2:.1} {ly2:.1} L {lx3:.1} {ly2:.1}" fill="none" stroke="var(--v1-label-line)" stroke-width="1.2" stroke-opacity="0.4" style="animation-delay: {label_delay:.2}s;"/>
@@ -436,7 +498,7 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
     Ok(format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" id="{chart_id}" class="v1-container{extra_class}" role="img" aria-labelledby="title_{chart_id} desc_{chart_id}">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" id="{chart_id}" class="v1-container{extra_class}" role="graphics-document document" aria-labelledby="title_{chart_id} desc_{chart_id}">
     <title id="title_{chart_id}">{title_esc}</title>
     <desc id="desc_{chart_id}">{desc_esc}</desc>
     <defs>
@@ -544,14 +606,14 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
         </filter>
         {gradient_defs}
     </defs>
-    <rect width="600" height="600" rx="18" fill="url(#bgSurface_{chart_id})"/>
-    <rect width="600" height="600" rx="18" fill="url(#bgGlowA_{chart_id})"/>
-    <rect width="600" height="600" rx="18" fill="url(#bgGlowB_{chart_id})"/>
-    <rect width="600" height="600" rx="18" fill="url(#fineGrid_{chart_id})"/>
-    <rect width="600" height="600" rx="18" fill="url(#sonarDots_{chart_id})"/>
-    <rect width="600" height="600" rx="18" fill="url(#vignette_{chart_id})"/>
+    <rect width="600" height="600" rx="18" fill="url(#bgSurface_{chart_id})" aria-hidden="true"/>
+    <rect width="600" height="600" rx="18" fill="url(#bgGlowA_{chart_id})" aria-hidden="true"/>
+    <rect width="600" height="600" rx="18" fill="url(#bgGlowB_{chart_id})" aria-hidden="true"/>
+    <rect width="600" height="600" rx="18" fill="url(#fineGrid_{chart_id})" aria-hidden="true"/>
+    <rect width="600" height="600" rx="18" fill="url(#sonarDots_{chart_id})" aria-hidden="true"/>
+    <rect width="600" height="600" rx="18" fill="url(#vignette_{chart_id})" aria-hidden="true"/>
     
-    <g transform="translate(40, 44)">
+    <g transform="translate(40, 44)" aria-hidden="true">
         <g class="header-motion">
             <text x="0" y="0" fill="var(--v1-header-prefix)" font-size="10" font-weight="800" letter-spacing="2.4">PIE CHART</text>
             <text x="0" y="34" fill="var(--v1-header-title)" font-size="28" font-weight="900">{title_esc}</text>
@@ -560,7 +622,7 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
         </g>
     </g>
 
-    <g transform="translate(448, 36)">
+    <g transform="translate(448, 36)" aria-hidden="true">
         <g class="legend-motion">
             <rect width="112" height="46" rx="14" fill="var(--v1-card-bg)" stroke="#3B82F6" stroke-opacity="0.28"/>
             <text x="16" y="18" fill="var(--v1-card-label)" font-size="9" font-weight="900" letter-spacing="1.5">TOTAL</text>
@@ -568,7 +630,7 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
         </g>
     </g>
 
-    <g opacity="0.7">
+    <g opacity="0.7" aria-hidden="true">
         <circle class="pulse-ring" cx="{cx}" cy="{cy}" r="180" fill="none" stroke="#3B82F6"/>
         <circle cx="{cx}" cy="{cy}" r="128" fill="none" stroke="var(--v1-pulse-mid)" stroke-opacity="0.045"/>
         <circle cx="{cx}" cy="{cy}" r="204" fill="none" stroke="#DC2626" stroke-opacity="0.035"/>
@@ -578,16 +640,23 @@ fn render_v1(data: &crate::common::kv::KvBody, total: f64, controls: &HashMap<St
         {slices_html}
     </g>
 
-    <circle cx="{cx}" cy="{cy}" r="10" fill="var(--v1-center-fill)" stroke="#3B82F6" stroke-opacity="0.55" stroke-width="1.2"/>
-    <circle cx="{cx}" cy="{cy}" r="4" fill="#DC2626" opacity="0.95"/>
+    <circle cx="{cx}" cy="{cy}" r="10" fill="var(--v1-center-fill)" stroke="#3B82F6" stroke-opacity="0.55" stroke-width="1.2" aria-hidden="true"/>
+    <circle cx="{cx}" cy="{cy}" r="4" fill="#DC2626" opacity="0.95" aria-hidden="true"/>
 
-    <g class="external-labels" pointer-events="none">
+    <g class="external-labels" pointer-events="none" aria-hidden="true">
         {labels_html}
     </g>
 </svg>"##,
-        chart_id = chart_id, title_esc = escape(title), desc_esc = escape(&desc), total = total,
-        cx = cx, cy = cy, slices_html = slices_html, labels_html = labels_html,
-        gradient_defs = gradient_defs, extra_class = extra_class
+        chart_id = chart_id,
+        title_esc = escape(title),
+        desc_esc = escape(&desc),
+        total = total,
+        cx = cx,
+        cy = cy,
+        slices_html = slices_html,
+        labels_html = labels_html,
+        gradient_defs = gradient_defs,
+        extra_class = extra_class
     ))
 }
 

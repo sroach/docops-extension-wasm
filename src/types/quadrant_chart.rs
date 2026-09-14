@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::common::svg::{escape, theme};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 struct QuadrantPoint {
@@ -54,35 +54,75 @@ fn parse_quadrant(body: &str) -> Result<QuadrantChart, String> {
         let tokens: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
         if tokens.len() >= 3 {
             let label = tokens[0].to_string();
-            let x: f64 = tokens[1].parse().map_err(|_| format!("Invalid X value: {}", tokens[1]))?;
-            let y: f64 = tokens[2].parse().map_err(|_| format!("Invalid Y value: {}", tokens[2]))?;
+            let x: f64 = tokens[1]
+                .parse()
+                .map_err(|_| format!("Invalid X value: {}", tokens[1]))?;
+            let y: f64 = tokens[2]
+                .parse()
+                .map_err(|_| format!("Invalid Y value: {}", tokens[2]))?;
             let category = tokens.get(3).map(|s| s.to_string());
-            points.push(QuadrantPoint { label, x, y, category });
+            points.push(QuadrantPoint {
+                label,
+                x,
+                y,
+                category,
+            });
         }
     }
 
     Ok(QuadrantChart {
-        title: config.get("title").cloned().unwrap_or_else(|| "Quadrant Chart".to_string()),
-        x_axis: config.get("xAxis").cloned().unwrap_or_else(|| "EFFORT REQUIRED".to_string()),
-        y_axis: config.get("yAxis").cloned().unwrap_or_else(|| "IMPACT LEVEL".to_string()),
-        leaders: config.get("leaders").cloned().unwrap_or_else(|| "HIGH IMPACT".to_string()),
-        challengers: config.get("challengers").cloned().unwrap_or_else(|| "STRATEGIC".to_string()),
-        visionaries: config.get("visionaries").cloned().unwrap_or_else(|| "FILL-INS".to_string()),
-        niche: config.get("niche").cloned().unwrap_or_else(|| "THANKLESS".to_string()),
+        title: config
+            .get("title")
+            .cloned()
+            .unwrap_or_else(|| "Quadrant Chart".to_string()),
+        x_axis: config
+            .get("xAxis")
+            .cloned()
+            .unwrap_or_else(|| "EFFORT REQUIRED".to_string()),
+        y_axis: config
+            .get("yAxis")
+            .cloned()
+            .unwrap_or_else(|| "IMPACT LEVEL".to_string()),
+        leaders: config
+            .get("leaders")
+            .cloned()
+            .unwrap_or_else(|| "HIGH IMPACT".to_string()),
+        challengers: config
+            .get("challengers")
+            .cloned()
+            .unwrap_or_else(|| "STRATEGIC".to_string()),
+        visionaries: config
+            .get("visionaries")
+            .cloned()
+            .unwrap_or_else(|| "FILL-INS".to_string()),
+        niche: config
+            .get("niche")
+            .cloned()
+            .unwrap_or_else(|| "THANKLESS".to_string()),
         points,
-        theme: config.get("theme").cloned().unwrap_or_else(|| "premium".to_string()),
+        theme: config
+            .get("theme")
+            .cloned()
+            .unwrap_or_else(|| "premium".to_string()),
     })
 }
 
 fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> String {
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || chart.theme == "dark";
-    
+
     let is_premium = chart.theme == "premium";
-    
-    let t = if use_dark { theme("dark") } else { theme(&chart.theme) };
+
+    let t = if use_dark {
+        theme("dark")
+    } else {
+        theme(&chart.theme)
+    };
     let dark_t = theme("dark");
-    let chart_id = format!("quad-{}", Uuid::new_v4().to_string()[..8].to_string());
+    let chart_id = format!("quad-{}", &Uuid::new_v4().to_string()[..8]);
 
     let width = 960.0;
     let height = 700.0;
@@ -96,9 +136,19 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
     let center_y = plot_y + plot_h / 2.0;
 
     let extra_class = if use_dark { " dark-mode" } else { "" };
+    let title_esc = escape(&chart.title);
+    let desc_text = format!(
+        "Quadrant chart with {} and {} axes, containing {} points",
+        chart.x_axis,
+        chart.y_axis,
+        chart.points.len()
+    );
+    let desc_esc = escape(&desc_text);
 
     let mut svg = format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" id="{chart_id}" class="quadrant-chart{extra_class}">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" id="{chart_id}" class="quadrant-chart{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
+  <title id="{chart_id}_title">{title_esc}</title>
+  <desc id="{chart_id}_desc">{desc_esc}</desc>
   <defs>
     <style>
         #{chart_id} {{
@@ -223,7 +273,11 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
         width = width,
         height = height,
         chart_id = chart_id,
-        extra_class = if is_premium { format!("{} premium", extra_class) } else { extra_class.to_string() },
+        extra_class = if is_premium {
+            format!("{} premium", extra_class)
+        } else {
+            extra_class.to_string()
+        },
         bg = t.background,
         text = t.text,
         axis = t.axis,
@@ -252,10 +306,22 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
         dark_p4 = dark_t.palette[4 % dark_t.palette.len()],
         dark_p5 = dark_t.palette[5 % dark_t.palette.len()],
         bg_end = if use_dark { "#111827" } else { "#eef2ff" },
-        card_bg = if use_dark { "rgba(15, 23, 42, 0.86)" } else { "rgba(255, 255, 255, 0.88)" },
-        card_stroke = if use_dark { "rgba(148, 163, 184, 0.22)" } else { "rgba(148, 163, 184, 0.28)" },
+        card_bg = if use_dark {
+            "rgba(15, 23, 42, 0.86)"
+        } else {
+            "rgba(255, 255, 255, 0.88)"
+        },
+        card_stroke = if use_dark {
+            "rgba(148, 163, 184, 0.22)"
+        } else {
+            "rgba(148, 163, 184, 0.28)"
+        },
         muted = if use_dark { "#cbd5e1" } else { "#64748b" },
-        grid = if use_dark { "rgba(148, 163, 184, 0.16)" } else { "rgba(148, 163, 184, 0.22)" },
+        grid = if use_dark {
+            "rgba(148, 163, 184, 0.16)"
+        } else {
+            "rgba(148, 163, 184, 0.22)"
+        },
         marker_stroke = if use_dark { "#020617" } else { "#ffffff" },
         shadow_op = if use_dark { "0.36" } else { "0.16" },
         plot_x = plot_x,
@@ -266,10 +332,10 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
 
     if is_premium {
         svg.push_str(&format!(
-            r##"  <rect width="{width}" height="{height}" fill="url(#{chart_id}-bg-grad)" />
-  <circle cx="130" cy="95" r="120" fill="#8b5cf6" opacity="0.08"/>
-  <circle cx="835" cy="610" r="150" fill="#06b6d4" opacity="0.10"/>
-  <g filter="url(#{chart_id}-card-shadow)">
+            r##"  <rect width="{width}" height="{height}" fill="url(#{chart_id}-bg-grad)" aria-hidden="true"/>
+  <circle cx="130" cy="95" r="120" fill="#8b5cf6" opacity="0.08" aria-hidden="true"/>
+  <circle cx="835" cy="610" r="150" fill="#06b6d4" opacity="0.10" aria-hidden="true"/>
+  <g filter="url(#{chart_id}-card-shadow)" aria-hidden="true">
     <rect x="{card_x}" y="{card_y}" width="{card_w}" height="{card_h}" rx="32" fill="var(--card-bg)" stroke="var(--card-stroke)" stroke-width="1.2"/>
   </g>
 "##,
@@ -283,7 +349,7 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
         ));
     } else {
         svg.push_str(&format!(
-            r##"  <rect width="{width}" height="{height}" fill="var(--bg)" />
+            r##"  <rect width="{width}" height="{height}" fill="var(--bg)" aria-hidden="true"/>
 "##,
             width = width,
             height = height
@@ -292,7 +358,7 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
 
     // Title
     svg.push_str(&format!(
-        r##"  <text x="{x}" y="52" font-size="{font_size}" font-weight="850" fill="var(--text)" text-anchor="middle" class="title">{title}</text>
+        r##"  <text x="{x}" y="52" font-size="{font_size}" font-weight="850" fill="var(--text)" text-anchor="middle" class="title" aria-hidden="true">{title}</text>
 "##,
         x = width / 2.0,
         font_size = if is_premium { 32 } else { 28 },
@@ -300,7 +366,11 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
     ));
 
     // Chart Content Group (Clipped if premium)
-    let clip = if is_premium { format!(" clip-path=\"url(#{chart_id}-plot-clip)\"") } else { "".to_string() };
+    let clip = if is_premium {
+        format!(" clip-path=\"url(#{chart_id}-plot-clip)\"")
+    } else {
+        "".to_string()
+    };
     svg.push_str(&format!(
         r##"  <g{clip}>
 "##,
@@ -310,25 +380,29 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
     // Quadrant Backgrounds
     if is_premium {
         svg.push_str(&format!(
-            r##"    <rect x="{plot_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-0)" fill-opacity="1.0" />
-    <rect x="{center_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-1)" fill-opacity="1.0" />
-    <rect x="{plot_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-2)" fill-opacity="1.0" />
-    <rect x="{center_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-3)" fill-opacity="1.0" />
+            r##"    <rect x="{plot_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-0)" fill-opacity="1.0" role="region" aria-label="{l0}"/>
+    <rect x="{center_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-1)" fill-opacity="1.0" role="region" aria-label="{l1}"/>
+    <rect x="{plot_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-2)" fill-opacity="1.0" role="region" aria-label="{l2}"/>
+    <rect x="{center_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-3)" fill-opacity="1.0" role="region" aria-label="{l3}"/>
 "##,
             plot_x = plot_x,
             plot_y = plot_y,
             center_x = center_x,
             center_y = center_y,
             half_w = plot_w / 2.0,
-            half_h = plot_h / 2.0
+            half_h = plot_h / 2.0,
+            l0 = escape(&chart.challengers),
+            l1 = escape(&chart.leaders),
+            l2 = escape(&chart.visionaries),
+            l3 = escape(&chart.niche)
         ));
-        
+
         // Grid lines for premium
         svg.push_str(&format!(
-            r##"    <line x1="{plot_x}" y1="{grid_y1}" x2="{plot_x_end}" y2="{grid_y1}" stroke="var(--grid)" stroke-width="1"/>
-    <line x1="{plot_x}" y1="{grid_y2}" x2="{plot_x_end}" y2="{grid_y2}" stroke="var(--grid)" stroke-width="1"/>
-    <line x1="{grid_x1}" y1="{plot_y}" x2="{grid_x1}" y2="{plot_y_end}" stroke="var(--grid)" stroke-width="1"/>
-    <line x1="{grid_x2}" y1="{plot_y}" x2="{grid_x2}" y2="{plot_y_end}" stroke="var(--grid)" stroke-width="1"/>
+            r##"    <line x1="{plot_x}" y1="{grid_y1}" x2="{plot_x_end}" y2="{grid_y1}" stroke="var(--grid)" stroke-width="1" aria-hidden="true"/>
+    <line x1="{plot_x}" y1="{grid_y2}" x2="{plot_x_end}" y2="{grid_y2}" stroke="var(--grid)" stroke-width="1" aria-hidden="true"/>
+    <line x1="{grid_x1}" y1="{plot_y}" x2="{grid_x1}" y2="{plot_y_end}" stroke="var(--grid)" stroke-width="1" aria-hidden="true"/>
+    <line x1="{grid_x2}" y1="{plot_y}" x2="{grid_x2}" y2="{plot_y_end}" stroke="var(--grid)" stroke-width="1" aria-hidden="true"/>
 "##,
             plot_x = plot_x,
             plot_x_end = plot_x + plot_w,
@@ -341,17 +415,21 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
         ));
     } else {
         svg.push_str(&format!(
-            r##"    <rect x="{plot_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-0)" fill-opacity="var(--quad-op)" />
-    <rect x="{center_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-1)" fill-opacity="var(--quad-op)" />
-    <rect x="{plot_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-2)" fill-opacity="var(--quad-op)" />
-    <rect x="{center_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-3)" fill-opacity="var(--quad-op)" />
+            r##"    <rect x="{plot_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-0)" fill-opacity="var(--quad-op)" role="region" aria-label="{l0}"/>
+    <rect x="{center_x}" y="{plot_y}" width="{half_w}" height="{half_h}" fill="var(--quad-1)" fill-opacity="var(--quad-op)" role="region" aria-label="{l1}"/>
+    <rect x="{plot_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-2)" fill-opacity="var(--quad-op)" role="region" aria-label="{l2}"/>
+    <rect x="{center_x}" y="{center_y}" width="{half_w}" height="{half_h}" fill="var(--quad-3)" fill-opacity="var(--quad-op)" role="region" aria-label="{l3}"/>
 "##,
             plot_x = plot_x,
             plot_y = plot_y,
             center_x = center_x,
             center_y = center_y,
             half_w = plot_w / 2.0,
-            half_h = plot_h / 2.0
+            half_h = plot_h / 2.0,
+            l0 = escape(&chart.challengers),
+            l1 = escape(&chart.leaders),
+            l2 = escape(&chart.visionaries),
+            l3 = escape(&chart.niche)
         ));
     }
 
@@ -459,7 +537,11 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
     svg.push_str(&format!(
         r##"  <g{clip}>
 "##,
-        clip = if is_premium { format!(" clip-path=\"url(#{chart_id}-plot-clip)\"") } else { "".to_string() }
+        clip = if is_premium {
+            format!(" clip-path=\"url(#{chart_id}-plot-clip)\"")
+        } else {
+            "".to_string()
+        }
     ));
 
     let mut category_colors = HashMap::new();
@@ -482,9 +564,9 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
 
         if is_premium {
             svg.push_str(&format!(
-                r##"    <g filter="url(#{chart_id}-marker-shadow)">
-      <circle cx="{px}" cy="{py}" r="11" fill="{color_var}" stroke="var(--marker-stroke)" stroke-width="3" />
-      <circle cx="{px}" cy="{py}" r="11" fill="url(#{chart_id}-shine)" />
+                r##"    <g filter="url(#{chart_id}-marker-shadow)" role="graphics-symbol" aria-roledescription="data point" tabindex="0" aria-label="{label}: ({x:.1}, {y:.1})">
+      <circle cx="{px}" cy="{py}" r="11" fill="{color_var}" stroke="var(--marker-stroke)" stroke-width="3" aria-hidden="true"/>
+      <circle cx="{px}" cy="{py}" r="11" fill="url(#{chart_id}-shine)" aria-hidden="true"/>
       <text x="{px}" y="{text_y}" font-size="12" font-weight="700" fill="var(--text)" text-anchor="middle" class="point-label">{label}</text>
     </g>
 "##,
@@ -493,12 +575,14 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
                 py = py,
                 color_var = color_var,
                 text_y = py + 27.0,
-                label = escape(&point.label)
+                label = escape(&point.label),
+                x = point.x,
+                y = point.y
             ));
         } else {
             svg.push_str(&format!(
-                r##"    <g filter="url(#{chart_id}-shadow)">
-      <circle cx="{px}" cy="{py}" r="8" fill="{color_var}" stroke="var(--bg)" stroke-width="2" />
+                r##"    <g filter="url(#{chart_id}-shadow)" role="graphics-symbol" aria-roledescription="data point" tabindex="0" aria-label="{label}: ({x:.1}, {y:.1})">
+      <circle cx="{px}" cy="{py}" r="8" fill="{color_var}" stroke="var(--bg)" stroke-width="2" aria-hidden="true"/>
       <text x="{px}" y="{text_y}" font-size="11" font-weight="600" fill="var(--text)" text-anchor="middle">{label}</text>
     </g>
 "##,
@@ -507,11 +591,13 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
                 py = py,
                 color_var = color_var,
                 text_y = py + 22.0,
-                label = escape(&point.label)
+                label = escape(&point.label),
+                x = point.x,
+                y = point.y
             ));
         }
     }
-    
+
     svg.push_str("  </g>\n");
     svg.push_str("</svg>");
     svg
@@ -532,14 +618,23 @@ A | 50 | 50
 ----"#;
         let chart = parse_quadrant(body).unwrap();
         assert_eq!(chart.theme, "premium");
-        
+
         let controls = HashMap::new();
         let svg = render_svg(&chart, &controls);
-        
+
         // Premium features should be present
-        assert!(svg.contains("premium"), "SVG class should contain 'premium'");
-        assert!(svg.contains("card-shadow"), "SVG should contain premium shadow filter");
-        assert!(svg.contains("bg-grad"), "SVG should contain premium background gradient");
+        assert!(
+            svg.contains("premium"),
+            "SVG class should contain 'premium'"
+        );
+        assert!(
+            svg.contains("card-shadow"),
+            "SVG should contain premium shadow filter"
+        );
+        assert!(
+            svg.contains("bg-grad"),
+            "SVG should contain premium background gradient"
+        );
     }
 
     #[test]
@@ -552,11 +647,17 @@ A | 50 | 50
 ----"#;
         let chart = parse_quadrant(body).unwrap();
         assert_eq!(chart.theme, "dark");
-        
+
         let controls = HashMap::new();
         let svg = render_svg(&chart, &controls);
-        
-        assert!(svg.contains("dark-mode"), "SVG class should contain 'dark-mode'");
-        assert!(!svg.contains("premium"), "SVG should not contain 'premium' when dark theme is explicit");
+
+        assert!(
+            svg.contains("dark-mode"),
+            "SVG class should contain 'dark-mode'"
+        );
+        assert!(
+            !svg.contains("premium"),
+            "SVG should not contain 'premium' when dark theme is explicit"
+        );
     }
 }

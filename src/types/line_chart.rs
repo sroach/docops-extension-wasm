@@ -35,11 +35,11 @@ fn get_series(points: &Vec<(String, f64)>) -> (Vec<String>, Vec<LineGroup>) {
                 points: Vec::new(),
             });
         }
-        
+
         let g_idx = group_map[&series_name];
         groups[g_idx].points.push((x_label, *value));
     }
-    
+
     (x_labels, groups)
 }
 
@@ -47,7 +47,10 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let data = parse_kv_body(body)?;
     let cfg = &data.config;
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
 
     let title = cfg.get("title").map(String::as_str).unwrap_or("Line Chart");
@@ -56,7 +59,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let y_label_text = cfg.get("yLabel").map(String::as_str).unwrap_or("");
 
     let (x_labels, groups) = get_series(&data.points);
-    
+
     if x_labels.is_empty() {
         return Ok(crate::common::svg::error_svg("No data points provided"));
     }
@@ -67,7 +70,9 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         let mut p_val = 0.0;
         let mut p_idx = 0;
         for (i, (_, v)) in g.points.iter().enumerate() {
-            if *v > raw_max { raw_max = *v; }
+            if *v > raw_max {
+                raw_max = *v;
+            }
             if *v > p_val {
                 p_val = *v;
                 p_idx = i;
@@ -75,8 +80,12 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         }
         series_peaks.push((p_val, p_idx));
     }
-    let max_val = if raw_max <= 0.0 { 1.0 } else { (raw_max * 1.1 / 10.0).ceil() * 10.0 };
-    
+    let max_val = if raw_max <= 0.0 {
+        1.0
+    } else {
+        (raw_max * 1.1 / 10.0).ceil() * 10.0
+    };
+
     let width = 800.0;
     let height = 500.0;
     let plot_x = 85.0;
@@ -85,7 +94,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let plot_h = 345.0;
 
     let chart_id = format!("id_{}", Uuid::new_v4());
-    
+
     let mut grid_svg = String::new();
     let mut y_ticks = String::new();
     let steps = 8;
@@ -95,7 +104,9 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         let val = max_val * frac;
         grid_svg.push_str(&format!(
             r##"<line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"/>"##,
-            x1 = plot_x, y = y, x2 = plot_x + plot_w
+            x1 = plot_x,
+            y = y,
+            x2 = plot_x + plot_w
         ));
         y_ticks.push_str(&format!(
             r##"<line x1="{plot_x}" y1="{y}" x2="{tick_x}" y2="{y}" class="chart-axis"/><text x="{tx}" y="{y}" text-anchor="end" dominant-baseline="middle" class="chart-text tick-label">{val:.0}</text>"##,
@@ -115,7 +126,9 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         let x = plot_x + x_padding + i as f64 * x_step;
         grid_svg.push_str(&format!(
             r##"<line x1="{x}" y1="{y1}" x2="{x}" y2="{y2}"/>"##,
-            x = x, y1 = plot_y, y2 = plot_y + plot_h
+            x = x,
+            y1 = plot_y,
+            y2 = plot_y + plot_h
         ));
         x_ticks.push_str(&format!(
             r##"<line x1="{x}" y1="{y_base}" x2="{x}" y2="{tick_y}" class="chart-axis"/><text x="{x}" y="{ty}" text-anchor="middle" class="chart-text tick-label">{label}<title>{label}</title></text>"##,
@@ -167,31 +180,36 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                 let sw = if is_peak { 3.0 } else { 2.5 };
 
                 points_svg.push_str(&format!(
-                    r##"<circle class="data-point point-reveal" style="animation-delay:{delay:.2}s" cx="{x}" cy="{y}" r="{r}" fill="{p_fill}" stroke="{p_stroke}" stroke-width="{sw}"><title>{name}: ({label}, {val})</title></circle>"##,
+                    r##"<circle class="data-point point-reveal" role="graphics-symbol" aria-roledescription="data point" tabindex="0" aria-label="{name} - {label}: {val}" style="animation-delay:{delay:.2}s" cx="{x}" cy="{y}" r="{r}" fill="{p_fill}" stroke="{p_stroke}" stroke-width="{sw}"><title>{name}: ({label}, {val})</title></circle>"##,
                     delay = 0.15 + (i as f64 * 0.05) + (g_idx as f64 * 0.08),
                     x = x, y = y, r = r, p_fill = p_fill, p_stroke = p_stroke, sw = sw, name = escape(&group.name), label = escape(label), val = val
                 ));
             }
         }
-        
-        let area_d = format!("{path_d} L {last_x},{base} L {first_x},{base} Z", 
-            path_d = path_d, last_x = last_x, base = plot_y + plot_h, first_x = plot_x + x_padding);
+
+        let area_d = format!(
+            "{path_d} L {last_x},{base} L {first_x},{base} Z",
+            path_d = path_d,
+            last_x = last_x,
+            base = plot_y + plot_h,
+            first_x = plot_x + x_padding
+        );
 
         areas_svg.push_str(&format!(
-            r##"<path class="area-path area-{g_idx}" style="animation-delay:{delay:.2}s" d="{d}" fill="url(#{id}_area_grad_{pal_idx})" fill-opacity="1"/>"##,
+            r##"<path class="area-path area-{g_idx}" style="animation-delay:{delay:.2}s" d="{d}" fill="url(#{id}_area_grad_{pal_idx})" fill-opacity="1" aria-hidden="true"/>"##,
             delay = 0.1 + g_idx as f64 * 0.08, d = area_d, id = chart_id, g_idx = g_idx, pal_idx = pal_idx
         ));
 
         series_svg.push_str(&format!(
-            r##"<g class="data-series" id="series-{g_idx}" tabindex="0">
-            <path class="line-path line-reveal line-{g_idx}" style="animation-delay:{delay:.2}s" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="{d}" fill="none" stroke="url(#{id}_line_grad_{pal_idx})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            r##"<g class="data-series" id="series-{g_idx}" role="group" aria-label="{name} series" tabindex="0">
+            <path class="line-path line-reveal line-{g_idx}" role="graphics-symbol" aria-roledescription="line" aria-label="{name} line" style="animation-delay:{delay:.2}s" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="{d}" fill="none" stroke="url(#{id}_line_grad_{pal_idx})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
             {points_svg}
         </g>"##,
-            g_idx = g_idx, pal_idx = pal_idx, delay = g_idx as f64 * 0.08, d = path_d, id = chart_id, points_svg = points_svg
+            g_idx = g_idx, pal_idx = pal_idx, delay = g_idx as f64 * 0.08, d = path_d, id = chart_id, points_svg = points_svg, name = escape(&group.name)
         ));
 
         legend_items.push_str(&format!(
-            r##"<g class="legend-item"><circle cx="676" cy="{cy}" r="5.5" fill="var(--line-pal-{pal_idx}-stroke)"/><text x="690" y="{ty}" dominant-baseline="middle" class="chart-text legend-label">{name}</text><text x="690" y="{vy}" dominant-baseline="middle" class="chart-text legend-value">Peak {peak_val}</text></g>"##,
+            r##"<g class="legend-item" role="listitem" aria-label="{name}: Peak {peak_val}"><circle cx="676" cy="{cy}" r="5.5" fill="var(--line-pal-{pal_idx}-stroke)" aria-hidden="true"/><text x="690" y="{ty}" dominant-baseline="middle" class="chart-text legend-label">{name}</text><text x="690" y="{vy}" dominant-baseline="middle" class="chart-text legend-value">Peak {peak_val}</text></g>"##,
             cy = 110 + g_idx * 36, ty = 108 + g_idx * 36, vy = 124 + g_idx * 36, pal_idx = pal_idx, name = escape(&group.name), peak_val = peak_val
         ));
     }
@@ -209,7 +227,8 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             <stop offset="100%" stop-color="var(--line-pal-{i}-2)" stop-opacity="0.0"/>
         </linearGradient>
         "##,
-            id = chart_id, i = i
+            id = chart_id,
+            i = i
         ));
     }
 
@@ -229,8 +248,20 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         )
     };
 
+    let desc_text = if !subtitle.is_empty() {
+        format!("{} - {}", title, subtitle)
+    } else {
+        format!(
+            "Line chart showing {} series across {} categories",
+            groups.len(),
+            x_labels.len()
+        )
+    };
+
     Ok(format!(
-        r##"<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" id="{id}" preserveAspectRatio="xMidYMid meet" viewBox="0 0 {width} {height}" class="line-chart-container{extra_class}">
+        r##"<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" id="{id}" preserveAspectRatio="xMidYMid meet" viewBox="0 0 {width} {height}" class="line-chart-container{extra_class}" role="graphics-document document" aria-labelledby="{id}_title {id}_desc">
+    <title id="{id}_title">{title_esc}</title>
+    <desc id="{id}_desc">{desc_esc}</desc>
     <metadata>
         <rdf:rdf xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#">
             <cc:work rdf:about="">
@@ -479,21 +510,21 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             @media (prefers-reduced-motion: reduce) {{ #{id} * {{ transition: none !important; animation: none !important; }} }}
         </style>
     </defs>
-    <rect width="{width}" height="{height}" rx="34" class="chart-background"/>
-    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_blue)"/>
-    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_mint)"/>
-    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_peach)"/>
-    <circle cx="720" cy="80" r="80" fill="var(--deco-circle-1)" opacity="var(--deco-circle-op)"/>
-    <circle cx="88" cy="425" r="112" fill="var(--deco-circle-2)" opacity="var(--deco-circle-op)"/>
-    <g filter="url(#{id}_apple_card_shadow)">
+    <rect width="{width}" height="{height}" rx="34" class="chart-background" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_blue)" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_mint)" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_peach)" aria-hidden="true"/>
+    <circle cx="720" cy="80" r="80" fill="var(--deco-circle-1)" opacity="var(--deco-circle-op)" aria-hidden="true"/>
+    <circle cx="88" cy="425" r="112" fill="var(--deco-circle-2)" opacity="var(--deco-circle-op)" aria-hidden="true"/>
+    <g filter="url(#{id}_apple_card_shadow)" aria-hidden="true">
         <rect x="34" y="24" width="732" height="452" rx="32" fill="var(--card-bg)" stroke="var(--card-stroke)" stroke-width="1"/>
     </g>
-    {header_svg}
-    <rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="26" class="plot-surface"/>
-    <g clip-path="url(#{id}_plot_clip)">
+    <g aria-hidden="true">{header_svg}</g>
+    <rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="26" class="plot-surface" aria-hidden="true"/>
+    <g clip-path="url(#{id}_plot_clip)" aria-hidden="true">
         <g class="chart-grid">{grid_svg}</g>
     </g>
-    <g class="axes">
+    <g class="axes" aria-hidden="true">
         <line x1="{px}" y1="{pb}" x2="{pr}" y2="{pb}" class="chart-axis"/>
         <line x1="{px}" y1="{py}" x2="{px}" y2="{pb}" class="chart-axis"/>
         {x_ticks}
@@ -503,19 +534,36 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     </g>
     <g clip-path="url(#{id}_plot_clip)">{areas_svg}</g>
     <g class="plot" clip-path="url(#{id}_plot_clip)">{series_svg}</g>
-    <g class="legend">
-        <rect x="660" y="88" width="115" height="{lh}" rx="22" class="legend-box"/>
+    <g class="legend" role="list" aria-label="Legend">
+        <rect x="660" y="88" width="115" height="{lh}" rx="22" class="legend-box" aria-hidden="true"/>
         {legend_items}
     </g>
 </svg>"##,
-        width = width, height = height, id = chart_id,
+        width = width,
+        height = height,
+        id = chart_id,
+        title_esc = escape(title),
+        desc_esc = escape(&desc_text),
         header_svg = header_svg,
-        px = plot_x, py = plot_y, pw = plot_w, ph = plot_h, pb = plot_y + plot_h, pr = plot_x + plot_w,
-        grid_svg = grid_svg, x_ticks = x_ticks, y_ticks = y_ticks,
-        x_label_x = plot_x + plot_w / 2.0, x_label_y = plot_y + plot_h + 45.0, x_label_esc = escape(x_label_text),
-        y_label_x = plot_x - 65.0, y_label_y = plot_y + plot_h / 2.0, y_label_esc = escape(y_label_text),
-        areas_svg = areas_svg, series_svg = series_svg,
-        legend_items = legend_items, lh = 20 + groups.len() * 36
+        px = plot_x,
+        py = plot_y,
+        pw = plot_w,
+        ph = plot_h,
+        pb = plot_y + plot_h,
+        pr = plot_x + plot_w,
+        grid_svg = grid_svg,
+        x_ticks = x_ticks,
+        y_ticks = y_ticks,
+        x_label_x = plot_x + plot_w / 2.0,
+        x_label_y = plot_y + plot_h + 45.0,
+        x_label_esc = escape(x_label_text),
+        y_label_x = plot_x - 65.0,
+        y_label_y = plot_y + plot_h / 2.0,
+        y_label_esc = escape(y_label_text),
+        areas_svg = areas_svg,
+        series_svg = series_svg,
+        legend_items = legend_items,
+        lh = 20 + groups.len() * 36
     ))
 }
 

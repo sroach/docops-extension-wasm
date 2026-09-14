@@ -1,6 +1,6 @@
-use ed25519_dalek::{SigningKey, Signer};
-use sha2::{Sha256, Digest};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use ed25519_dalek::{Signer, SigningKey};
+use sha2::{Digest, Sha256};
 
 /// Colors shared across visualization types. Any type can call `theme(name)`
 /// instead of reinventing its own palette lookup.
@@ -22,28 +22,36 @@ pub fn theme(name: &str) -> ThemeColors {
             axis: "#94a3b8",
             text: "#111827",
             background: "#ffffff",
-            palette: &["#3b82f6", "#8b5cf6", "#22c55e", "#f59e0b", "#ef4444", "#6b7280"],
+            palette: &[
+                "#3b82f6", "#8b5cf6", "#22c55e", "#f59e0b", "#ef4444", "#6b7280",
+            ],
         },
         "dark" => ThemeColors {
             primary: "#38bdf8",
             axis: "#475569",
             text: "#e2e8f0",
             background: "#0f172a",
-            palette: &["#38bdf8", "#a78bfa", "#f472b6", "#fbbf24", "#34d399", "#22d3ee"],
+            palette: &[
+                "#38bdf8", "#a78bfa", "#f472b6", "#fbbf24", "#34d399", "#22d3ee",
+            ],
         },
         "agentic" => ThemeColors {
             primary: "#a855f7",
             axis: "#52525b",
             text: "#f4f4f5",
             background: "#18181b",
-            palette: &["#a855f7", "#22d3ee", "#f97316", "#84cc16", "#f43f5e", "#3b82f6"],
+            palette: &[
+                "#a855f7", "#22d3ee", "#f97316", "#84cc16", "#f43f5e", "#3b82f6",
+            ],
         },
         _ => ThemeColors {
             primary: "#3b82f6",
             axis: "#94a3b8",
             text: "#111827",
             background: "#ffffff",
-            palette: &["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"],
+            palette: &[
+                "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4",
+            ],
         },
     }
 }
@@ -77,9 +85,18 @@ impl Metadata {
             None
         };
         Self {
-            creator: controls.get("creator").cloned().unwrap_or_else(|| "DocOps.io".to_string()),
-            rights: controls.get("rights").cloned().unwrap_or_else(|| "MIT License".to_string()),
-            source: controls.get("source").cloned().unwrap_or_else(|| "https://roach.gy".to_string()),
+            creator: controls
+                .get("creator")
+                .cloned()
+                .unwrap_or_else(|| "DocOps.io".to_string()),
+            rights: controls
+                .get("rights")
+                .cloned()
+                .unwrap_or_else(|| "MIT License".to_string()),
+            source: controls
+                .get("source")
+                .cloned()
+                .unwrap_or_else(|| "https://roach.gy".to_string()),
             date,
             signature,
         }
@@ -114,10 +131,11 @@ pub fn sign_svg(svg: &mut String, private_key_hex: &str) -> Result<(), String> {
 
     let key_bytes = hex::decode(private_key_hex.trim())
         .map_err(|e| format!("Invalid private key hex: {}", e))?;
-    
-    let key_arr: [u8; 32] = key_bytes.try_into()
+
+    let key_arr: [u8; 32] = key_bytes
+        .try_into()
         .map_err(|_| "Private key must be exactly 32 bytes (64 hex characters)")?;
-        
+
     let signing_key = SigningKey::from_bytes(&key_arr);
     let signature = signing_key.sign(&hash);
     let sig_base64 = BASE64.encode(signature.to_bytes());
@@ -137,7 +155,8 @@ pub fn determine_text_color(hex_color: &str) -> &'static str {
     let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
     let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
 
-    let luminance = 0.2126 * (r as f64 / 255.0) + 0.7152 * (g as f64 / 255.0) + 0.0722 * (b as f64 / 255.0);
+    let luminance =
+        0.2126 * (r as f64 / 255.0) + 0.7152 * (g as f64 / 255.0) + 0.0722 * (b as f64 / 255.0);
     if luminance < 0.5 {
         "#fcfcfc"
     } else {

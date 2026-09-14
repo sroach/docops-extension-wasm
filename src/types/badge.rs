@@ -75,12 +75,14 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(0);
 
-    let h_gap = config.get("gap")
+    let h_gap = config
+        .get("gap")
         .or_else(|| config.get("hGap"))
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(4.0);
 
-    let v_gap = config.get("vGap")
+    let v_gap = config
+        .get("vGap")
         .or_else(|| config.get("gap"))
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(8.0);
@@ -93,7 +95,13 @@ fn text_width(s: &str) -> f64 {
     s.chars().count() as f64 * 6.4
 }
 
-fn render_multi_svg(badges: &[Badge], columns: usize, h_gap: f64, v_gap: f64, use_dark: bool) -> String {
+fn render_multi_svg(
+    badges: &[Badge],
+    columns: usize,
+    h_gap: f64,
+    v_gap: f64,
+    use_dark: bool,
+) -> String {
     let id_root = Uuid::new_v4().simple().to_string()[..8].to_string();
     let id_full = format!("badges_{}", id_root);
     let badge_h = 20.0;
@@ -122,7 +130,7 @@ fn render_multi_svg(badges: &[Badge], columns: usize, h_gap: f64, v_gap: f64, us
 
         let icon_svg = if has_icon {
             format!(
-                r##"<text x="10" y="14.8" font-size="12" filter="url(#shadow_{id})">{icon}</text>"##,
+                r##"<text x="10" y="14.8" font-size="12" filter="url(#shadow_{id})" aria-hidden="true">{icon}</text>"##,
                 id = id_root,
                 icon = escape(&b.icon)
             )
@@ -143,7 +151,7 @@ fn render_multi_svg(badges: &[Badge], columns: usize, h_gap: f64, v_gap: f64, us
 
         let gradient_rect = if show_gradient {
             format!(
-                r##"<rect width="{tw:.0}" height="{bh:.0}" fill="url(#g_{id})"/>"##,
+                r##"<rect width="{tw:.0}" height="{bh:.0}" fill="url(#g_{id})" aria-hidden="true"/>"##,
                 tw = total_w,
                 bh = badge_h,
                 id = id_root
@@ -153,8 +161,8 @@ fn render_multi_svg(badges: &[Badge], columns: usize, h_gap: f64, v_gap: f64, us
         };
 
         badge_elements.push(format!(
-            r##"<g transform="translate({x:.1}, {y:.1})" style="--label-bg: {lcol}; --message-bg: {mcol}; --font-color: {fcol};">
-    <g clip-path="url(#r_{bid})">
+            r##"<g transform="translate({x:.1}, {y:.1})" style="--label-bg: {lcol}; --message-bg: {mcol}; --font-color: {fcol};" role="status" aria-label="{label}: {message}">
+    <g clip-path="url(#r_{bid})" aria-hidden="true">
         <rect width="{lw:.1}" height="{bh:.0}" fill="var(--label-bg)"/>
         <rect x="{lw:.1}" width="{mw:.1}" height="{bh:.0}" fill="var(--message-bg)"/>
         {grad}
@@ -193,7 +201,9 @@ fn render_multi_svg(badges: &[Badge], columns: usize, h_gap: f64, v_gap: f64, us
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
     format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0}" height="{h:.0}" viewBox="0 0 {w:.0} {h:.0}" id="{id_full}" class="badge-container{extra_class}" role="img">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0}" height="{h:.0}" viewBox="0 0 {w:.0} {h:.0}" id="{id_full}" class="badge-container{extra_class}" role="status" aria-label="Status Badges" aria-labelledby="{id_full}_title {id_full}_desc">
+    <title id="{id_full}_title">Status Badges</title>
+    <desc id="{id_full}_desc">Status and metadata badges display</desc>
     <defs>
         <style>
             #{id_full} {{ --shadow-op: 0.1; }}

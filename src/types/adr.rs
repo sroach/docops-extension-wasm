@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::common::svg::escape;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 struct Participant {
@@ -38,13 +38,15 @@ fn parse_fragments(input: &str) -> Vec<Fragment> {
     while let Some(start_idx) = input[current_pos..].find("[[") {
         let absolute_start = current_pos + start_idx;
         if absolute_start > current_pos {
-            fragments.push(Fragment::Text(input[current_pos..absolute_start].to_string()));
+            fragments.push(Fragment::Text(
+                input[current_pos..absolute_start].to_string(),
+            ));
         }
 
         if let Some(end_idx) = input[absolute_start..].find("]]") {
             let absolute_end = absolute_start + end_idx + 2;
             let inner = &input[absolute_start + 2..absolute_start + end_idx];
-            
+
             if let Some((url, title)) = inner.trim().split_once(' ') {
                 fragments.push(Fragment::Link {
                     url: url.trim().to_string(),
@@ -74,7 +76,9 @@ fn url_encode(s: &str) -> String {
     let mut res = String::new();
     for b in s.as_bytes() {
         match *b {
-            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => res.push(*b as char),
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                res.push(*b as char)
+            }
             b' ' => res.push('+'),
             _ => res.push_str(&format!("%{:02X}", b)),
         }
@@ -120,10 +124,10 @@ fn parse_adr(body: &str) -> Result<Adr, String> {
                 "title" => adr.title = val.to_string(),
                 "status" => adr.status = val.to_string(),
                 "date" => adr.date = val.to_string(),
-                "context" | "decision" | "consequences" | "participants" | "references" => {
-                    if !val.is_empty() {
-                        add_value(&mut adr, &current_key, val);
-                    }
+                "context" | "decision" | "consequences" | "participants" | "references"
+                    if !val.is_empty() =>
+                {
+                    add_value(&mut adr, &current_key, val);
                 }
                 _ => {}
             }
@@ -155,14 +159,20 @@ fn add_value(adr: &mut Adr, key: &str, val: &str) {
                         role: parts[1].to_string(),
                         email: parts[2].to_string(),
                         color: parts[3].to_string(),
-                        emoji: if parts.len() > 4 && !parts[4].is_empty() { Some(parts[4].to_string()) } else { None },
+                        emoji: if parts.len() > 4 && !parts[4].is_empty() {
+                            Some(parts[4].to_string())
+                        } else {
+                            None
+                        },
                     });
                 }
             } else {
                 for part in val.split(',') {
                     let part = part.trim();
-                    if part.is_empty() { continue; }
-                    
+                    if part.is_empty() {
+                        continue;
+                    }
+
                     if let Some((name, role_with_parens)) = part.split_once('(') {
                         let role = role_with_parens.trim_end_matches(')').trim();
                         adr.participants.push(Participant {
@@ -199,7 +209,7 @@ fn add_value(adr: &mut Adr, key: &str, val: &str) {
                     });
                 }
             } else {
-                 adr.references.push(Reference {
+                adr.references.push(Reference {
                     url: val.to_string(),
                     title: val.to_string(),
                 });
@@ -210,7 +220,10 @@ fn add_value(adr: &mut Adr, key: &str, val: &str) {
 }
 
 fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false);
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false);
     let id = Uuid::new_v4().simple().to_string()[..8].to_string();
     let id_full = format!("adr_{}", id);
     let status_color = match adr.status.to_lowercase().as_str() {
@@ -227,25 +240,49 @@ fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
 
     // Context
     if !adr.context.is_empty() {
-        sections_svg.push_str(&render_section("CONTEXT", &adr.context, status_color, y, &id));
+        sections_svg.push_str(&render_section(
+            "CONTEXT",
+            &adr.context,
+            status_color,
+            y,
+            &id,
+        ));
         y += (adr.context.len() as f64 * 30.0 + 102.0).max(120.0);
     }
 
     // Decision
     if !adr.decision.is_empty() {
-        sections_svg.push_str(&render_section("DECISION", &adr.decision, status_color, y, &id));
+        sections_svg.push_str(&render_section(
+            "DECISION",
+            &adr.decision,
+            status_color,
+            y,
+            &id,
+        ));
         y += (adr.decision.len() as f64 * 30.0 + 102.0).max(120.0);
     }
 
     // Consequences
     if !adr.consequences.is_empty() {
-        sections_svg.push_str(&render_section("CONSEQUENCES", &adr.consequences, status_color, y, &id));
+        sections_svg.push_str(&render_section(
+            "CONSEQUENCES",
+            &adr.consequences,
+            status_color,
+            y,
+            &id,
+        ));
         y += (adr.consequences.len() as f64 * 30.0 + 102.0).max(120.0);
     }
 
     // Participants
     if !adr.participants.is_empty() {
-        sections_svg.push_str(&render_participants(&adr.participants, status_color, y, &id, &adr.title));
+        sections_svg.push_str(&render_participants(
+            &adr.participants,
+            status_color,
+            y,
+            &id,
+            &adr.title,
+        ));
         y += (adr.participants.len() as f64 * 80.0 + 100.0).max(160.0);
     }
 
@@ -257,9 +294,17 @@ fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
 
     let total_height = y + 60.0;
     let extra_class = if use_dark { " dark-mode" } else { "" };
+    let title_esc = escape(&adr.title);
+    let desc_text = format!(
+        "Architecture Decision Record for {} - Status: {}, Date: {}",
+        adr.title, adr.status, adr.date
+    );
+    let desc_esc = escape(&desc_text);
 
     format!(
-        r##"<svg width="900" height="{total_height}" viewBox="0 0 900 {total_height}" xmlns="http://www.w3.org/2000/svg" id="{id_full}" class="adr-container{extra_class}">
+        r##"<svg width="900" height="{total_height}" viewBox="0 0 900 {total_height}" xmlns="http://www.w3.org/2000/svg" id="{id_full}" class="adr-container{extra_class}" role="graphics-document document" aria-labelledby="{id_full}_title {id_full}_desc">
+    <title id="{id_full}_title">ADR: {title_esc}</title>
+    <desc id="{id_full}_desc">{desc_esc}</desc>
     <defs>
         <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap');
             .apple-text {{ font-family: 'SF Pro Display', 'Inter', system-ui, -apple-system, sans-serif; }}
@@ -317,12 +362,12 @@ fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
             <stop offset="100%" stop-color="var(--apple-bg-end)"></stop>
         </linearGradient>
     </defs>
-    <rect width="900" height="{total_height}" fill="url(#appleBg_{id})"></rect>
+    <rect width="900" height="{total_height}" fill="url(#appleBg_{id})" aria-hidden="true"></rect>
     <g transform="translate(48, 60)">
-        <text x="0" y="0" class="apple-text" font-size="14" font-weight="600" fill="{status_color}" letter-spacing="0.05em">{status}</text>
+        <text x="0" y="0" class="apple-text" font-size="14" font-weight="600" fill="{status_color}" letter-spacing="0.05em" role="status" aria-label="Status: {status}">{status}</text>
         <text x="0" y="48" class="apple-text" font-size="44" font-weight="700" fill="var(--apple-text-primary)" letter-spacing="-0.02em">{title}</text>
         <text x="0" y="90" class="apple-mono" font-size="14" font-weight="500" fill="var(--apple-text-secondary)">{date} • ADR-{id_upper}</text>
-        <line x1="0" y1="130" x2="800" y2="130" stroke="var(--apple-line)" stroke-width="1"></line>
+        <line x1="0" y1="130" x2="800" y2="130" stroke="var(--apple-line)" stroke-width="1" aria-hidden="true"></line>
     </g>
     {sections_svg}
 </svg>"##,
@@ -330,6 +375,8 @@ fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
         id = id,
         id_full = id_full,
         extra_class = extra_class,
+        title_esc = title_esc,
+        desc_esc = desc_esc,
         status = escape(&adr.status.to_uppercase()),
         status_color = status_color,
         title = escape(&adr.title),
@@ -342,6 +389,10 @@ fn render_svg(adr: &Adr, controls: &HashMap<String, String>) -> String {
 fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) -> String {
     let height = items.len() as f64 * 30.0 + 70.0;
     let mut items_svg = String::new();
+    items_svg.push_str(r##"<g role="list" aria-label=""##);
+    items_svg.push_str(&escape(title));
+    items_svg.push_str(r##"">"##);
+
     for (i, item) in items.iter().enumerate() {
         let fragments = parse_fragments(item);
         let mut line_content = String::new();
@@ -350,7 +401,7 @@ fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) 
                 Fragment::Text(t) => line_content.push_str(&escape(&t)),
                 Fragment::Link { url, title } => {
                     line_content.push_str(&format!(
-                        r##"<a href="{url}" target="_blank" class="link"><tspan fill="var(--apple-link)">{title}</tspan></a>"##,
+                        r##"<a href="{url}" target="_blank" class="link" role="link" tabindex="0" aria-label="{title}"><tspan fill="var(--apple-link)">{title}</tspan></a>"##,
                         url = escape(&url),
                         title = escape(&title)
                     ));
@@ -358,16 +409,17 @@ fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) 
             }
         }
         items_svg.push_str(&format!(
-            r##"<text x="32" y="{y}" class="apple-text" font-size="17" font-weight="400" fill="var(--apple-text-item)">- {line_content}</text>"##,
+            r##"<g role="listitem"><text x="32" y="{y}" class="apple-text" font-size="17" font-weight="400" fill="var(--apple-text-item)">- {line_content}</text></g>"##,
             y = 64.0 + i as f64 * 30.0,
             line_content = line_content
         ));
     }
+    items_svg.push_str("</g>");
 
     format!(
-        r##"<g transform="translate(48, {y})">
-        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})"></rect>
-        <rect width="6" height="{height}" rx="3" fill="{color}" transform="translate(-12, 0)"></rect>
+        r##"<g transform="translate(48, {y})" role="region" aria-label="{title}">
+        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})" aria-hidden="true"></rect>
+        <rect width="6" height="{height}" rx="3" fill="{color}" transform="translate(-12, 0)" aria-hidden="true"></rect>
         <text x="32" y="32" class="apple-text" font-size="13" font-weight="600" fill="{color}" letter-spacing="0.05em">{title}</text>
         {items_svg}
     </g>"##,
@@ -380,46 +432,66 @@ fn render_section(title: &str, items: &[String], color: &str, y: f64, id: &str) 
     )
 }
 
-fn render_participants(participants: &[Participant], color: &str, y: f64, id: &str, title: &str) -> String {
+fn render_participants(
+    participants: &[Participant],
+    color: &str,
+    y: f64,
+    id: &str,
+    title: &str,
+) -> String {
     let height = participants.len() as f64 * 80.0 + 80.0;
     let mut participants_svg = String::new();
-    
-    let participant_emails: Vec<&str> = participants.iter()
+    participants_svg.push_str(r##"<g role="list" aria-label="Participants">"##);
+
+    let participant_emails: Vec<&str> = participants
+        .iter()
         .map(|p| p.email.as_str())
         .filter(|e| !e.is_empty())
         .collect();
 
     let chat_btn = if participant_emails.len() >= 2 {
-        let mailto = format!("https://teams.microsoft.com/l/chat/0/0?users={}&amp;topicName={}", 
-            participant_emails.join(","), 
-            escape(&url_encode(title)));
-        format!(r##"<g transform="translate(640, 15)" class="chat-btn">
-            <a href="{mailto}" target="_blank" style="text-decoration: none;">
-                <rect width="140" height="28" rx="14" fill="#007AFF"></rect>
+        let mailto = format!(
+            "https://teams.microsoft.com/l/chat/0/0?users={}&amp;topicName={}",
+            participant_emails.join(","),
+            escape(&url_encode(title))
+        );
+        format!(
+            r##"<g transform="translate(640, 15)" class="chat-btn">
+            <a href="{mailto}" target="_blank" style="text-decoration: none;" role="link" tabindex="0" aria-label="Start Group Chat">
+                <rect width="140" height="28" rx="14" fill="#007AFF" aria-hidden="true"></rect>
                 <text x="70" y="18" text-anchor="middle" class="apple-text" font-size="11" font-weight="600" fill="#FFFFFF">START GROUP CHAT</text>
             </a>
-        </g>"##, mailto = mailto)
+        </g>"##,
+            mailto = mailto
+        )
     } else {
         "".to_string()
     };
 
     for (i, p) in participants.iter().enumerate() {
-        let initials: String = p.name.split_whitespace()
+        let initials: String = p
+            .name
+            .split_whitespace()
             .map(|n| n.chars().next().unwrap_or(' '))
             .collect();
         let py = 60.0 + i as f64 * 80.0;
         let avatar_content = if let Some(emoji) = &p.emoji {
-            format!(r##"<text x="30" y="42" text-anchor="middle" class="apple-text" font-size="30">{emoji}</text>"##, emoji = escape(emoji))
+            format!(
+                r##"<text x="30" y="42" text-anchor="middle" class="apple-text" font-size="30" aria-hidden="true">{emoji}</text>"##,
+                emoji = escape(emoji)
+            )
         } else {
-            format!(r##"<text x="30" y="38" text-anchor="middle" class="apple-text" font-size="20" font-weight="700" fill="{p_color}">{initials}</text>"##,
+            format!(
+                r##"<text x="30" y="38" text-anchor="middle" class="apple-text" font-size="20" font-weight="700" fill="{p_color}" aria-hidden="true">{initials}</text>"##,
                 p_color = escape(&p.color),
-                initials = escape(&initials))
+                initials = escape(&initials)
+            )
         };
 
         participants_svg.push_str(&format!(
-            r##"<g transform="translate(32, {py})">
+            r##"<g transform="translate(32, {py})" role="listitem" aria-label="{name}, {role}">
             <g class="participant-node">
-                <circle cx="30" cy="30" r="30" fill="{p_color}" fill-opacity="0.1"></circle>
+                <circle cx="30" cy="30" r="30" fill="{p_color}" fill-opacity="0.1" aria-hidden="true"></circle>
                 {avatar_content}
                 <text x="80" y="24" class="apple-text" font-size="16" font-weight="600" fill="var(--apple-text-item)">{name}</text>
                 <text x="80" y="44" class="apple-text" font-size="13" font-weight="400" fill="var(--apple-text-secondary)">{role}</text>
@@ -432,10 +504,11 @@ fn render_participants(participants: &[Participant], color: &str, y: f64, id: &s
             role = escape(&p.role)
         ));
     }
+    participants_svg.push_str("</g>");
 
     format!(
-        r##"<g transform="translate(48, {y})">
-        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})"></rect>
+        r##"<g transform="translate(48, {y})" role="region" aria-label="PARTICIPANTS">
+        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})" aria-hidden="true"></rect>
         <text x="32" y="32" class="apple-text" font-size="13" font-weight="600" fill="{color}" letter-spacing="0.05em">PARTICIPANTS</text>
         {chat_btn}
         {participants_svg}
@@ -452,21 +525,23 @@ fn render_participants(participants: &[Participant], color: &str, y: f64, id: &s
 fn render_references(references: &[Reference], color: &str, y: f64, id: &str) -> String {
     let height = references.len() as f64 * 40.0 + 70.0;
     let mut refs_svg = String::new();
+    refs_svg.push_str(r##"<g role="list" aria-label="References">"##);
     for (i, r) in references.iter().enumerate() {
         let ry = 64.0 + i as f64 * 40.0;
         refs_svg.push_str(&format!(
-            r##"<a href="{url}" target="_blank" class="link">
+            r##"<g role="listitem"><a href="{url}" target="_blank" class="link" role="link" tabindex="0" aria-label="{title}">
             <text x="32" y="{ry}" class="apple-text" font-size="15" fill="var(--apple-link)">{title}</text>
-        </a>"##,
+        </a></g>"##,
             ry = ry,
             url = escape(&r.url),
             title = escape(&r.title)
         ));
     }
+    refs_svg.push_str("</g>");
 
     format!(
-        r##"<g transform="translate(48, {y})">
-        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})"></rect>
+        r##"<g transform="translate(48, {y})" role="region" aria-label="REFERENCES">
+        <rect width="800" height="{height}" rx="28" fill="var(--apple-card-bg)" filter="url(#appleShadow_{id})" aria-hidden="true"></rect>
         <text x="32" y="32" class="apple-text" font-size="13" font-weight="600" fill="{color}" letter-spacing="0.05em">REFERENCES</text>
         {refs_svg}
     </g>"##,
@@ -518,13 +593,13 @@ Bob Wilson | Lead | bob@example.com | #6366F1 | 🚀
 ----"##;
         let adr = parse_adr(body).unwrap();
         assert_eq!(adr.participants.len(), 3);
-        
+
         assert_eq!(adr.participants[0].name, "Jane Smith");
         assert_eq!(adr.participants[0].role, "Architect");
-        
+
         assert_eq!(adr.participants[1].name, "John Doe");
         assert_eq!(adr.participants[1].role, "Developer");
-        
+
         assert_eq!(adr.participants[2].name, "Bob Wilson");
         assert_eq!(adr.participants[2].emoji, Some("🚀".to_string()));
     }
@@ -539,12 +614,21 @@ decision=
 - Multiple [[https://a.com A]] and [[https://b.com B]] links
 ----"##;
         let svg = render(body, &HashMap::new()).unwrap();
-        assert!(svg.contains("https://rust-lang.org"), "SVG should contain the link URL");
+        assert!(
+            svg.contains("https://rust-lang.org"),
+            "SVG should contain the link URL"
+        );
         assert!(svg.contains("Rust"), "SVG should contain the link text");
         assert!(svg.contains("https://a.com"));
         assert!(svg.contains("https://b.com"));
-        assert!(svg.contains("<a"), "SVG should contain an anchor tag for the link");
-        assert!(svg.contains("#10B981"), "SVG should contain Accepted status color");
+        assert!(
+            svg.contains("<a"),
+            "SVG should contain an anchor tag for the link"
+        );
+        assert!(
+            svg.contains("#10B981"),
+            "SVG should contain Accepted status color"
+        );
     }
 
     #[test]
@@ -556,11 +640,16 @@ decision=
             ("Deprecated", "#EF4444"),
             ("Rejected", "#DC2626"),
         ];
-        
+
         for (status, color) in statuses {
             let body = format!("----\ntitle= Test\nstatus= {}\n----", status);
             let svg = render(&body, &HashMap::new()).unwrap();
-            assert!(svg.contains(color), "SVG for status {} should contain color {}", status, color);
+            assert!(
+                svg.contains(color),
+                "SVG for status {} should contain color {}",
+                status,
+                color
+            );
         }
     }
 
@@ -572,7 +661,10 @@ title= No Emails
 participants= Jane Smith (Architect), John Doe (Developer)
 ----"##;
         let svg1 = render(body1, &HashMap::new()).unwrap();
-        assert!(!svg1.contains("START GROUP CHAT"), "Should not show button with no emails");
+        assert!(
+            !svg1.contains("START GROUP CHAT"),
+            "Should not show button with no emails"
+        );
 
         // Case 2: Only one participant with email -> No button
         let body2 = r##"----
@@ -582,7 +674,10 @@ Name | Title | email | #color
 Alex | Dev | alex@example.com | #000
 ----"##;
         let svg2 = render(body2, &HashMap::new()).unwrap();
-        assert!(!svg2.contains("START GROUP CHAT"), "Should not show button with only one email");
+        assert!(
+            !svg2.contains("START GROUP CHAT"),
+            "Should not show button with only one email"
+        );
 
         // Case 3: Two participants with emails -> Button should appear
         let body3 = r##"----
@@ -593,20 +688,26 @@ Alex | Dev | alex@example.com | #000
 Bob | Dev | bob@example.com | #000
 ----"##;
         let svg3 = render(body3, &HashMap::new()).unwrap();
-        assert!(svg3.contains("START GROUP CHAT"), "Should show button with two emails");
-        assert!(svg3.contains("alex@example.com,bob@example.com"), "URL should contain both emails");
+        assert!(
+            svg3.contains("START GROUP CHAT"),
+            "Should show button with two emails"
+        );
+        assert!(
+            svg3.contains("alex@example.com,bob@example.com"),
+            "URL should contain both emails"
+        );
     }
 
     #[test]
     fn test_dark_mode_support() {
         let body = "----\ntitle= Dark Mode Test\nstatus= Accepted\n----";
-        
+
         // Default mode (should have variables and media query)
         let svg_light = render(body, &HashMap::new()).unwrap();
         assert!(svg_light.contains("--apple-bg-start: #FFFFFF"));
         assert!(svg_light.contains("@media (prefers-color-scheme: dark)"));
         assert!(svg_light.contains("class=\"adr-container\""));
-        
+
         // Forced dark mode
         let mut controls = HashMap::new();
         controls.insert("useDark".to_string(), "true".to_string());

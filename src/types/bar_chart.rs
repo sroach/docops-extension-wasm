@@ -68,11 +68,17 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let data = parse_kv_body(body)?;
     let cfg = &data.config;
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
 
     let title = cfg.get("title").map(String::as_str).unwrap_or("Bar Chart");
-    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("Visualized data report");
+    let subtitle = cfg
+        .get("subtitle")
+        .map(String::as_str)
+        .unwrap_or("Visualized data report");
     let x_label = cfg.get("xLabel").map(String::as_str).unwrap_or("");
     let y_label = cfg.get("yLabel").map(String::as_str).unwrap_or("");
 
@@ -100,10 +106,10 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     }
 
     let groups = group_points(&data.points);
-    
+
     let mut raw_max = 0.0;
     let mut peak_idx = 0;
-    
+
     match mode {
         BarMode::Stacked => {
             for (i, g) in groups.iter().enumerate() {
@@ -112,7 +118,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                     peak_idx = i;
                 }
             }
-        },
+        }
         _ => {
             for (i, (_, v)) in data.points.iter().enumerate() {
                 if *v > raw_max {
@@ -122,7 +128,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             }
         }
     }
-    
+
     let max_val = if raw_max <= 0.0 { 1.0 } else { raw_max * 1.1 };
     let chart_id = format!("id_{}", Uuid::new_v4());
 
@@ -162,7 +168,9 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
     Ok(format!(
-        r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" id="{chart_id}" class="bar-chart-container{extra_class}" preserveAspectRatio="xMidYMid meet">
+        r##"<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="graphics-document document" id="{chart_id}" class="bar-chart-container{extra_class}" preserveAspectRatio="xMidYMid meet" aria-labelledby="{chart_id}__title {chart_id}__desc">
+    <title id="{chart_id}__title">{title}</title>
+    <desc id="{chart_id}__desc">{subtitle}</desc>
     <defs>
         <linearGradient id="{chart_id}__premiumBackground" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="var(--premium-bg-0)"/>
@@ -353,32 +361,32 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         </style>
     </defs>
 
-    <rect width="100%" height="100%" fill="url(#{chart_id}__premiumBackground)"/>
-    <rect width="100%" height="100%" fill="url(#{chart_id}__ambientBlue)"/>
-    <rect width="100%" height="100%" fill="url(#{chart_id}__ambientGold)"/>
+    <rect width="100%" height="100%" fill="url(#{chart_id}__premiumBackground)" aria-hidden="true"/>
+    <rect width="100%" height="100%" fill="url(#{chart_id}__ambientBlue)" aria-hidden="true"/>
+    <rect width="100%" height="100%" fill="url(#{chart_id}__ambientGold)" aria-hidden="true"/>
 
-    <g class="glass-card" filter="url(#premiumShadow)">
+    <g class="glass-card" filter="url(#premiumShadow)" aria-hidden="true">
         <rect x="36" y="34" width="888" height="492" rx="34" ry="34" fill="url(#{chart_id}__glassSurface)"/>
         <rect x="36.5" y="34.5" width="887" height="491" rx="33.5" ry="33.5" fill="none" stroke="url(#{chart_id}__glassStroke)" stroke-width="1"/>
     </g>
 
-    <g>
+    <g aria-hidden="true">
         <text class="eyebrow" x="78" y="80">PREMIUM METRICS</text>
         <text class="title" x="78" y="116">{title}</text>
         <text class="subtitle" x="78" y="140">{subtitle}</text>
     </g>
 
-    <g clip-path="url(#chartClip)">
+    <g clip-path="url(#chartClip)" aria-hidden="true">
 {grid_lines}
     </g>
 
-    <line class="axis" x1="{plot_x}" y1="{plot_y}" x2="{plot_x}" y2="{plot_by}"/>
-    <line class="axis" x1="{plot_x}" y1="{plot_by}" x2="{plot_rx}" y2="{plot_by}"/>
-
-{y_ticks}
-
-    <text class="y-label" x="50" y="{y_label_y}" text-anchor="middle" transform="rotate(-90 50 {y_label_y})">{y_label}</text>
-    <text class="x-label" x="{width_half}" y="498" text-anchor="middle">{x_label}</text>
+    <g class="axes" aria-hidden="true">
+        <line class="axis" x1="{plot_x}" y1="{plot_y}" x2="{plot_x}" y2="{plot_by}"/>
+        <line class="axis" x1="{plot_x}" y1="{plot_by}" x2="{plot_rx}" y2="{plot_by}"/>
+        {y_ticks}
+        <text class="y-label" x="50" y="{y_label_y}" text-anchor="middle" transform="rotate(-90 50 {y_label_y})">{y_label}</text>
+        <text class="x-label" x="{width_half}" y="498" text-anchor="middle">{x_label}</text>
+    </g>
 
 {bars_html}
 </svg>"##,
@@ -427,14 +435,16 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
         };
 
         let peak_class = if i == ctx.peak_idx { " peak-label" } else { "" };
-        
+
         anim_css.push_str(&format!(
             "            #{} .anim-{} {{ animation: growBar 760ms cubic-bezier(.2,.8,.2,1) {}ms both; }}\n",
             ctx.chart_id, idx, 100 + i * 90
         ));
         anim_css.push_str(&format!(
             "            #{} .val-{} {{ animation: revealValue 360ms ease {}ms both; }}\n",
-            ctx.chart_id, idx, 760 + i * 90
+            ctx.chart_id,
+            idx,
+            760 + i * 90
         ));
 
         let shape_svg = match ctx.shape {
@@ -444,8 +454,8 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
         };
 
         bars_html.push_str(&format!(
-            r##"    <g class="bar-wrap" tabindex="0" aria-label="{label}: {value}">
-        <rect class="bar-hit" x="{x_hit:.1}" y="{plot_y:.1}" width="{bar_hit_w:.1}" height="{plot_h:.1}"/>
+            r##"    <g class="bar-wrap" role="graphics-symbol" aria-roledescription="bar" tabindex="0" aria-label="{label}: {value}">
+        <rect class="bar-hit" x="{x_hit:.1}" y="{plot_y:.1}" width="{bar_hit_w:.1}" height="{plot_h:.1}" aria-hidden="true"/>
         <g transform="translate({x_inner:.1} {y_base:.1})">
             <g class="bar-inner anim-{idx}">
                 {shape_svg}
@@ -475,15 +485,17 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
 
 fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut String) {
     let groups = group_points(&ctx.data.points);
-    if groups.is_empty() { return; }
+    if groups.is_empty() {
+        return;
+    }
 
     let num_groups = groups.len();
     let group_hit_w = ctx.plot_w / (num_groups as f64);
-    
+
     let max_bars_per_group = groups.iter().map(|g| g.points.len()).max().unwrap_or(1);
     let bar_inner_w = (group_hit_w * 0.7 / (max_bars_per_group as f64)).min(60.0);
     let group_padding = group_hit_w * 0.15;
-    
+
     let mut global_idx = 0;
     for (g_idx, group) in groups.iter().enumerate() {
         let x_group_start = ctx.plot_x + (g_idx as f64) * group_hit_w + group_padding;
@@ -493,28 +505,38 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
             global_idx += 1;
             let bar_h = (value / ctx.max_val) * ctx.plot_h;
             let x_bar = x_group_start + (p_idx as f64) * bar_inner_w;
-            
+
             let fill = format!("url(#{}__barPal_{})", ctx.chart_id, p_idx % 5);
-            
+
             anim_css.push_str(&format!(
                 "            #{} .anim-{} {{ animation: growBar 760ms cubic-bezier(.2,.8,.2,1) {}ms both; }}\n",
                 ctx.chart_id, global_idx, 100 + global_idx * 50
             ));
             anim_css.push_str(&format!(
                 "            #{} .val-{} {{ animation: revealValue 360ms ease {}ms both; }}\n",
-                ctx.chart_id, global_idx, 760 + global_idx * 50
+                ctx.chart_id,
+                global_idx,
+                760 + global_idx * 50
             ));
 
             let shape_svg = match ctx.shape {
                 BarShape::Rect => render_rect_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill),
-                BarShape::Rounded => render_rounded_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill),
-                BarShape::Cylinder => render_cylinder_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill),
+                BarShape::Rounded => {
+                    render_rounded_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill)
+                }
+                BarShape::Cylinder => {
+                    render_cylinder_bar(0.0, -bar_h, bar_inner_w * 0.9, bar_h, &fill)
+                }
             };
 
-            let display_label = if sub_label.is_empty() { group.name.clone() } else { format!("{} ({})", group.name, sub_label) };
+            let display_label = if sub_label.is_empty() {
+                group.name.clone()
+            } else {
+                format!("{} ({})", group.name, sub_label)
+            };
 
             bars_html.push_str(&format!(
-                r##"    <g class="bar-wrap" tabindex="0" aria-label="{display_label}: {value}">
+                r##"    <g class="bar-wrap" role="graphics-symbol" aria-roledescription="bar" tabindex="0" aria-label="{display_label}: {value}">
         <g transform="translate({x_bar:.1} {y_base:.1})">
             <g class="bar-inner anim-{idx}">
                 {shape_svg}
@@ -533,7 +555,7 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
                 val_y = y_base - bar_h - 12.0,
             ));
         }
-        
+
         // Group label
         let group_cx = ctx.plot_x + (g_idx as f64) * group_hit_w + group_hit_w / 2.0;
         bars_html.push_str(&format!(
@@ -548,13 +570,15 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
 
 fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut String) {
     let groups = group_points(&ctx.data.points);
-    if groups.is_empty() { return; }
+    if groups.is_empty() {
+        return;
+    }
 
     let num_groups = groups.len();
     let bar_hit_w = ctx.plot_w / (num_groups as f64);
     let bar_inner_w = (bar_hit_w * 0.6).min(80.0);
     let bar_offset = (bar_hit_w - bar_inner_w) / 2.0;
-    
+
     let mut global_idx = 0;
     for (g_idx, group) in groups.iter().enumerate() {
         let x_hit = ctx.plot_x + (g_idx as f64) * bar_hit_w;
@@ -566,17 +590,19 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
             global_idx += 1;
             let segment_h = (value / ctx.max_val) * ctx.plot_h;
             let fill = format!("url(#{}__barPal_{})", ctx.chart_id, p_idx % 5);
-            
+
             anim_css.push_str(&format!(
                 "            #{} .anim-{} {{ animation: growBar 760ms cubic-bezier(.2,.8,.2,1) {}ms both; }}\n",
                 ctx.chart_id, global_idx, 100 + g_idx * 90 + p_idx * 30
             ));
 
-            // For stacked bars, we use Rect for all if shape isn't specifically handled, 
+            // For stacked bars, we use Rect for all if shape isn't specifically handled,
             // but let's try to respect shape. Rounded stacked bars look weird though.
             let shape_svg = match ctx.shape {
                 BarShape::Rect => render_rect_bar(0.0, -segment_h, bar_inner_w, segment_h, &fill),
-                BarShape::Cylinder => render_cylinder_bar(0.0, -segment_h, bar_inner_w, segment_h, &fill),
+                BarShape::Cylinder => {
+                    render_cylinder_bar(0.0, -segment_h, bar_inner_w, segment_h, &fill)
+                }
                 BarShape::Rounded => {
                     // Only round top and bottom of the whole stack? Hard with current structure.
                     // Just use rect for intermediate segments.
@@ -585,7 +611,7 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
             };
 
             bars_html.push_str(&format!(
-                r##"    <g class="bar-wrap" tabindex="0" aria-label="{group_name} {sub_label}: {value}">
+                r##"    <g class="bar-wrap" role="graphics-symbol" aria-roledescription="bar" tabindex="0" aria-label="{group_name} {sub_label}: {value}">
         <g transform="translate({x_inner:.1} {current_y:.1})">
             <g class="bar-inner anim-{idx}">
                 {shape_svg}
@@ -601,10 +627,10 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
                 idx = global_idx,
                 shape_svg = shape_svg,
             ));
-            
+
             current_y -= segment_h;
         }
-        
+
         // Group label and total value
         let cx = x_hit + bar_hit_w / 2.0;
         bars_html.push_str(&format!(
@@ -622,8 +648,14 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
 }
 
 fn render_rect_bar(x: f64, y: f64, w: f64, h: f64, fill: &str) -> String {
-    format!(r##"<rect x="{x:.1}" y="{y:.1}" width="{w:.1}" height="{h:.1}" fill="{fill}"/>"##,
-        x=x, y=y, w=w, h=h, fill=fill)
+    format!(
+        r##"<rect x="{x:.1}" y="{y:.1}" width="{w:.1}" height="{h:.1}" fill="{fill}"/>"##,
+        x = x,
+        y = y,
+        w = w,
+        h = h,
+        fill = fill
+    )
 }
 
 fn render_rounded_bar(x: f64, y: f64, w: f64, h: f64, fill: &str) -> String {
@@ -635,7 +667,15 @@ fn render_rounded_bar(x: f64, y: f64, w: f64, h: f64, fill: &str) -> String {
     format!(
         r##"<rect x="{x:.1}" y="{y:.1}" width="{w:.1}" height="{h:.1}" rx="{rx:.1}" ry="{rx:.1}" fill="{fill}"/>
 <rect class="bar-top-gloss" x="{gx:.1}" y="{gy:.1}" width="{gw:.1}" height="18" rx="9" ry="9" fill="#FFFFFF"/>"##,
-        x=x, y=y, w=w, h=h, rx=rx, fill=fill, gx=gx, gy=gy, gw=gw
+        x = x,
+        y = y,
+        w = w,
+        h = h,
+        rx = rx,
+        fill = fill,
+        gx = gx,
+        gy = gy,
+        gw = gw
     )
 }
 
@@ -648,7 +688,15 @@ fn render_cylinder_bar(x: f64, y: f64, w: f64, h: f64, fill: &str) -> String {
 <rect x="{x:.1}" y="{y:.1}" width="{w:.1}" height="{h:.1}" fill="{fill}"/>
 <ellipse cx="{cx:.1}" cy="{y:.1}" rx="{rx:.1}" ry="{ry:.1}" fill="{fill}"/>
 <ellipse cx="{cx:.1}" cy="{y:.1}" rx="{rx:.1}" ry="{ry:.1}" fill="#FFFFFF" fill-opacity="0.3"/>"##,
-        x=x, y=y, w=w, h=h, rx=rx, ry=ry, fill=fill, cx=cx, y_bottom=y+h
+        x = x,
+        y = y,
+        w = w,
+        h = h,
+        rx = rx,
+        ry = ry,
+        fill = fill,
+        cx = cx,
+        y_bottom = y + h
     )
 }
 
@@ -663,7 +711,7 @@ mod tests {
         assert!(result.is_ok());
         let svg = result.unwrap();
         assert!(svg.contains("__barPeak)"));
-        
+
         let rect_svg = render_rect_bar(0.0, -100.0, 50.0, 100.0, "blue");
         assert!(!rect_svg.contains("rx="));
 
@@ -686,7 +734,7 @@ mod tests {
         let svg = result_multi.unwrap();
         assert!(svg.contains("P1"));
         assert!(svg.contains("P2"));
-        assert!(svg.contains("Q1")); 
+        assert!(svg.contains("Q1"));
     }
 
     #[test]
@@ -701,12 +749,12 @@ mod tests {
     #[test]
     fn test_bar_dark_mode() {
         let body = "---- title=Test --- A | 10 ----";
-        
+
         // Default mode
         let svg_light = render(body, &HashMap::new()).unwrap();
         assert!(svg_light.contains("--bg: #F6F8FB"));
         assert!(svg_light.contains("@media (prefers-color-scheme: dark)"));
-        
+
         // Forced dark mode
         let mut controls = HashMap::new();
         controls.insert("useDark".to_string(), "true".to_string());

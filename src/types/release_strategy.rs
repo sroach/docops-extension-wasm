@@ -1,4 +1,4 @@
-use crate::common::kv::{parse_kv_header};
+use crate::common::kv::parse_kv_header;
 use crate::common::svg::escape;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -14,10 +14,16 @@ struct ReleaseStep {
 pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, String> {
     let (config, steps) = parse_release_body(body)?;
 
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false)
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false)
         || config.get("theme").map(|s| s.as_str()) == Some("dark");
 
-    let layout = config.get("layout").map(|s| s.as_str()).unwrap_or("horizontal");
+    let layout = config
+        .get("layout")
+        .map(|s| s.as_str())
+        .unwrap_or("horizontal");
 
     if layout == "vertical" {
         return render_vertical(&config, &steps, use_dark);
@@ -25,7 +31,10 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
 
     let _theme_name = config.get("theme").map(|s| s.as_str()).unwrap_or("default");
 
-    let title = config.get("title").map(String::as_str).unwrap_or("Release Strategy");
+    let title = config
+        .get("title")
+        .map(String::as_str)
+        .unwrap_or("Release Strategy");
     let subtitle = config.get("subtitle").map(String::as_str).unwrap_or("");
     let chart_id = format!("release_h_{}", Uuid::new_v4().to_string().replace('-', "_"));
 
@@ -37,7 +46,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     let end_x = 1546;
     let rail_len = end_x - start_x;
     let card_y = 154;
-    
+
     let mut steps_svg = String::new();
     let mut progress_x = start_x;
 
@@ -70,58 +79,70 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         };
 
         let is_complete = step.status.to_lowercase() == "complete";
-        let is_in_progress = step.status.to_lowercase() == "in progress" || step.status.to_lowercase() == "now" || step.status.to_lowercase() == "testing";
-        
+        let is_in_progress = step.status.to_lowercase() == "in progress"
+            || step.status.to_lowercase() == "now"
+            || step.status.to_lowercase() == "testing";
+
         if is_complete || is_in_progress {
             progress_x = x;
         }
 
         let is_upcoming = !is_complete && !is_in_progress;
         let card_class = if is_upcoming { "upcoming-card" } else { "" };
-        
+
         let mut details_svg = String::new();
         for (j, detail) in step.details.iter().enumerate() {
+            let detail_esc = escape(detail);
             details_svg.push_str(&format!(
-                r##"      <circle cx="30" cy="{dy_c}" r="3.5" fill="var(--text-soft)" opacity="{op}"/>
-      <text x="42" y="{dy_t}">{detail}</text>
+                r##"      <g role="listitem" aria-label="{detail}"><circle cx="30" cy="{dy_c}" r="3.5" fill="var(--text-soft)" opacity="{op}" aria-hidden="true"/><text x="42" y="{dy_t}">{detail}</text></g>
 "##,
                 dy_c = 108 + j * 24,
                 dy_t = 113 + j * 24,
                 op = if j == 0 { "0.78" } else if j == 1 { "0.66" } else { "0.54" },
-                detail = escape(detail)
+                detail = detail_esc
             ));
         }
 
+        let status_name = if is_in_progress {
+            "Testing"
+        } else if is_complete {
+            "Complete"
+        } else {
+            "Upcoming"
+        };
+
         let status_chip = if is_in_progress {
-            r##"      <g transform="translate(202,16)">
+            r##"      <g transform="translate(202,16)" role="status" aria-label="Status: Testing">
         <rect width="92" height="26" rx="13" fill="#bfdbfe" opacity="0.98"/>
         <text x="46" y="18" text-anchor="middle" class="chip-text" fill="#1e3a8a">Testing</text>
       </g>
-      <g transform="translate(302,16)">
+      <g transform="translate(302,16)" aria-hidden="true">
         <rect width="42" height="26" rx="13" fill="var(--primary)"/>
         <text x="21" y="18" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="900">NOW</text>
       </g>"##.to_string()
         } else if is_complete {
-            r##"      <g transform="translate(246,16)">
+            r##"      <g transform="translate(246,16)" role="status" aria-label="Status: Complete">
         <rect width="86" height="26" rx="13" fill="#bbf7d0" opacity="0.98"/>
         <text x="43" y="18" text-anchor="middle" class="chip-text" fill="#14532d">Complete</text>
-      </g>"##.to_string()
+      </g>"##
+                .to_string()
         } else {
-            r##"      <g transform="translate(246,16)">
+            r##"      <g transform="translate(246,16)" role="status" aria-label="Status: Upcoming">
         <rect width="86" height="26" rx="13" fill="#e2e8f0" opacity="1"/>
         <text x="43" y="18" text-anchor="middle" class="chip-text" fill="#334155">Upcoming</text>
-      </g>"##.to_string()
+      </g>"##
+                .to_string()
         };
 
         steps_svg.push_str(&format!(
             r##"  <!-- {phase} card -->
-  <g transform="translate({cx}, {cy})" class="{card_class}">
+  <g transform="translate({cx}, {cy})" class="{card_class}" role="region" aria-label="Phase {phase}: {title}, Status: {status_name}">
     <rect x="0" y="0" width="360" height="222" rx="24" class="glass-card"/>
-    <path d="M22 14 H338 C348 14 356 22 356 32 V44 H22Z" fill="url(#{card_high})" opacity="{high_op}"/>
+    <path d="M22 14 H338 C348 14 356 22 356 32 V44 H22Z" fill="url(#{card_high})" opacity="{high_op}" aria-hidden="true"/>
     <text x="24" y="34" class="date-text">{date}</text>
     {status_chip}
     <text x="24" y="78" class="goal-text">{title}</text>
-    <g class="detail-text">
+    <g class="detail-text" role="list" aria-label="Deliverables">
 {details}
     </g>
   </g>
@@ -134,6 +155,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             high_op = if is_in_progress { "0.38" } else if is_complete { "0.32" } else { "0.24" },
             date = escape(&step.date),
             status_chip = status_chip,
+            status_name = status_name,
             title = escape(&step.title),
             details = details_svg
         ));
@@ -142,7 +164,11 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         let badge_fill = if step.phase.starts_with("GA") {
             format!("url(#{})", badge_muted_id)
         } else if step.phase.starts_with("RC") {
-            if is_in_progress { format!("url(#{})", badge_blue_id) } else { format!("url(#{})", badge_muted_id) }
+            if is_in_progress {
+                format!("url(#{})", badge_blue_id)
+            } else {
+                format!("url(#{})", badge_muted_id)
+            }
         } else if is_complete {
             format!("url(#{})", badge_green_id)
         } else {
@@ -151,21 +177,29 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
 
         let badge_radius = if is_in_progress { 26 } else { 24 };
         let pulse_ring = if is_in_progress {
-            format!(r##"  <circle cx="{x}" cy="{rail_y}" r="31" class="pulse-ring"/>
-"##, x=x, rail_y=rail_y)
+            format!(
+                r##"  <circle cx="{x}" cy="{rail_y}" r="31" class="pulse-ring" aria-hidden="true"/>
+"##,
+                x = x,
+                rail_y = rail_y
+            )
         } else {
             String::new()
         };
-        
-        let filter_str = if is_upcoming { "none".to_string() } else { format!("url(#{})", badge_glow_id) };
-        
+
+        let filter_str = if is_upcoming {
+            "none".to_string()
+        } else {
+            format!("url(#{})", badge_glow_id)
+        };
+
         steps_svg.push_str(&format!(
             r##"  <!-- {phase} badge -->
-{pulse}  <g transform="translate({bx}, {by})" filter="{filter}">
+{pulse}  <g transform="translate({bx}, {by})" filter="{filter}" aria-hidden="true">
     <circle cx="{r}" cy="{r}" r="{r}" fill="{fill}"/>
     <circle cx="{r}" cy="{r}" r="{r_inner}" fill="none" stroke="#ffffff" stroke-opacity="{s_op}"/>
   </g>
-  <text x="{x}" y="{ty}" text-anchor="middle" class="milestone label-mono">{phase}</text>
+  <text x="{x}" y="{ty}" text-anchor="middle" class="milestone label-mono" aria-hidden="true">{phase}</text>
 "##,
             phase = escape(&step.phase),
             pulse = pulse_ring,
@@ -182,7 +216,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     }
 
     let svg = format!(
-        r##"<svg width="880" height="260" viewBox="0 0 1760 520" xmlns="http://www.w3.org/2000/svg" id="{chart_id}" class="release-container{extra_class}" role="img" aria-labelledby="title_{chart_id} desc_{chart_id}">
+        r##"<svg width="880" height="260" viewBox="0 0 1760 520" xmlns="http://www.w3.org/2000/svg" id="{chart_id}" class="release-container{extra_class}" role="graphics-document document" aria-labelledby="title_{chart_id} desc_{chart_id}">
   <title id="title_{chart_id}">{title}</title>
   <desc id="desc_{chart_id}">Horizontal release strategy roadmap for {title}.</desc>
   <defs>
@@ -377,7 +411,14 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         borange = badge_orange_id,
         bmuted = badge_muted_id,
         title = escape(title),
-        subtitle_svg = if subtitle.is_empty() { String::new() } else { format!(r##"<text class="subtitle" x="2" y="28">{}</text>"##, escape(subtitle)) },
+        subtitle_svg = if subtitle.is_empty() {
+            String::new()
+        } else {
+            format!(
+                r##"<text class="subtitle" x="2" y="28">{}</text>"##,
+                escape(subtitle)
+            )
+        },
         start_x = start_x,
         end_x = end_x,
         rail_y = rail_y,
@@ -396,7 +437,10 @@ fn render_vertical(
 ) -> Result<String, String> {
     let _theme_name = config.get("theme").map(|s| s.as_str()).unwrap_or("default");
 
-    let title = config.get("title").map(String::as_str).unwrap_or("Release Strategy");
+    let title = config
+        .get("title")
+        .map(String::as_str)
+        .unwrap_or("Release Strategy");
     let subtitle = config.get("subtitle").map(String::as_str).unwrap_or("");
     let chart_id = format!("release_v_{}", Uuid::new_v4().to_string().replace('-', "_"));
     let extra_class = if use_dark { " dark-mode" } else { "" };
@@ -404,9 +448,9 @@ fn render_vertical(
     let step_height = 380;
     let header_height = if subtitle.is_empty() { 160 } else { 200 };
     let total_height = header_height + steps.len() * step_height + 60;
-    
+
     let mut steps_svg = String::new();
-    
+
     // IDs for gradients and filters
     let shadow_id = format!("shadow_{}", chart_id);
     let badge_glow_id = format!("bglow_{}", chart_id);
@@ -415,7 +459,7 @@ fn render_vertical(
     let detail_glass_id = format!("dglass_{}", chart_id);
     let highlight_id = format!("high_{}", chart_id);
     let spine_grad_id = format!("spine_grad_{}", chart_id);
-    
+
     let blue_glow_id = format!("blue_glow_{}", chart_id);
     let violet_glow_id = format!("violet_glow_{}", chart_id);
     let cyan_glow_id = format!("cyan_glow_{}", chart_id);
@@ -433,21 +477,25 @@ fn render_vertical(
         let spine_x = 111;
         let spine_start_y = header_height + 18 + 31;
         let spine_end_y = header_height + (steps.len() - 1) * step_height + 18 + 31;
-        
+
         spine_svg = format!(
             r##"  <!-- Timeline spine -->
   <line x1="{x}" y1="{y1}" x2="{x}" y2="{y2}" stroke="url(#{spine_grad})" stroke-width="5" stroke-linecap="round"/>
   <line x1="{x}" y1="{y1}" x2="{x}" y2="{y2}" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.4" stroke-linecap="round"/>"##,
-            x = spine_x, y1 = spine_start_y, y2 = spine_end_y, spine_grad = spine_grad_id
+            x = spine_x,
+            y1 = spine_start_y,
+            y2 = spine_end_y,
+            spine_grad = spine_grad_id
         );
     }
 
     for (i, step) in steps.iter().enumerate() {
         let y_offset = header_height + i * step_height;
-        
+
         let is_complete = step.status.to_lowercase() == "complete";
-        let is_in_progress = step.status.to_lowercase() == "in progress" || step.status.to_lowercase() == "now";
-        
+        let is_in_progress =
+            step.status.to_lowercase() == "in progress" || step.status.to_lowercase() == "now";
+
         // Badge fill based on phase
         let badge_fill = if step.phase.starts_with("GA") {
             format!("url(#{})", red_grad)
@@ -460,45 +508,57 @@ fn render_vertical(
         };
 
         let card_stroke_width = if is_in_progress { "2" } else { "1.5" };
-        
+
         let status_chip = if is_in_progress {
             r##"      <g transform="translate(808, 20)">
         <rect width="164" height="30" rx="15" fill="#dbeafe" opacity="0.92"/>
         <text x="82" y="20" text-anchor="middle" class="rm-chip" fill="#1d4ed8">In Progress</text>
-      </g>"##.to_string()
+      </g>"##
+                .to_string()
         } else if is_complete {
             r##"      <g transform="translate(846, 20)">
         <rect width="126" height="30" rx="15" fill="#dcfce7" opacity="0.86"/>
         <text x="63" y="20" text-anchor="middle" class="rm-chip" fill="#166534">Complete</text>
-      </g>"##.to_string()
+      </g>"##
+                .to_string()
         } else {
-             r##"      <g transform="translate(844, 20)">
+            r##"      <g transform="translate(844, 20)">
         <rect width="128" height="30" rx="15" fill="#fff1f2" opacity="0.92"/>
         <text x="64" y="20" text-anchor="middle" class="rm-chip" fill="#be123c">Upcoming</text>
-      </g>"##.to_string()
+      </g>"##
+                .to_string()
         };
 
         let mut details_svg = String::new();
         for (j, detail) in step.details.iter().enumerate() {
+            let detail_esc = escape(detail);
             details_svg.push_str(&format!(
-                r#"      <text x="40" y="{dy}" class="rm-details">• {detail}</text>
+                r#"      <g role="listitem" aria-label="{detail}"><text x="40" y="{dy}" class="rm-details">• {detail}</text></g>
 "#,
                 dy = 76 + j * 26,
-                detail = escape(detail)
+                detail = detail_esc
             ));
         }
 
         let detail_box_height = 60 + step.details.len() * 26 + 20;
-        
+
+        let status_str = if is_in_progress {
+            "In Progress"
+        } else if is_complete {
+            "Complete"
+        } else {
+            "Upcoming"
+        };
+
         steps_svg.push_str(&format!(
-            r##"    <g transform="translate(80, {y_offset})">
+            r##"    <g transform="translate(80, {y_offset})" role="region" aria-label="Phase {phase}: {title}, Status: {status}">
       <!-- Card Header -->
       <path d="M70 26 C70 11.641 81.641 0 96 0 H984 C998.359 0 1010 11.641 1010 26 V76 C1010 90.359 998.359 102 984 102 H96 C81.641 102 70 90.359 70 76 V26Z"
-            fill="url(#{glass_id})" stroke="url(#{glass_stroke_id})" stroke-width="{card_sw}" filter="url(#{shadow_id})"/>
+            fill="url(#{glass_id})" stroke="url(#{glass_stroke_id})" stroke-width="{card_sw}" filter="url(#{shadow_id})" aria-hidden="true"/>
 
 
       <!-- Badge -->
-      <g transform="translate(0,20)" filter="url(#{badge_glow_id})">
+      <g transform="translate(0,20)" filter="url(#{badge_glow_id})" aria-hidden="true">
           <rect width="62" height="62" rx="22" fill="{badge_fill}"/>
           <rect x="1" y="1" width="60" height="60" rx="21" fill="none" stroke="#ffffff" stroke-opacity="0.6"/>
           <circle cx="22" cy="18" r="18" fill="#ffffff" opacity="0.2"/>
@@ -516,9 +576,11 @@ fn render_vertical(
       <!-- Details Section -->
       <g transform="translate(70, 122)">
           <path d="M0 28 C0 12.536 12.536 0 28 0 H912 C927.464 0 940 12.536 940 28 V{db_h_v} C940 {db_h_c1} 927.464 {db_h_f} 912 {db_h_f} H28 C12.536 {db_h_f} 0 {db_h_c2} 0 {db_h_v} V28Z"
-                fill="url(#{dglass_id})" stroke="url(#{glass_stroke_id})" stroke-width="1.4"/>
-          <text x="40" y="42" class="rm-detail-head" fill="var(--primary)">Deliverables & Scope</text>
+                fill="url(#{dglass_id})" stroke="url(#{glass_stroke_id})" stroke-width="1.4" aria-hidden="true"/>
+          <text x="40" y="42" class="rm-detail-head" fill="var(--primary)" aria-hidden="true">Deliverables & Scope</text>
+          <g role="list" aria-label="Deliverables">
 {details}
+          </g>
       </g>
     </g>
 "##,
@@ -531,6 +593,7 @@ fn render_vertical(
             phase = escape(&step.phase),
             badge_fill = badge_fill,
             title = escape(&step.title),
+            status = status_str,
             date = escape(&step.date),
             dglass_id = detail_glass_id,
             db_h_v = detail_box_height - 28,
@@ -543,9 +606,9 @@ fn render_vertical(
     }
 
     let svg = format!(
-        r##"<svg width="900" height="{disp_h}" viewBox="0 0 1200 {total_h}" xmlns="http://www.w3.org/2000/svg" id="{chart_id}" class="release-container{extra_class}" role="img">
-  <title>{title}</title>
-  <desc>Release strategy roadmap for {title} showing milestones and implementation details.</desc>
+        r##"<svg width="900" height="{disp_h}" viewBox="0 0 1200 {total_h}" xmlns="http://www.w3.org/2000/svg" id="{chart_id}" class="release-container{extra_class}" role="graphics-document document" aria-labelledby="title_{chart_id} desc_{chart_id}">
+  <title id="title_{chart_id}">{title}</title>
+  <desc id="desc_{chart_id}">Release strategy roadmap for {title} showing milestones and implementation details.</desc>
   <defs>
     <!-- Background Gradients -->
     <linearGradient id="premiumBg_{chart_id}" x1="0" y1="0" x2="1" y2="1">
@@ -725,7 +788,14 @@ fn render_vertical(
         veil_h = total_height - 56,
         disp_h = total_height * 3 / 4,
         title = escape(title),
-        subtitle_svg = if subtitle.is_empty() { String::new() } else { format!(r##"<text x="2" y="34" class="rm-subtitle" fill="var(--text-muted)">{}</text>"##, escape(subtitle)) },
+        subtitle_svg = if subtitle.is_empty() {
+            String::new()
+        } else {
+            format!(
+                r##"<text x="2" y="34" class="rm-subtitle" fill="var(--text-muted)">{}</text>"##,
+                escape(subtitle)
+            )
+        },
         spine = spine_svg,
         steps_svg = steps_svg,
         extra_class = extra_class
@@ -750,15 +820,21 @@ fn parse_release_body(body: &str) -> Result<(HashMap<String, String>, Vec<Releas
 
     for line in parts[1].lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
         let segments: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
         if segments.len() >= 3 {
             let phase = segments[0].to_string();
             let date = segments[1].to_string();
             let status = segments[2].to_string();
-            let title = if segments.len() >= 4 { segments[3].to_string() } else { phase.clone() };
-            
+            let title = if segments.len() >= 4 {
+                segments[3].to_string()
+            } else {
+                phase.clone()
+            };
+
             let mut details = Vec::new();
             if segments.len() > 4 {
                 for detail in segments[4..].iter() {
@@ -851,8 +927,8 @@ M2 | 2023-Q2 | In Progress | Phase 2 | Detail 2 | Detail 3
         assert!(svg.contains("M1"));
         assert!(svg.contains("Phase 1"));
         assert!(svg.contains("Detail 2"));
-        assert!(svg.contains("var(--primary)")); 
+        assert!(svg.contains("var(--primary)"));
         assert!(svg.contains("In Progress"));
-        assert!(svg.contains("<title>Vertical Roadmap</title>"));
+        assert!(svg.contains("<title id=\"title_"));
     }
 }
