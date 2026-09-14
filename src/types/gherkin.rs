@@ -53,6 +53,7 @@ struct Step {
     text: String,
     #[allow(dead_code)]
     status: Status,
+    table: Option<Vec<Vec<String>>>,
 }
 
 struct Examples {
@@ -92,6 +93,25 @@ fn extract_tags(line: &str) -> Vec<GherkinTag> {
         }
     }
     tags
+}
+
+fn parse_table_row(line: &str) -> Vec<String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    // If the line consists of separate pipe-wrapped blocks like `|1234| |22133|`:
+    let block_regex = Regex::new(r"\|([^|]+)\|").unwrap();
+    let matches: Vec<_> = block_regex.find_iter(trimmed).collect();
+    if matches.len() > 1 && matches.windows(2).all(|w| w[0].end() < w[1].start()) {
+        return block_regex
+            .captures_iter(trimmed)
+            .map(|cap| cap.get(1).unwrap().as_str().trim().to_string())
+            .collect();
+    }
+
+    let inner = trimmed.trim_matches('|');
+    inner.split('|').map(|s| s.trim().to_string()).collect()
 }
 
 fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
@@ -199,13 +219,6 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
             in_examples = false;
         } else if examples_regex.is_match(line) {
             in_examples = true;
-        } else if in_examples && line.starts_with('|') {
-            let cells: Vec<String> = line.trim_matches('|').split('|').map(|s| s.trim().to_string()).collect();
-            if example_headers.is_none() {
-                example_headers = Some(cells);
-            } else {
-                example_rows.push(cells);
-            }
         } else if let Some(caps) = step_regex.captures(line) {
             let keyword = caps.get(1).unwrap().as_str().to_lowercase();
             let mut text = caps.get(2).unwrap().as_str().trim().to_string();
@@ -222,6 +235,23 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
                 text = s_caps.get(2).unwrap().as_str().to_string();
             }
 
+            let mut inline_table = None;
+            if let Some(first_pipe) = text.find('|') {
+                let table_part = &text[first_pipe..];
+                if text.ends_with('|') || table_part.contains('|') {
+                    let cells = parse_table_row(table_part);
+                    if !cells.is_empty() {
+                        inline_table = Some(vec![cells]);
+                        let prefix = text[..first_pipe].trim();
+                        text = if prefix.is_empty() {
+                            "Data table:".to_string()
+                        } else {
+                            prefix.to_string()
+                        };
+                    }
+                }
+            }
+
             let step_type = match keyword.as_str() {
                 "given" => StepType::Given,
                 "when" => StepType::When,
@@ -234,7 +264,25 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
                 step_type,
                 text,
                 status: step_status,
+                table: inline_table,
             });
+        } else if line.starts_with('|') {
+            let cells = parse_table_row(line);
+            if !cells.is_empty() {
+                if in_examples {
+                    if example_headers.is_none() {
+                        example_headers = Some(cells);
+                    } else {
+                        example_rows.push(cells);
+                    }
+                } else if let Some(last_step) = current_steps.last_mut() {
+                    if let Some(tbl) = &mut last_step.table {
+                        tbl.push(cells);
+                    } else {
+                        last_step.table = Some(vec![cells]);
+                    }
+                }
+            }
         }
     }
 
@@ -458,12 +506,22 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
     let mut step_data = Vec::new();
     for step in &scenario.steps {
         let lines = wrap_text(&step.text, width - 120, 14);
-        let h = (lines.len() as i32 * 22).max(28);
-        step_data.push((step, lines, h));
+        let lines_h = (lines.len() as i32 * 22).max(28);
+        let (table_svg, table_h) = if let Some(t) = &step.table {
+            if !t.is_empty() {
+                render_step_table(t, width - 120, lines_h + 4)
+            } else {
+                (String::new(), 0)
+            }
+        } else {
+            (String::new(), 0)
+        };
+        let h = lines_h + table_h;
+        step_data.push((step, lines, h, table_svg));
     }
     
     let total_steps_height = if !step_data.is_empty() {
-        step_data.iter().map(|(_, _, h)| h + 12).sum::<i32>() - 12
+        step_data.iter().map(|(_, _, h, _)| h + 12).sum::<i32>() - 12
     } else {
         0
     };
@@ -516,7 +574,7 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
     }
 
     let mut current_step_y = 0;
-    for (step, lines, h) in step_data {
+    for (step, lines, h, table_svg) in step_data {
         let style = get_step_style(step.step_type, use_dark);
         sb.push_str(&format!(r##"<g transform="translate(0, {current_step_y})">"##, current_step_y = current_step_y));
         sb.push_str(&format!(r##"<rect x="-14" y="-14" width="28" height="28" rx="10" fill="{}" stroke="{}"/>"##, style.bg, style.stroke));
@@ -535,6 +593,9 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
             };
             sb.push_str(&format!(r##"<text x="26" y="5" dy="{}" class="step-text">{}</text>"##, l_idx as i32 * 22, content));
         }
+        if !table_svg.is_empty() {
+            sb.push_str(&table_svg);
+        }
         sb.push_str("</g>");
         current_step_y += h + 12;
     }
@@ -547,6 +608,49 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
 
     sb.push_str("</g>");
     (sb, scenario_height)
+}
+
+fn render_step_table(table: &[Vec<String>], max_width: i32, start_y: i32) -> (String, i32) {
+    if table.is_empty() {
+        return (String::new(), 0);
+    }
+    let num_cols = table.iter().map(|r| r.len()).max().unwrap_or(1).max(1);
+    let table_width = (max_width - 40).min((num_cols as i32 * 140).max(160));
+    let cell_width = table_width / num_cols as i32;
+    let row_height = 24;
+    
+    let mut sb = String::new();
+    sb.push_str(&format!(r##"<g transform="translate(26, {start_y})">"##, start_y = start_y));
+    
+    for (r_idx, row) in table.iter().enumerate() {
+        let row_y = r_idx as i32 * row_height;
+        let is_header = table.len() > 1 && r_idx == 0;
+        let bg_var = if is_header { "var(--table-header-bg)" } else { "var(--table-row-bg)" };
+        let stroke_w = if is_header { "1" } else { "0.5" };
+        let text_cls = if is_header { "table-header" } else { "table-cell" };
+        
+        for c_idx in 0..num_cols {
+            let x = c_idx as i32 * cell_width;
+            let text = row.get(c_idx).map(|s| s.as_str()).unwrap_or("");
+            sb.push_str(&format!(
+                r##"<rect x="{x}" y="{row_y}" width="{cell_width}" height="{row_height}" fill="{bg_var}" stroke="var(--table-border)" stroke-width="{stroke_w}"/>
+<text x="{text_x}" y="{text_y}" class="{text_cls}" text-anchor="middle">{esc_text}</text>"##,
+                x = x,
+                row_y = row_y,
+                cell_width = cell_width,
+                row_height = row_height,
+                bg_var = bg_var,
+                stroke_w = stroke_w,
+                text_x = x + cell_width / 2,
+                text_y = row_y + 16,
+                text_cls = text_cls,
+                esc_text = escape(text)
+            ));
+        }
+    }
+    sb.push_str("</g>");
+    let total_h = table.len() as i32 * row_height + 8;
+    (sb, total_h)
 }
 
 enum TagIconType {
@@ -963,5 +1067,87 @@ Feature: Tag Rendering Feature
         let dark_svg = render(body, &dark_controls).unwrap();
         assert!(dark_svg.contains("conditional"));
         assert!(dark_svg.contains("user_email"));
+    }
+
+    #[test]
+    fn test_parse_step_data_table() {
+        let body = r##"----
+theme=premium
+---
+Feature: Google Searching
+  As a web surfer, I want to search Google, so that I can learn new things.
+
+  Scenario: Simple Google search
+    Given a web browser is on the Google page
+    When the search phrase "panda" is entered
+    Then results for "panda" are shown
+    And the following related results are shown
+      | related       |
+      | Panda Express |
+      | giant panda   |
+      | panda videos  |
+----"##;
+        let spec = parse_gherkin(body).unwrap();
+        assert_eq!(spec.feature, "Google Searching");
+        assert_eq!(spec.scenarios.len(), 1);
+        let scenario = &spec.scenarios[0];
+        assert_eq!(scenario.steps.len(), 4);
+        assert_eq!(scenario.steps[3].step_type, StepType::And);
+        let table = scenario.steps[3].table.as_ref().unwrap();
+        assert_eq!(table.len(), 4);
+        assert_eq!(table[0], vec!["related"]);
+        assert_eq!(table[1], vec!["Panda Express"]);
+        assert_eq!(table[2], vec!["giant panda"]);
+        assert_eq!(table[3], vec!["panda videos"]);
+
+        let svg = render(body, &HashMap::new()).unwrap();
+        assert!(svg.contains("Panda Express"));
+        assert!(svg.contains("giant panda"));
+        assert!(svg.contains("panda videos"));
+    }
+
+    #[test]
+    fn test_parse_inline_and_disjoint_tables() {
+        let body = r##"----
+theme=premium
+---
+Feature: Policy Management
+  Scenario: Verification of policies
+    Given here is the list of policy number: |1234| |22133|
+    When the policy validation runs
+    Then all policies should be active
+----"##;
+        let spec = parse_gherkin(body).unwrap();
+        assert_eq!(spec.scenarios.len(), 1);
+        let scenario = &spec.scenarios[0];
+        assert_eq!(scenario.steps.len(), 3);
+        assert_eq!(scenario.steps[0].text, "here is the list of policy number:");
+        let table = scenario.steps[0].table.as_ref().unwrap();
+        assert_eq!(table.len(), 1);
+        assert_eq!(table[0], vec!["1234", "22133"]);
+
+        let svg = render(body, &HashMap::new()).unwrap();
+        assert!(svg.contains("1234"));
+        assert!(svg.contains("22133"));
+    }
+
+    #[test]
+    fn test_parse_multiline_step_table() {
+        let body = r##"----
+theme=premium
+---
+Feature: Policy Management
+  Scenario: Policy check
+    Given here is the list of policy number:
+      | 1234 |
+      | 22133 |
+    Then they are valid
+----"##;
+        let spec = parse_gherkin(body).unwrap();
+        let scenario = &spec.scenarios[0];
+        let table = scenario.steps[0].table.as_ref().unwrap();
+        assert_eq!(table.len(), 2);
+        assert_eq!(table[0], vec!["1234"]);
+        assert_eq!(table[1], vec!["22133"]);
     }
 }

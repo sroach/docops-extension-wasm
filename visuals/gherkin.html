@@ -97,6 +97,36 @@ Feature: Search Suggestions
 ----
 </script>
 
+<!-- Chart 4: Step Data Tables -->
+<div class="chart" id="chart-4"></div>
+<script type="text/plain" class="chart-source" data-target="chart-4">
+[docops,gherkin]
+----
+theme=premium
+---
+@epic:search
+Feature: Google Searching
+  As a web surfer, I want to search Google, so that I can learn new things.
+
+  @conditional @field:query
+  Scenario: Simple Google search
+    Given a web browser is on the Google page
+    When the search phrase "panda" is entered
+    Then results for "panda" are shown
+    And the following related results are shown
+      | related       |
+      | Panda Express |
+      | giant panda   |
+      | panda videos  |
+
+  @field:policy_id
+  Scenario: Policy verification
+    Given here is the list of policy number: |1234| |22133|
+    When the policy validation runs
+    Then all policies should be active
+----
+</script>
+
 <script type="module">
     import init, { generate_svg } from '../pkg/docops_extension.js';
 
