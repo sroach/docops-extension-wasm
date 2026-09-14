@@ -32,20 +32,23 @@
 
 <h1>DocOps Gherkin Visuals</h1>
 
-<!-- Chart 1: Simple Feature -->
+<!-- Chart 1: Simple Feature with Tags -->
 <div class="chart" id="chart-1"></div>
 <script type="text/plain" class="chart-source" data-target="chart-1">
 [docops,gherkin]
 ----
 theme=premium
 ---
+@epic:security @assembly
 Feature: User Authentication
+  @conditional @field:username @field:password
   Scenario: Successful Login
     Given the user is on the login page
     When they enter valid credentials
     Then they should be redirected to dashboard
     And the login attempt should be logged
 
+  @flaky @field:error_code
   Scenario: Failed Login
     Given the user is on the login page
     When they enter invalid credentials
@@ -54,14 +57,16 @@ Feature: User Authentication
 ----
 </script>
 
-<!-- Chart 2: Scenario Outline -->
+<!-- Chart 2: Scenario Outline with Tags -->
 <div class="chart" id="chart-2"></div>
 <script type="text/plain" class="chart-source" data-target="chart-2">
 [docops,gherkin]
 ----
 theme=premium
 ---
+@assembly
 Feature: Shopping Cart Discounts
+  @conditional @field:discount_rate
   Scenario Outline: Apply Coupon and Member Discount
     Given there are <start> items in the cart
     When I eat <eat> cucumbers
@@ -74,7 +79,7 @@ Feature: Shopping Cart Discounts
 ----
 </script>
 
-<!-- Chart 3: Complex Steps -->
+<!-- Chart 3: Complex Steps and Custom Tags -->
 <div class="chart" id="chart-3"></div>
 <script type="text/plain" class="chart-source" data-target="chart-3">
 [docops,gherkin]
@@ -82,6 +87,7 @@ Feature: Shopping Cart Discounts
 theme=premium
 ---
 Feature: Search Suggestions
+  @conditional @field:query @author:team-search
   Scenario: Show Suggestions While Typing
     Given a user is on the search page
     When they type the first three characters

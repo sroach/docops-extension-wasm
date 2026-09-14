@@ -20,6 +20,34 @@ enum Status {
     Skipped,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum GherkinTag {
+    Boolean(String),
+    KeyValue { key: String, value: String },
+}
+
+impl GherkinTag {
+    pub fn parse(token: &str) -> Option<Self> {
+        let t = token.trim();
+        let without_at = if let Some(stripped) = t.strip_prefix('@') {
+            stripped
+        } else {
+            t
+        };
+        if without_at.is_empty() {
+            return None;
+        }
+        if let Some((k, v)) = without_at.split_once(':') {
+            Some(GherkinTag::KeyValue {
+                key: k.trim().to_string(),
+                value: v.trim().to_string(),
+            })
+        } else {
+            Some(GherkinTag::Boolean(without_at.trim().to_string()))
+        }
+    }
+}
+
 struct Step {
     step_type: StepType,
     text: String,
@@ -34,6 +62,7 @@ struct Examples {
 
 struct Scenario {
     title: String,
+    tags: Vec<GherkinTag>,
     steps: Vec<Step>,
     status: Status,
     #[allow(dead_code)]
@@ -43,6 +72,7 @@ struct Scenario {
 
 struct GherkinSpec {
     feature: String,
+    feature_tags: Vec<GherkinTag>,
     scenarios: Vec<Scenario>,
     theme: String,
 }
@@ -50,6 +80,18 @@ struct GherkinSpec {
 pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, String> {
     let spec = parse_gherkin(body)?;
     Ok(render_svg(&spec, controls))
+}
+
+fn extract_tags(line: &str) -> Vec<GherkinTag> {
+    let mut tags = Vec::new();
+    for word in line.split_whitespace() {
+        if word.starts_with('@') {
+            if let Some(tag) = GherkinTag::parse(word) {
+                tags.push(tag);
+            }
+        }
+    }
+    tags
 }
 
 fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
@@ -75,9 +117,12 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
     }
 
     let mut feature_title = "Feature".to_string();
+    let mut feature_tags = Vec::new();
     let mut scenarios = Vec::new();
     
+    let mut pending_tags = Vec::new();
     let mut current_scenario_title: Option<String> = None;
+    let mut current_scenario_tags: Vec<GherkinTag> = Vec::new();
     let mut current_steps = Vec::new();
     let mut current_outline = false;
     let mut in_examples = false;
@@ -91,7 +136,7 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
 
     let status_regex = Regex::new(r"^\[(PASSING|FAILING|PENDING|SKIPPED)\]\s*(.*)$").unwrap();
 
-    let mut flush_scenario = |title: Option<String>, steps: Vec<Step>, mut status: Status, outline: bool, headers: Option<Vec<String>>, rows: Vec<Vec<String>>| {
+    let mut flush_scenario = |title: Option<String>, tags: Vec<GherkinTag>, steps: Vec<Step>, mut status: Status, outline: bool, headers: Option<Vec<String>>, rows: Vec<Vec<String>>| {
         if let Some(mut t) = title {
             if let Some(caps) = status_regex.captures(&t) {
                 status = match caps.get(1).unwrap().as_str() {
@@ -104,20 +149,21 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
                 t = caps.get(2).unwrap().as_str().to_string();
             }
 
-            let examples = if outline && headers.is_some() {
-                Some(Examples {
-                    headers: headers.unwrap(),
-                    rows: rows,
+            let examples = if outline {
+                headers.map(|h| Examples {
+                    headers: h,
+                    rows,
                 })
             } else {
                 None
             };
             scenarios.push(Scenario {
                 title: t,
-                steps: steps,
-                status: status,
-                outline: outline,
-                examples: examples,
+                tags,
+                steps,
+                status,
+                outline,
+                examples,
             });
         }
     };
@@ -128,11 +174,18 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
         let line = line.trim();
         if line.is_empty() { continue; }
 
+        if line.starts_with('@') && !feature_regex.is_match(line) && !scenario_regex.is_match(line) {
+            pending_tags.extend(extract_tags(line));
+            continue;
+        }
+
         if let Some(caps) = feature_regex.captures(line) {
             feature_title = caps.get(1).unwrap().as_str().trim().to_string();
+            feature_tags = std::mem::take(&mut pending_tags);
         } else if let Some(caps) = scenario_regex.captures(line) {
             flush_scenario(
                 current_scenario_title.take(),
+                std::mem::take(&mut current_scenario_tags),
                 std::mem::take(&mut current_steps),
                 current_scenario_status,
                 current_outline,
@@ -141,6 +194,7 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
             );
             current_outline = line.to_lowercase().starts_with("scenario outline");
             current_scenario_title = Some(caps.get(1).unwrap().as_str().trim().to_string());
+            current_scenario_tags = std::mem::take(&mut pending_tags);
             current_scenario_status = Status::Passing;
             in_examples = false;
         } else if examples_regex.is_match(line) {
@@ -177,8 +231,8 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
                 _ => StepType::Given,
             };
             current_steps.push(Step {
-                step_type: step_type,
-                text: text,
+                step_type,
+                text,
                 status: step_status,
             });
         }
@@ -186,6 +240,7 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
 
     flush_scenario(
         current_scenario_title.take(),
+        current_scenario_tags,
         current_steps,
         current_scenario_status,
         current_outline,
@@ -195,8 +250,9 @@ fn parse_gherkin(body: &str) -> Result<GherkinSpec, String> {
 
     Ok(GherkinSpec {
         feature: feature_title,
-        scenarios: scenarios,
-        theme: theme,
+        feature_tags,
+        scenarios,
+        theme,
     })
 }
 
@@ -243,7 +299,14 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
     // Feature Header Height
     let feature_lines = wrap_text(&format!("FEATURE: {}", spec.feature), inner_width - 160, 27);
     let feature_line_height = 32;
-    let feature_bg_height = (feature_lines.len() as i32 * feature_line_height + 64).max(96);
+    let feature_title_bottom = 72 + (feature_lines.len() as i32 * feature_line_height);
+
+    let (feat_tags_svg, feat_tags_height) = render_tags(&spec.feature_tags, 84, feature_title_bottom + 4, inner_width - 108, use_dark);
+    let feature_bg_height = if spec.feature_tags.is_empty() {
+        (feature_title_bottom + 24).max(96)
+    } else {
+        feature_title_bottom + 4 + feat_tags_height + 24
+    };
 
     let mut y_offset = padding + feature_bg_height + 30;
     let mut scenarios_svg = String::new();
@@ -293,6 +356,9 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
             .card-outline {{ stroke: var(--border); stroke-width: 1; }}
             .table-header {{ font-size: 11px; font-weight: bold; fill: var(--text); }}
             .table-cell {{ font-size: 11px; fill: var(--text); }}
+            .tag-key-text {{ font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }}
+            .tag-val-text {{ font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; font-weight: 600; }}
+            .tag-bool-text {{ font-size: 10px; font-weight: 600; }}
             
             @media (prefers-color-scheme: dark) {{
                 #{id_full} {{
@@ -354,6 +420,7 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
         </g>
         <text x="84" y="38" class="eyebrow">FEATURE</text>
         {feature_text_svg}
+        {feat_tags_svg}
     </g>
 
     {scenarios_svg}
@@ -368,6 +435,7 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
         feature_text_svg = feature_lines.iter().enumerate().map(|(i, line)| {
             format!(r##"<text x="84" y="{}" class="feature-title">{}</text>"##, 72 + (i as i32 * feature_line_height), escape(line))
         }).collect::<Vec<_>>().join("\n"),
+        feat_tags_svg = feat_tags_svg,
         scenarios_svg = scenarios_svg
     )
 }
@@ -375,6 +443,16 @@ fn render_svg(spec: &GherkinSpec, controls: &HashMap<String, String>) -> String 
 fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_dark: bool, id: &str) -> (String, i32) {
     let title_lines = wrap_text(&format!("SCENARIO: {}", scenario.title.to_uppercase()), width - 180, 14);
     let title_line_height = 18;
+    let title_bottom_y = 46 + (title_lines.len() as i32 * title_line_height);
+
+    let tags_y = title_bottom_y + 8;
+    let (tags_svg, tags_height) = render_tags(&scenario.tags, 72, tags_y, width - 96, use_dark);
+
+    let steps_group_y = if scenario.tags.is_empty() {
+        (title_bottom_y + 24).max(88)
+    } else {
+        tags_y + tags_height + 20
+    };
     
     // Steps Calculation
     let mut step_data = Vec::new();
@@ -396,7 +474,7 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
         0
     };
 
-    let scenario_height = 88 + total_steps_height + examples_height + 20;
+    let scenario_height = steps_group_y + total_steps_height + examples_height + 20;
 
     let mut sb = String::new();
     sb.push_str(&format!(r##"<g transform="translate(40, {y})" filter="url(#softCardShadow_{id})">"##, y = y, id = id));
@@ -416,6 +494,11 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
         sb.push_str(&format!(r##"<text x="72" y="{}" class="scenario-title">{}</text>"##, 46 + (idx as i32 * title_line_height), escape(line)));
     }
 
+    // Tags
+    if !scenario.tags.is_empty() {
+        sb.push_str(&tags_svg);
+    }
+
     // Status Badge
     let status_colors = get_status_colors(scenario.status, use_dark);
     sb.push_str(&format!(r##"
@@ -427,7 +510,6 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
     "##, status_x = width - 102, bg = status_colors.0, stroke = status_colors.1, text_c = status_colors.2, status_name = format!("{:?}", scenario.status).to_uppercase()));
 
     // Steps
-    let steps_group_y = 88;
     sb.push_str(&format!(r##"<g transform="translate(35, {steps_group_y})">"##, steps_group_y = steps_group_y));
     if step_data.len() > 1 {
         sb.push_str(&format!(r##"<path d="M0 16 L0 {}" class="step-subtle"/>"##, total_steps_height - 16));
@@ -465,6 +547,167 @@ fn render_scenario(scenario: &Scenario, y: i32, index: usize, width: i32, use_da
 
     sb.push_str("</g>");
     (sb, scenario_height)
+}
+
+enum TagIconType {
+    Branch,
+    Assembly,
+    Warning,
+    Dot,
+}
+
+fn get_boolean_tag_style(name_lower: &str, use_dark: bool) -> (String, String, String, TagIconType) {
+    if name_lower.contains("conditional") || name_lower.contains("condition") || name_lower.contains("branch") {
+        if use_dark {
+            ("rgba(139, 92, 246, 0.22)".into(), "rgba(167, 139, 250, 0.45)".into(), "#C4B5FD".into(), TagIconType::Branch)
+        } else {
+            ("rgba(139, 92, 246, 0.12)".into(), "rgba(139, 92, 246, 0.35)".into(), "#7C3AED".into(), TagIconType::Branch)
+        }
+    } else if name_lower.contains("assembly") || name_lower.contains("component") || name_lower.contains("module") {
+        if use_dark {
+            ("rgba(59, 130, 246, 0.22)".into(), "rgba(96, 165, 250, 0.45)".into(), "#93C5FD".into(), TagIconType::Assembly)
+        } else {
+            ("rgba(59, 130, 246, 0.10)".into(), "rgba(59, 130, 246, 0.35)".into(), "#2563EB".into(), TagIconType::Assembly)
+        }
+    } else if name_lower.contains("flaky") || name_lower.contains("manual") || name_lower.contains("wip") || name_lower.contains("warning") {
+        if use_dark {
+            ("rgba(217, 119, 6, 0.22)".into(), "rgba(251, 191, 36, 0.45)".into(), "#FCD34D".into(), TagIconType::Warning)
+        } else {
+            ("rgba(217, 119, 6, 0.12)".into(), "rgba(217, 119, 6, 0.35)".into(), "#D97706".into(), TagIconType::Warning)
+        }
+    } else if name_lower.contains("smoke") || name_lower.contains("regression") || name_lower.contains("critical") {
+        if use_dark {
+            ("rgba(16, 185, 129, 0.22)".into(), "rgba(52, 211, 153, 0.45)".into(), "#6EE7B7".into(), TagIconType::Dot)
+        } else {
+            ("rgba(16, 185, 129, 0.12)".into(), "rgba(16, 185, 129, 0.35)".into(), "#059669".into(), TagIconType::Dot)
+        }
+    } else {
+        if use_dark {
+            ("#1E293B".into(), "#475569".into(), "#CBD5E1".into(), TagIconType::Dot)
+        } else {
+            ("#F1F5F9".into(), "#CBD5E1".into(), "#475569".into(), TagIconType::Dot)
+        }
+    }
+}
+
+fn render_tag_icon(icon_type: TagIconType, color: &str) -> String {
+    match icon_type {
+        TagIconType::Branch => {
+            format!(r##"<g transform="translate(7, 4)"><path d="M2 3 L2 9 M2 6 Q4 6 6 4 L6 3" fill="none" stroke="{c}" stroke-width="1.3" stroke-linecap="round"/><circle cx="2" cy="3" r="1" fill="{c}"/><circle cx="6" cy="3" r="1" fill="{c}"/><circle cx="2" cy="9" r="1" fill="{c}"/></g>"##, c = color)
+        }
+        TagIconType::Assembly => {
+            format!(r##"<g transform="translate(7, 4)"><rect x="1" y="1" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="6.5" y="1" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="1" y="6.5" width="3.5" height="3.5" rx="0.8" fill="{c}"/><rect x="6.5" y="6.5" width="3.5" height="3.5" rx="0.8" fill="{c}"/></g>"##, c = color)
+        }
+        TagIconType::Warning => {
+            format!(r##"<g transform="translate(7, 4)"><path d="M5.5 1 L10 9 L1 9 Z" fill="none" stroke="{c}" stroke-width="1.1" stroke-linejoin="round"/><line x1="5.5" y1="4" x2="5.5" y2="6.5" stroke="{c}" stroke-width="1.1" stroke-linecap="round"/><circle cx="5.5" cy="8" r="0.6" fill="{c}"/></g>"##, c = color)
+        }
+        TagIconType::Dot => {
+            format!(r##"<g transform="translate(7, 4)"><circle cx="5" cy="6" r="2.5" fill="{c}" opacity="0.85"/></g>"##, c = color)
+        }
+    }
+}
+
+fn render_tags(tags: &[GherkinTag], start_x: i32, start_y: i32, max_width: i32, use_dark: bool) -> (String, i32) {
+    if tags.is_empty() {
+        return (String::new(), 0);
+    }
+
+    let mut sb = String::new();
+    let mut current_x = 0;
+    let mut current_y = 0;
+    let row_height = 20;
+    let row_gap = 6;
+    let col_gap = 8;
+
+    for tag in tags {
+        match tag {
+            GherkinTag::KeyValue { key, value } => {
+                let key_len = key.chars().count();
+                let val_len = value.chars().count();
+                let key_w = (key_len as i32 * 6 + 14).max(28);
+                let val_w = (val_len as i32 * 7 + 14).max(32);
+                let chip_w = key_w + val_w;
+
+                if current_x + chip_w > max_width && current_x > 0 {
+                    current_x = 0;
+                    current_y += row_height + row_gap;
+                }
+
+                let x = start_x + current_x;
+                let y = start_y + current_y;
+
+                let key_bg = if use_dark { "#334155" } else { "#F1F5F9" };
+                let val_bg = if use_dark { "#1E293B" } else { "#FFFFFF" };
+                let border_c = if use_dark { "rgba(255, 255, 255, 0.12)" } else { "rgba(148, 163, 184, 0.4)" };
+                let key_text_c = if use_dark { "#94A3B8" } else { "#475569" };
+                let val_text_c = if use_dark { "#F8FAFC" } else { "#0F172A" };
+
+                sb.push_str(&format!(
+                    r##"<g transform="translate({x}, {y})">
+    <rect x="0" y="0" width="{chip_w}" height="{row_height}" rx="6" fill="{val_bg}" stroke="{border_c}" stroke-width="1"/>
+    <path d="M0 6 Q0 0 6 0 L{key_w} 0 L{key_w} {row_height} L6 {row_height} Q0 {row_height} 0 {row_height_sub_6} Z" fill="{key_bg}"/>
+    <line x1="{key_w}" y1="0" x2="{key_w}" y2="{row_height}" stroke="{border_c}" stroke-width="1"/>
+    <text x="{key_mid}" y="14" class="tag-key-text" text-anchor="middle" fill="{key_text_c}">{key_esc}</text>
+    <text x="{val_mid}" y="14" class="tag-val-text" text-anchor="middle" fill="{val_text_c}">{val_esc}</text>
+</g>"##,
+                    x = x,
+                    y = y,
+                    chip_w = chip_w,
+                    row_height = row_height,
+                    row_height_sub_6 = row_height - 6,
+                    key_w = key_w,
+                    val_bg = val_bg,
+                    key_bg = key_bg,
+                    border_c = border_c,
+                    key_mid = key_w / 2,
+                    val_mid = key_w + (val_w / 2),
+                    key_text_c = key_text_c,
+                    val_text_c = val_text_c,
+                    key_esc = escape(&key.to_uppercase()),
+                    val_esc = escape(value)
+                ));
+
+                current_x += chip_w + col_gap;
+            }
+            GherkinTag::Boolean(name) => {
+                let name_lower = name.to_lowercase();
+                let name_len = name.chars().count();
+                let chip_w = (name_len as i32 * 7 + 28).max(46);
+
+                if current_x + chip_w > max_width && current_x > 0 {
+                    current_x = 0;
+                    current_y += row_height + row_gap;
+                }
+
+                let x = start_x + current_x;
+                let y = start_y + current_y;
+
+                let (bg, stroke, text_c, icon_type) = get_boolean_tag_style(&name_lower, use_dark);
+
+                sb.push_str(&format!(
+                    r##"<g transform="translate({x}, {y})">
+    <rect x="0" y="0" width="{chip_w}" height="{row_height}" rx="10" fill="{bg}" stroke="{stroke}" stroke-width="1"/>
+    {icon_svg}
+    <text x="22" y="14" class="tag-bool-text" fill="{text_c}">{name_esc}</text>
+</g>"##,
+                    x = x,
+                    y = y,
+                    chip_w = chip_w,
+                    row_height = row_height,
+                    bg = bg,
+                    stroke = stroke,
+                    text_c = text_c,
+                    icon_svg = render_tag_icon(icon_type, &text_c),
+                    name_esc = escape(name)
+                ));
+
+                current_x += chip_w + col_gap;
+            }
+        }
+    }
+
+    let total_height = current_y + row_height;
+    (sb, total_height)
 }
 
 fn get_status_colors(status: Status, use_dark: bool) -> (String, String, String) {
@@ -625,5 +868,100 @@ Feature: Dark Mode
         assert!(svg.contains("class=\"table-header\""));
         assert!(svg.contains("class=\"table-cell\""));
         assert!(!svg.contains("fill=\"var(--text)\"")); // Should be in CSS, not as attribute on text
+    }
+
+    #[test]
+    fn test_parse_tags() {
+        let body = r##"----
+theme=premium
+---
+@epic:auth @security
+Feature: User Account Management
+
+  @conditional @assembly @field:user_email @field:password
+  Scenario: Successful Login
+    Given the user is on the login page
+    When they enter valid credentials
+    Then they should be redirected to dashboard
+
+  @flaky @author:john
+  Scenario: Password Reset
+    Given the user requests a password reset
+    Then an email should be sent
+----"##;
+        let spec = parse_gherkin(body).unwrap();
+        assert_eq!(spec.feature, "User Account Management");
+        assert_eq!(
+            spec.feature_tags,
+            vec![
+                GherkinTag::KeyValue {
+                    key: "epic".to_string(),
+                    value: "auth".to_string()
+                },
+                GherkinTag::Boolean("security".to_string()),
+            ]
+        );
+        assert_eq!(spec.scenarios.len(), 2);
+        assert_eq!(
+            spec.scenarios[0].tags,
+            vec![
+                GherkinTag::Boolean("conditional".to_string()),
+                GherkinTag::Boolean("assembly".to_string()),
+                GherkinTag::KeyValue {
+                    key: "field".to_string(),
+                    value: "user_email".to_string()
+                },
+                GherkinTag::KeyValue {
+                    key: "field".to_string(),
+                    value: "password".to_string()
+                },
+            ]
+        );
+        assert_eq!(
+            spec.scenarios[1].tags,
+            vec![
+                GherkinTag::Boolean("flaky".to_string()),
+                GherkinTag::KeyValue {
+                    key: "author".to_string(),
+                    value: "john".to_string()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_render_tags_svg() {
+        let body = r##"----
+theme=premium
+---
+@assembly
+Feature: Tag Rendering Feature
+
+  @conditional @field:user_email
+  Scenario: Tagged Scenario
+    Given step one
+    When step two
+    Then step three
+----"##;
+        let controls = HashMap::new();
+        let svg = render(body, &controls).unwrap();
+
+        // Check CSS classes for tags
+        assert!(svg.contains(".tag-key-text"));
+        assert!(svg.contains(".tag-val-text"));
+        assert!(svg.contains(".tag-bool-text"));
+
+        // Check rendered tags
+        assert!(svg.contains("conditional"));
+        assert!(svg.contains("assembly"));
+        assert!(svg.contains("FIELD"));
+        assert!(svg.contains("user_email"));
+
+        // Check dark mode
+        let mut dark_controls = HashMap::new();
+        dark_controls.insert("useDark".to_string(), "true".to_string());
+        let dark_svg = render(body, &dark_controls).unwrap();
+        assert!(dark_svg.contains("conditional"));
+        assert!(dark_svg.contains("user_email"));
     }
 }

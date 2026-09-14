@@ -572,11 +572,13 @@ references=
 ----
 theme=premium
 ---
+@epic:security @assembly
 Feature: User Authentication
   As a registered user
   I want to log in to my account
   So that I can access my private dashboard
 
+  @conditional @field:username @field:password
   Scenario: Successful Login with Valid Credentials
     Given the user is on the login page
     When the user enters valid username and password
@@ -584,6 +586,7 @@ Feature: User Authentication
     Then the user should be redirected to the dashboard
     And a welcome message should be displayed
 
+  @flaky @field:error_code
   Scenario Outline: Failed Login with Invalid Credentials
     Given the user is on the login page
     When the user enters "<username>" and "<password>"
