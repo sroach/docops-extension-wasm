@@ -453,6 +453,15 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
             let badge_width = (type_text.len() * 8 + 24).max(82);
 
             let title_lines = wrap_text(&btn.label, 16);
+            let num_title_lines = title_lines.len().min(2);
+            let title_font_size = compute_title_font_size(&btn.label);
+
+            let title_shift = if num_title_lines > 1 {
+                (title_font_size as f64 * 1.1) as i32
+            } else {
+                0
+            };
+
             let mut title_svg = String::new();
             for (idx, line) in title_lines.iter().take(2).enumerate() {
                 let dy = if idx == 0 { "0" } else { "1.1em" };
@@ -462,13 +471,14 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
                     escape(line)
                 ));
             }
-            let title_font_size = compute_title_font_size(&btn.label);
 
             let desc_lines = wrap_text(&btn.description, 35);
             let mut desc_svg = String::new();
+            let desc_y = 82 + title_shift;
             if !desc_lines.is_empty() {
-                desc_svg.push_str(r##"<text x="0" y="82" class="description">"##);
-                for (idx, line) in desc_lines.iter().take(3).enumerate() {
+                desc_svg.push_str(&format!(r##"<text x="0" y="{}" class="description">"##, desc_y));
+                let max_desc_lines = if num_title_lines > 1 { 2 } else { 3 };
+                for (idx, line) in desc_lines.iter().take(max_desc_lines).enumerate() {
                     let dy = if idx == 0 { "0" } else { "20" };
                     desc_svg.push_str(&format!(
                         r##"<tspan x="0" dy="{}">{}</tspan>"##,
@@ -513,12 +523,14 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
                         <text x="0" y="42" class="title" font-size="{title_font_size}">{title_svg}</text>
                         {desc_svg}
                         
-                        <rect x="0" y="146" width="264" height="1.5" rx="0.75" fill="var(--text)" fill-opacity="0.1"/>
-                        <rect x="0" y="146" width="94" height="1.5" rx="0.75" fill="{accent}"/>
-                        
-                        <circle cx="10" cy="188" r="5" fill="{accent}"/>
-                        <text x="24" y="192" class="meta">OPEN RESOURCE</text>
-                        <path d="M251 184 L265 184 M260 179 L265 184 L260 189" fill="none" stroke="var(--text)" stroke-opacity="0.4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <g>
+                            <rect x="0" y="146" width="264" height="1.5" rx="0.75" fill="var(--text)" fill-opacity="0.1"/>
+                            <rect x="0" y="146" width="94" height="1.5" rx="0.75" fill="{accent}"/>
+                            
+                            <circle cx="10" cy="188" r="5" fill="{accent}"/>
+                            <text x="24" y="192" class="meta">OPEN RESOURCE</text>
+                            <path d="M251 184 L265 184 M260 179 L265 184 L260 189" fill="none" stroke="var(--text)" stroke-opacity="0.4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
                     </g>
                 </g>
             </g>"##,
@@ -1327,6 +1339,63 @@ Rust | https://rust-lang.org | Language | A language empowering everyone to buil
         );
         assert!(result.contains("<tspan x=\"0\" dy=\"20\">build reliable and efficient</tspan>"));
         assert!(result.contains("<tspan x=\"0\" dy=\"20\">software.</tspan>"));
+    }
+
+    #[test]
+    fn test_render_large_title_overlap() {
+        let body = "----
+shape=large
+---
+This is a very long title that should wrap to two lines | https://example.com | Type A | Description | #ff0000 | 2024-09-06
+----";
+        let result = render(body, &HashMap::new()).unwrap();
+        // The title is long, should wrap to 2 lines.
+        // title_font_size for len > 35 is 20.
+        // title_shift = 20 * 1.1 = 22.
+        // desc_y = 82 + 22 = 104.
+        assert!(result.contains("class=\"description\""));
+        assert!(result.contains("y=\"104\""));
+        // The meta group should NO LONGER have a transform shift
+        assert!(!result.contains("<g transform=\"translate(0, 22)\">"));
+        assert!(result.contains("<g>"));
+    }
+
+    #[test]
+    fn test_render_large_title_no_overlap() {
+        let body = "----
+shape=large
+---
+Short Title | https://example.com | Type A | Description | #ff0000 | 2024-09-06
+----";
+        let result = render(body, &HashMap::new()).unwrap();
+        // The title is short, should be 1 line.
+        assert!(result.contains("class=\"description\""));
+        assert!(result.contains("y=\"82\""));
+        // Should be consistent regardless of title length
+        assert!(result.contains("<g>"));
+    }
+
+    #[test]
+    fn test_render_large_description_constraint() {
+        // 2-line title + 3-line description. Description should be limited to 2 lines.
+        let body = "----
+shape=large
+---
+This is a very long title that should wrap to two lines | https://example.com | Type A | This description is also very long and should normally take three lines of text | #ff0000 | 2024-09-06
+----";
+        let result = render(body, &HashMap::new()).unwrap();
+        // title_shift = 22. desc_y = 104.
+        assert!(result.contains("y=\"104\""));
+        
+        // Count tspans in description.
+        // The description has 3 lines wrapped at 35 chars:
+        // 1: "This description is also very long" (34 chars)
+        // 2: "and should normally take three" (30 chars)
+        // 3: "lines of text" (13 chars)
+        // But we should only see 2 tspans.
+        assert!(result.contains("This description is also very long"));
+        assert!(result.contains("and should normally take three"));
+        assert!(!result.contains("lines of text"));
     }
 
     #[test]

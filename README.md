@@ -76,3 +76,9 @@ python3 -c "import os; print(os.urandom(32).hex())"
 ```shell
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+## Target Node
+
+```shell
+wasm-pack build --target nodejs --release --out-dir pkg-node
+```
