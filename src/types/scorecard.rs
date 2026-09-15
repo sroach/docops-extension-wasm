@@ -169,21 +169,35 @@ fn render_svg(scorecard: &Scorecard, use_dark: bool) -> String {
       <desc id="{id}_desc">{desc_esc}</desc>
       <metadata><rdf:rdf xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#"><cc:work rdf:about=""><dc:creator>DocOps.io</dc:creator><dc:rights>MIT License</dc:rights><dc:source>https://docops.io</dc:source><dc:date>2026-08-30</dc:date></cc:work></rdf:rdf></metadata>
     <defs>
-        <pattern id="grid_{id}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--grid-stroke)" stroke-width="1"/></pattern>
-        <filter id="premiumShadow_{id}" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op)"/></filter>
+        <radialGradient id="ambientBlue_{id}" cx="15%" cy="10%" r="55%">
+            <stop offset="0%" stop-color="#BFDBFE" stop-opacity="0.45"/>
+            <stop offset="60%" stop-color="#DBEAFE" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="ambientViolet_{id}" cx="85%" cy="12%" r="50%">
+            <stop offset="0%" stop-color="#DDD6FE" stop-opacity="0.35"/>
+            <stop offset="60%" stop-color="#EDE9FE" stop-opacity="0.10"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="premiumShadow_{id}" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op)"/>
+            <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op-2)"/>
+        </filter>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap'); 
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap'); 
             #{id} {{
                 --bg: #FFFFFF;
                 --text-primary: #111827;
-                --text-secondary: #6B7280;
-                --grid-stroke: #3B82F6;
-                --grid-op: 0.05;
-                --card-bg-start: #FFFFFF;
-                --card-bg-end: #f8fafc;
-                --card-stroke-op: 0.05;
+                --text-secondary: #4B5563;
+                --text-tertiary: #6B7280;
+                --card-bg-start: rgba(255, 255, 255, 0.95);
+                --card-bg-end: rgba(248, 250, 252, 0.90);
+                --card-stroke: rgba(229, 231, 235, 0.85);
+                --card-inner-glow: rgba(255, 255, 255, 0.80);
+                --ambient-op: 1.0;
                 --shadow-flood: #0F172A;
-                --shadow-op: 0.12;
+                --shadow-op: 0.08;
+                --shadow-op-2: 0.04;
                 --header-before-bg: #64748b;
                 --header-after-bg: #3B82F6;
                 --header-text-op: 0.08;
@@ -193,16 +207,18 @@ fn render_svg(scorecard: &Scorecard, use_dark: bool) -> String {
             }}
             @media (prefers-color-scheme: dark) {{
                 #{id} {{
-                    --bg: #0f172a;
+                    --bg: #0b1220;
                     --text-primary: #f8fafc;
                     --text-secondary: #94a3b8;
-                    --grid-stroke: #3B82F6;
-                    --grid-op: 0.1;
-                    --card-bg-start: #1e293b;
-                    --card-bg-end: #0f172a;
-                    --card-stroke-op: 0.15;
+                    --text-tertiary: #64748b;
+                    --card-bg-start: rgba(23, 32, 47, 0.85);
+                    --card-bg-end: rgba(17, 26, 40, 0.90);
+                    --card-stroke: rgba(51, 65, 85, 0.70);
+                    --card-inner-glow: rgba(255, 255, 255, 0.05);
+                    --ambient-op: 0.25;
                     --shadow-flood: #000000;
-                    --shadow-op: 0.4;
+                    --shadow-op: 0.40;
+                    --shadow-op-2: 0.20;
                     --header-before-bg: #475569;
                     --header-after-bg: #60A5FA;
                     --bullet-color: #94a3b8;
@@ -211,35 +227,42 @@ fn render_svg(scorecard: &Scorecard, use_dark: bool) -> String {
                 }}
             }}
             #{id}.dark-mode {{
-                --bg: #0f172a;
+                --bg: #0b1220;
                 --text-primary: #f8fafc;
                 --text-secondary: #94a3b8;
-                --grid-stroke: #3B82F6;
-                --grid-op: 0.1;
-                --card-bg-start: #1e293b;
-                --card-bg-end: #0f172a;
-                --card-stroke-op: 0.15;
+                --text-tertiary: #64748b;
+                --card-bg-start: rgba(23, 32, 47, 0.85);
+                --card-bg-end: rgba(17, 26, 40, 0.90);
+                --card-stroke: rgba(51, 65, 85, 0.70);
+                --card-inner-glow: rgba(255, 255, 255, 0.05);
+                --ambient-op: 0.25;
                 --shadow-flood: #000000;
-                --shadow-op: 0.4;
+                --shadow-op: 0.40;
+                --shadow-op-2: 0.20;
                 --header-before-bg: #475569;
                 --header-after-bg: #60A5FA;
                 --bullet-color: #94a3b8;
                 --check-color: #60A5FA;
                 --arrow-color: #60A5FA;
             }}
-            .main-title_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 28.0px; fill: var(--text-primary); text-transform: none; letter-spacing: -0.5px; font-weight: 800; }}
-            .sec-header_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 16.0px; letter-spacing: 0px; text-transform: none; font-weight: 700; }} 
-            .item-text_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 14px; fill: var(--text-primary); font-weight: 500; }} 
+            .main-title_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 30px; fill: var(--text-primary); text-transform: none; letter-spacing: -0.025em; font-weight: 700; }}
+            .main-subtitle_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 16px; fill: var(--text-secondary); text-transform: none; font-weight: 400; }}
+            .sec-header_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 16px; letter-spacing: 0px; text-transform: none; font-weight: 600; }} 
+            .item-text_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 14px; fill: var(--text-primary); font-weight: 600; }} 
             .item-desc_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 12px; fill: var(--text-secondary); font-weight: 400; }} 
-            .meta-text_{id} {{ font-family: 'Inter', ui-sans-serif, system-ui, sans-serif, monospace; font-size: 10px; fill: var(--text-secondary); opacity: 0.5; }} 
-            @keyframes slideUp_{id} {{ from {{ opacity: 0; transform: translateY(30px); }} to {{ opacity: 1; transform: translateY(0); }} }} 
-            .anim-panel_{id} {{ animation: slideUp_{id} 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 1; }} 
+            .meta-text_{id} {{ font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; fill: var(--text-tertiary); }} 
+            @keyframes slideUp_{id} {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }} 
+            .anim-panel_{id} {{ animation: slideUp_{id} 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 1; }} 
             .delay-1_{id} {{ animation-delay: 0.1s; }} 
-            .delay-2_{id} {{ animation-delay: 0.3s; }}
+            .delay-2_{id} {{ animation-delay: 0.25s; }}
+            @media (prefers-reduced-motion: reduce) {{
+                .anim-panel_{id} {{ animation: none; opacity: 1; transform: none; }}
+            }}
         </style>
     </defs>
     <rect width="100%" height="100%" fill="var(--bg)" aria-hidden="true"/>
-    <rect width="100%" height="100%" fill="url(#grid_{id})" opacity="var(--grid-op)" aria-hidden="true"/>
+    <rect width="100%" height="100%" fill="url(#ambientBlue_{id})" opacity="var(--ambient-op)" aria-hidden="true"/>
+    <rect width="100%" height="100%" fill="url(#ambientViolet_{id})" opacity="var(--ambient-op)" aria-hidden="true"/>
 "##,
         width = width,
         total_height = total_height,
@@ -297,13 +320,177 @@ fn render_svg(scorecard: &Scorecard, use_dark: bool) -> String {
 
     // Meta text
     svg.push_str(&format!(
-        r##"    <text x="32" y="{meta_y}" class="meta-text_{id}">SCORECARD_REF: A203 // SCALE: 1.0 // THEME: PremiumTheme</text>
+        r##"    <text x="32" y="{meta_y}" class="meta-text_{id}">SCORECARD_REF: A203 · THEME: Premium · SCALE: 1.0</text>
 "##,
         meta_y = total_height - 20,
         id = id
     ));
 
     svg.push_str("</svg>");
+    svg
+}
+
+fn calculate_card_height(card: &Card, item_height: i32) -> i32 {
+    let mut height = 40; // Card header
+    for section in &card.sections {
+        height += 60; // Section gap + title
+        height += section.items.len() as i32 * item_height;
+    }
+    height + 40 // Padding bottom
+}
+
+fn render_title_lines(title: &str, subtitle: &str, id: &str) -> String {
+    let mut lines = Vec::new();
+
+    // Split title if it's too long
+    let title_max_chars = 60;
+    if title.len() > title_max_chars {
+        let words = title.split_whitespace();
+        let mut current_line = String::new();
+        for word in words {
+            if current_line.len() + word.len() + 1 > title_max_chars {
+                lines.push(current_line.clone());
+                current_line = word.to_string();
+            } else {
+                if !current_line.is_empty() {
+                    current_line.push(' ');
+                }
+                current_line.push_str(word);
+            }
+        }
+        lines.push(current_line);
+    } else {
+        lines.push(title.to_string());
+    }
+
+    let mut result = String::new();
+    let mut y = 38;
+    for line in lines {
+        result.push_str(&format!(
+            r##"<text x="24" y="{y}" class="main-title_{id}">{line}</text>"##,
+            y = y,
+            id = id,
+            line = escape(&line)
+        ));
+        y += 44;
+    }
+
+    if !subtitle.is_empty() {
+        result.push_str(&format!(
+            r##"<text x="24" y="{y}" class="main-subtitle_{id}">{subtitle}</text>"##,
+            y = y,
+            id = id,
+            subtitle = escape(subtitle)
+        ));
+    }
+
+    result
+}
+
+fn render_card(
+    card: &Card,
+    id: &str,
+    is_before: bool,
+    width: i32,
+    height: i32,
+    anim_delay: &str,
+) -> String {
+    let x_offset = if is_before { 0 } else { 528 }; // 464 + 64 gap
+    let header_color_var = if is_before {
+        "var(--header-before-bg)"
+    } else {
+        "var(--header-after-bg)"
+    };
+    let bullet_color_var = if is_before {
+        "var(--bullet-color)"
+    } else {
+        "var(--check-color)"
+    };
+    let card_id = if is_before { "true" } else { "false" };
+    let card_title = escape(&card.title);
+
+    let mut svg = format!(
+        r##"      <g transform="translate({x_offset}, 0.0)" role="region" aria-label="{title}">
+        <g filter="url(#premiumShadow_{id})">
+          <g class="anim-panel_{id} {anim_delay}_{id}">
+            <linearGradient id="cardGrad_{id}_{card_id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--card-bg-start)"/><stop offset="100%" stop-color="var(--card-bg-end)"/></linearGradient>
+            <rect width="{width}" height="{height}" fill="url(#cardGrad_{id}_{card_id})" stroke="var(--card-stroke)" stroke-width="1" rx="12" aria-hidden="true"/>
+            <rect x="0.5" y="0.5" width="{inner_w}" height="{inner_h}" rx="11.5" fill="none" stroke="var(--card-inner-glow)" stroke-width="1" aria-hidden="true"/>
+            <rect width="{width}" height="40" fill="{header_color_var}" fill-opacity="var(--header-text-op)" rx="12" aria-hidden="true"/>
+            <rect y="28" width="{width}" height="12" fill="{header_color_var}" fill-opacity="var(--header-text-op)" aria-hidden="true"/>
+            <text x="32" y="26" class="sec-header_{id}" style="fill: {header_color_var}">{title}</text>
+"##,
+        x_offset = x_offset,
+        id = id,
+        anim_delay = anim_delay,
+        card_id = card_id,
+        width = width,
+        height = height,
+        inner_w = width - 1,
+        inner_h = height - 1,
+        header_color_var = header_color_var,
+        title = card_title
+    );
+
+    let mut y = 80;
+    for section in &card.sections {
+        let sec_title_esc = escape(&section.title);
+        svg.push_str(&format!(
+            r##"            <g role="list" aria-label="{sec_title}">
+            <text x="32" y="{y}" class="sec-header_{id}" style="fill: var(--text-primary)">{sec_title}</text>
+"##,
+            y = y, id = id, sec_title = sec_title_esc
+        ));
+        y += 40;
+
+        for item in &section.items {
+            let item_title = escape(&item.title);
+            let item_desc = escape(&item.description);
+
+            svg.push_str(&format!(
+                r##"            <g role="listitem" aria-label="{item_title}: {item_desc}" tabindex="0">"##,
+                item_title = item_title,
+                item_desc = item_desc
+            ));
+
+            if is_before {
+                svg.push_str(&format!(
+                    r##"            <circle cx="40" cy="{y_bullet}" r="3" fill="{bullet_color_var}" aria-hidden="true"/>
+"##,
+                    y_bullet = y - 4, bullet_color_var = bullet_color_var
+                ));
+            } else {
+                svg.push_str(&format!(
+                    r##"            <path d="M32,{y_check} L38,{y_check2} L48,{y_check3}" stroke="{bullet_color_var}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/>
+"##,
+                    y_check = y - 4, y_check2 = y + 2, y_check3 = y - 8, bullet_color_var = bullet_color_var
+                ));
+            }
+
+            svg.push_str(&format!(
+                r##"            <text x="60" y="{y}" class="item-text_{id}">{item_title}</text>
+            <text x="60" y="{y_desc}" class="item-desc_{id}">{item_desc}</text>
+            </g>
+"##,
+                y = y,
+                id = id,
+                item_title = item_title,
+                y_desc = y + 24,
+                item_desc = item_desc
+            ));
+            y += 60;
+        }
+        svg.push_str("            </g>\n");
+        y += 20; // Gap between sections
+    }
+
+    svg.push_str(
+        r##"          </g>
+        </g>
+      </g>
+"##,
+    );
+
     svg
 }
 
@@ -452,166 +639,4 @@ I2 | D2
         assert!(svg.contains("Test Subtitle"));
         assert!(svg.contains("var(--text-primary)"));
     }
-}
-
-fn calculate_card_height(card: &Card, item_height: i32) -> i32 {
-    let mut height = 40; // Card header
-    for section in &card.sections {
-        height += 60; // Section gap + title
-        height += section.items.len() as i32 * item_height;
-    }
-    height + 40 // Padding bottom
-}
-
-fn render_title_lines(title: &str, subtitle: &str, id: &str) -> String {
-    let mut lines = Vec::new();
-
-    // Split title if it's too long
-    let title_max_chars = 60;
-    if title.len() > title_max_chars {
-        let words = title.split_whitespace();
-        let mut current_line = String::new();
-        for word in words {
-            if current_line.len() + word.len() + 1 > title_max_chars {
-                lines.push(current_line.clone());
-                current_line = word.to_string();
-            } else {
-                if !current_line.is_empty() {
-                    current_line.push(' ');
-                }
-                current_line.push_str(word);
-            }
-        }
-        lines.push(current_line);
-    } else {
-        lines.push(title.to_string());
-    }
-
-    let mut result = String::new();
-    let mut y = 38;
-    for line in lines {
-        result.push_str(&format!(
-            r##"<text x="24" y="{y}" class="main-title_{id}">{line}</text>"##,
-            y = y,
-            id = id,
-            line = escape(&line)
-        ));
-        y += 44;
-    }
-
-    if !subtitle.is_empty() {
-        result.push_str(&format!(
-            r##"<text x="24" y="{y}" class="main-title_{id}">{subtitle}</text>"##,
-            y = y,
-            id = id,
-            subtitle = escape(subtitle)
-        ));
-    }
-
-    result
-}
-
-fn render_card(
-    card: &Card,
-    id: &str,
-    is_before: bool,
-    width: i32,
-    height: i32,
-    anim_delay: &str,
-) -> String {
-    let x_offset = if is_before { 0 } else { 528 }; // 464 + 64 gap
-    let header_color_var = if is_before {
-        "var(--header-before-bg)"
-    } else {
-        "var(--header-after-bg)"
-    };
-    let bullet_color_var = if is_before {
-        "var(--bullet-color)"
-    } else {
-        "var(--check-color)"
-    };
-    let card_id = if is_before { "true" } else { "false" };
-    let card_title = escape(&card.title);
-
-    let mut svg = format!(
-        r##"      <g transform="translate({x_offset}, 0.0)" role="region" aria-label="{title}">
-        <g filter="url(#premiumShadow_{id})">
-          <g class="anim-panel_{id} {anim_delay}_{id}">
-            <linearGradient id="cardGrad_{id}_{card_id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--card-bg-start)"/><stop offset="100%" stop-color="var(--card-bg-end)"/></linearGradient>
-            <rect width="{width}" height="{height}" fill="url(#cardGrad_{id}_{card_id})" stroke="none" stroke-width="1.5" rx="8" aria-hidden="true"/>
-            <rect width="{width}" height="40" fill="{header_color_var}" fill-opacity="var(--header-text-op)" rx="8" aria-hidden="true"/>
-            <text x="32" y="26" class="sec-header_{id}" style="fill: {header_color_var}">{title}</text>
-"##,
-        x_offset = x_offset,
-        id = id,
-        anim_delay = anim_delay,
-        card_id = card_id,
-        width = width,
-        height = height,
-        header_color_var = header_color_var,
-        title = card_title
-    );
-
-    let mut y = 80;
-    for section in &card.sections {
-        let sec_title_esc = escape(&section.title);
-        svg.push_str(&format!(
-            r##"            <g role="group" aria-label="{sec_title}">
-            <text x="32" y="{y}" class="sec-header_{id}" style="fill: var(--text-primary)">{sec_title}</text>
-"##,
-            y = y, id = id, sec_title = sec_title_esc
-        ));
-        y += 40;
-
-        for item in &section.items {
-            let item_title = escape(&item.title);
-            let item_desc = escape(&item.description);
-
-            svg.push_str(&format!(
-                r##"            <g role="listitem" aria-label="{item_title}: {item_desc}">"##,
-                item_title = item_title,
-                item_desc = item_desc
-            ));
-
-            if is_before {
-                svg.push_str(&format!(
-                    r##"            <circle cx="40" cy="{y_bullet}" r="3" fill="{bullet_color_var}" aria-hidden="true"/>
-"##,
-                    y_bullet = y - 4, bullet_color_var = bullet_color_var
-                ));
-            } else {
-                svg.push_str(&format!(
-                    r##"            <path d="M32,{y_check} L38,{y_check2} L48,{y_check3}" stroke="{bullet_color_var}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/>
-"##,
-                    y_check = y - 4, y_check2 = y + 2, y_check3 = y - 8, bullet_color_var = bullet_color_var
-                ));
-            }
-
-            svg.push_str(&format!(
-                r##"            <text x="60" y="{y}" class="item-text_{id}">{item_title}</text>
-            <text x="60" y="{y_desc}" class="item-desc_{id}">{item_desc}</text>
-            </g>
-"##,
-                y = y,
-                id = id,
-                item_title = item_title,
-                y_desc = y + 24,
-                item_desc = item_desc
-            ));
-            y += 60;
-        }
-        svg.push_str("            </g>\n");
-        y += 20; // Gap between sections
-    }
-
-    svg.push_str(&format!(
-        r##"            <rect width="{width}" height="{height}" fill="none" stroke="var(--text-primary)" stroke-opacity="var(--card-stroke-op)" stroke-width="1" rx="8" aria-hidden="true"/>
-          </g>
-        </g>
-      </g>
-"##,
-        width = width, height = height
-    ));
-
-    svg
 }
