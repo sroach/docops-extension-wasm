@@ -12,6 +12,7 @@ pub mod quadrant_chart;
 pub mod recipe;
 pub mod release_strategy;
 pub mod scorecard;
+pub mod timeline;
 
 pub mod metrics_card;
 
@@ -36,10 +37,11 @@ pub fn render(
         "gherkin" => gherkin::render(body, controls),
         "gauge" | "gaugechart" => gauge_chart::render(body, controls),
         "recipe" => recipe::render(body, controls),
+        "timeline" => timeline::render(body, controls),
         "release" | "releasestrategy" => release_strategy::render(body, controls),
         "metrics" | "metricscard" => metrics_card::render(body, controls),
         other => Err(format!(
-            "unknown visualization type '{other}' — expected one of: bar, pieslice, badge, adr, gherkin, scorecard, button, quadrant, metrics, gauge, recipe, release"
+            "unknown visualization type '{other}' — expected one of: bar, pieslice, badge, adr, gherkin, scorecard, button, quadrant, metrics, gauge, recipe, timeline, release"
         )),
     }
 }

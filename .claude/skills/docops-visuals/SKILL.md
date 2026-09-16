@@ -23,6 +23,9 @@ Use these canonical visual headers:
 [docops,scorecard]
 [docops,button]
 [docops,quadrant]
+[docops,timeline]
+[docops,recipe]
+[docops,gauge]
 ```
 
 Also recognize these aliases when interpreting user requests:
@@ -35,6 +38,8 @@ Also recognize these aliases when interpreting user requests:
 [docops,combo]
 [docops,score]
 [docops,magic]
+[docops,tl]
+[docops,food]
 ```
 
 Prefer the canonical names in generated output.
@@ -70,6 +75,9 @@ Use this mapping:
 - Show KPI health: scorecard
 - Show a link or call to action: button
 - Show prioritization or positioning: quadrant chart
+- Show a sequence of historical or project milestones: timeline
+- Show a structured recipe card: recipe
+- Show a single metric gauge: gauge
 
 ## Common configuration keys
 
@@ -646,6 +654,107 @@ Deployment Frequency | 18/week | Excellent | Healthy release cadence
 Change Failure Rate | 4.2% | Good | Within target threshold
 MTTR | 36 min | Excellent | Below one-hour goal
 Developer Satisfaction | 8.3/10 | Watch | Slight decline from prior survey
+----
+```
+
+## Timeline visuals
+
+Use timelines for historical events, release history, or project milestones. The visual automatically handles text wrapping and dynamic card heights.
+
+Row format:
+
+```text
+date= ...
+text= ...
+category= ... (optional)
+color= ... (optional hex)
+```
+
+Example:
+
+```text
+[docops,timeline]
+----
+title= Space Exploration
+subtitle= Milestone Achievements
+---
+date= April 12, 1961
+text= Yuri Gagarin becomes the first human to journey into outer space
+category= USSR
+
+date= July 20, 1969
+text= Neil Armstrong and Buzz Aldrin become the first humans to land on the Moon
+category= USA
+color= #3B82F6
+----
+```
+
+## Recipe visuals
+
+Use recipes for food, drinks, or any structured step-by-step instructions with ingredients.
+
+Supported fields:
+
+```text
+yield=
+prep=
+cook=
+tags=
+summary=
+ingredients= (list with -)
+steps= (list with 1.)
+notes= (optional list with -)
+```
+
+Example:
+
+```text
+[docops,recipe]
+----
+Chocolate Avocado Cake
+yield= 8 servings
+prep= 20 minutes
+cook= 35 minutes
+tags= vegan, dessert
+summary= A rich, moist chocolate cake using avocado instead of butter.
+ingredients=
+- 2 large ripe avocados
+- 2 cups flour
+- 1 cup cocoa powder
+steps=
+1. Preheat oven to 350F.
+2. Mash avocados until smooth.
+3. Mix ingredients and bake.
+----
+```
+
+## Gauge charts
+
+Use gauges for single metrics, health scores, or progress indicators.
+
+Supported keys:
+
+```text
+min= (default 0)
+max= (default 100)
+suffix= (e.g. %)
+direction= (normal or inverse)
+labels= (comma-separated, e.g. LOW,STABLE,HIGH)
+```
+
+Example:
+
+```text
+[docops,gauge]
+----
+theme=premium
+title=System Health
+subtitle=Overall availability
+min=0
+max=100
+suffix=%
+---
+Score | 98
 ----
 ```
 

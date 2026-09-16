@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Timeline Demo</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --text: #0f172a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #f8fafc;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 20px;
+        }
+        .chart svg { max-width: 100%; height: auto; border-radius: 26px; margin-bottom: 40px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+
+<h1>DocOps Timeline Visuals</h1>
+
+<!-- Chart 1: Invention Timeline -->
+<div class="chart" id="chart-1"></div>
+<script type="text/plain" class="chart-source" data-target="chart-1">
+[docops,timeline]
+----
+title= Notable Inventions
+subtitle= Brief History of Everyday Items
+---
+date= 1891
+text= Mailbox, invented by Phillip Downing
+category= Communication
+
+date= 1885
+text= First gasoline-powered automobile by Karl Benz
+category= Transport
+
+date= 1928
+text= Penicillin discovered by Alexander Fleming
+category= Medicine
+
+date= 1989
+text= World Wide Web proposed by Tim Berners-Lee
+category= Communication
+----
+</script>
+
+<!-- Chart 2: DocOps History -->
+<div class="chart" id="chart-2"></div>
+<script type="text/plain" class="chart-source" data-target="chart-2">
+[docops,timeline]
+----
+title= Space Exploration
+subtitle= Milestone Achievements
+---
+date= April 12, 1961
+text= Yuri Gagarin becomes the first human to journey into outer space
+
+date= July 20, 1969
+text= Neil Armstrong and Buzz Aldrin become the first humans to land on the Moon
+
+date= April 12, 1981
+text= First launch of Space Shuttle Columbia
+
+date= November 20, 1998
+text= Launch of the first module of the International Space Station
+
+date= February 6, 2018
+text= SpaceX launches Falcon Heavy, sending a Tesla Roadster into space
+
+date= May 30, 2020
+text= SpaceX Crew Dragon Demo2 becomes the first private spacecraft to carry humans to the ISS
+category= Private Spaceflight
+----
+</script>
+
+<!-- Chart 3: DocOps History -->
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+[docops,timeline]
+----
+title= DocOps Extension
+subtitle= Release History
+---
+date= July 23rd, 2023
+text= DocOps extension Server releases Timeline Maker for asciidoctorj.
+
+date= August 15th, 2023
+text= Support for premium themes and dark mode added.
+
+date= September 16th, 2026
+text= Timeline visual ported to Rust WebAssembly extension.
+----
+</script>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) return;
+
+            const svgString = generate_svg(dsl);
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>
