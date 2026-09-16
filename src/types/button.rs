@@ -476,7 +476,10 @@ fn render_large(buttons: &[Button], config: &ButtonConfig, id: &str) -> String {
             let mut desc_svg = String::new();
             let desc_y = 82 + title_shift;
             if !desc_lines.is_empty() {
-                desc_svg.push_str(&format!(r##"<text x="0" y="{}" class="description">"##, desc_y));
+                desc_svg.push_str(&format!(
+                    r##"<text x="0" y="{}" class="description">"##,
+                    desc_y
+                ));
                 let max_desc_lines = if num_title_lines > 1 { 2 } else { 3 };
                 for (idx, line) in desc_lines.iter().take(max_desc_lines).enumerate() {
                     let dy = if idx == 0 { "0" } else { "20" };
@@ -1386,7 +1389,7 @@ This is a very long title that should wrap to two lines | https://example.com | 
         let result = render(body, &HashMap::new()).unwrap();
         // title_shift = 22. desc_y = 104.
         assert!(result.contains("y=\"104\""));
-        
+
         // Count tspans in description.
         // The description has 3 lines wrapped at 35 chars:
         // 1: "This description is also very long" (34 chars)
