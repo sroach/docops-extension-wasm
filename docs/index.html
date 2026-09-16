@@ -349,6 +349,10 @@
                 <optgroup label="BDD & Gherkin">
                     <option value="gherkin_default">Gherkin — User Authentication Scenarios</option>
                 </optgroup>
+                <optgroup label="Recipes">
+                    <option value="recipe_cake">Recipe Card — Chocolate Avocado Cake</option>
+                    <option value="recipe_risotto">Recipe Card — Spring Pea Risotto</option>
+                </optgroup>
                 <optgroup label="Shields & Badges">
                     <option value="badge_status">Project Badges — Multi-column Grid</option>
                     <option value="badge_styles">Shield Styles — Flat, Square, Plastic & Icons</option>
@@ -457,6 +461,10 @@
             <div class="feature-item">
                 <h3>BDD Gherkin Visuals</h3>
                 <p>Visualize Cucumber/Gherkin feature files with scenarios, steps, and examples tables using <code>[docops,gherkin]</code>.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Structured Recipes</h3>
+                <p>Generate beautiful, multi-theme recipe cards with ingredients, steps, and notes using <code>[docops,recipe]</code>.</p>
             </div>
             <div class="feature-item">
                 <h3>Gauge Charts</h3>
@@ -601,6 +609,61 @@ Feature: User Authentication & Search
       | invalid  | password | Invalid credentials      |
       | user     | wrong    | Invalid credentials      |
       |          | password | Username is required     |
+----`,
+
+        recipe_cake: `[docops,recipe]
+----
+Chocolate Avocado Cake
+yield= 8 servings
+prep= 20 minutes
+cook= 35 minutes
+tags= vegan, dessert, healthy
+summary= A rich, moist chocolate cake that uses ripe avocado instead of butter or oil for a creamy texture and healthy fats.
+ingredients=
+- 2 large ripe avocados
+- 2 cups all-purpose flour
+- 1 cup unsweetened cocoa powder
+- 1.5 cups organic cane sugar
+- 2 tsp baking soda
+- 1 tsp salt
+- 2 cups water
+- 2 tbsp white vinegar
+steps=
+1. Preheat oven to 350F (175C) and grease two 8-inch cake pans.
+2. Mash avocados until completely smooth in a large bowl.
+3. Whisk in all wet ingredients until well combined.
+4. Sift in dry ingredients and fold gently until no lumps remain.
+5. Divide batter between pans and bake for 30-35 minutes.
+notes=
+- The avocado flavor completely disappears once baked!
+- Best served with a dark chocolate ganache or fresh berries.
+----`,
+
+        recipe_risotto: `[docops,recipe]
+----
+Spring Pea & Mint Risotto
+yield= 4 portions
+prep= 15 mins
+cook= 25 mins
+tags= vegetarian, spring, seasonal
+summary= A vibrant, light risotto featuring fresh garden peas, fragrant mint, and a touch of lemon zest.
+ingredients=
+- 300g Arborio rice
+- 1L vegetable stock, hot
+- 200g fresh or frozen peas
+- 1 shallot, finely diced
+- 100ml dry white wine
+- Small bunch fresh mint, chopped
+- Zest of 1 lemon
+- 50g Parmesan, grated
+steps=
+1. Sauté the shallot in olive oil until soft.
+2. Add rice and toast for 2 minutes until translucent at edges.
+3. Deglaze with wine and stir until absorbed.
+4. Add stock a ladle at a time, stirring constantly.
+5. Stir in peas and mint in the last 5 minutes.
+6. Finish with lemon zest and Parmesan.
+theme= spring
 ----`,
 
         bar_vertical: `[docops,bar]

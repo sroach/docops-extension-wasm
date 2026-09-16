@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Recipe Demo</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --text: #0f172a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #f8fafc;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 20px;
+        }
+        .chart svg { max-width: 100%; height: auto; border-radius: 26px; margin-bottom: 40px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+
+<h1>DocOps Recipe Visuals</h1>
+
+<!-- Chart 1: Premium Theme -->
+<div class="chart" id="chart-1"></div>
+<script type="text/plain" class="chart-source" data-target="chart-1">
+[docops,recipe]
+----
+Chocolate Avocado Cake
+yield= 8 servings
+prep= 20 minutes
+cook= 35 minutes
+tags= vegan, dessert, healthy
+summary= A rich, moist chocolate cake that uses ripe avocado instead of butter or oil for a creamy texture and healthy fats.
+ingredients=
+- 2 large ripe avocados
+- 2 cups all-purpose flour
+- 1 cup unsweetened cocoa powder
+- 1.5 cups organic cane sugar
+- 2 tsp baking soda
+- 1 tsp salt
+- 2 cups water
+- 2 tbsp white vinegar
+steps=
+1. Preheat oven to 350F (175C) and grease two 8-inch cake pans.
+2. Mash avocados until completely smooth in a large bowl.
+3. Whisk in all wet ingredients until well combined.
+4. Sift in dry ingredients and fold gently until no lumps remain.
+5. Divide batter between pans and bake for 30-35 minutes.
+notes=
+- The avocado flavor completely disappears once baked!
+- Best served with a dark chocolate ganache or fresh berries.
+theme= premium
+----
+</script>
+
+<!-- Chart 2: Spring Theme -->
+<div class="chart" id="chart-2"></div>
+<script type="text/plain" class="chart-source" data-target="chart-2">
+[docops,recipe]
+----
+Spring Pea & Mint Risotto
+yield= 4 portions
+prep= 15 mins
+cook= 25 mins
+tags= vegetarian, spring, seasonal
+summary= A vibrant, light risotto featuring fresh garden peas, fragrant mint, and a touch of lemon zest.
+ingredients=
+- 300g Arborio rice
+- 1L vegetable stock, hot
+- 200g fresh or frozen peas
+- 1 shallot, finely diced
+- 100ml dry white wine
+- Small bunch fresh mint, chopped
+- Zest of 1 lemon
+- 50g Parmesan, grated
+steps=
+1. Sauté the shallot in olive oil until soft.
+2. Add rice and toast for 2 minutes until translucent at edges.
+3. Deglaze with wine and stir until absorbed.
+4. Add stock a ladle at a time, stirring constantly.
+5. Stir in peas and mint in the last 5 minutes.
+6. Finish with lemon zest and Parmesan.
+theme= premium
+----
+</script>
+
+<!-- Chart 3: Summer Theme -->
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+[docops,recipe]
+----
+Mediterranean Grilled Salmon
+yield= 2 servings
+prep= 10 mins
+cook= 12 mins
+tags= keto, seafood, summer
+summary= Fresh salmon fillets marinated in lemon, garlic, and herbs, grilled to perfection for a light summer meal.
+ingredients=
+- 2 salmon fillets
+- 3 tbsp olive oil
+- 2 cloves garlic, minced
+- 1 tsp dried oregano
+- 1 lemon, sliced
+- Salt and pepper to taste
+steps=
+1. Whisk oil, garlic, and oregano in a small bowl.
+2. Brush marinade over salmon and let rest for 10 minutes.
+3. Grill over medium-high heat for 5-6 minutes per side.
+4. Serve with fresh lemon slices and a side salad.
+theme= premium
+----
+</script>
+
+<!-- Chart 4: Food Theme -->
+<div class="chart" id="chart-4"></div>
+<script type="text/plain" class="chart-source" data-target="chart-4">
+[docops,recipe]
+----
+Rustic Sourdough Bread
+yield= 1 loaf
+prep= 24 hours
+cook= 45 mins
+tags= bakery, sourdough, fermented
+summary= A classic artisanal sourdough loaf with a crunchy crust and an open, airy crumb.
+ingredients=
+- 500g bread flour
+- 350g water
+- 100g active sourdough starter
+- 10g sea salt
+steps=
+1. Mix flour, water, and starter; autolyse for 1 hour.
+2. Add salt and perform stretch and folds every 30 mins for 2 hours.
+3. Bulk ferment until doubled in size.
+4. Shape and cold proof in fridge for 12-16 hours.
+5. Bake in a preheated Dutch oven at 450F.
+theme= premium
+----
+</script>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) return;
+
+            const svgString = generate_svg(dsl);
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>

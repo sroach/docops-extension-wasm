@@ -375,6 +375,34 @@ Feature: User Authentication
     When they enter valid credentials
     Then they should be redirected to dashboard
 ----"#,
+            // Recipe
+            r#"[docops,recipe]
+----
+Chocolate Avocado Cake
+yield= 8 servings
+prep= 20 minutes
+cook= 35 minutes
+tags= vegan, dessert, healthy
+summary= A rich, moist chocolate cake that uses ripe avocado instead of butter or oil for a creamy texture and healthy fats.
+ingredients=
+- 2 large ripe avocados
+- 2 cups all-purpose flour
+- 1 cup unsweetened cocoa powder
+- 1.5 cups organic cane sugar
+- 2 tsp baking soda
+- 1 tsp salt
+- 2 cups water
+- 2 tbsp white vinegar
+steps=
+1. Preheat oven to 350F (175C) and grease two 8-inch cake pans.
+2. Mash avocados until completely smooth in a large bowl.
+3. Whisk in all wet ingredients until well combined.
+4. Sift in dry ingredients and fold gently until no lumps remain.
+5. Divide batter between pans and bake for 30-35 minutes.
+notes=
+- The avocado flavor completely disappears once baked!
+- Best served with a dark chocolate ganache or fresh berries.
+----"#,
         ];
 
         for (i, sample) in samples.iter().enumerate() {
