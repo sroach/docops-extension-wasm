@@ -102,7 +102,7 @@ fn render_donut(
     let subtitle = cfg
         .get("subtitle")
         .map(String::as_str)
-        .unwrap_or("Rounded donut · bottom legend");
+        .unwrap_or("");
 
     let use_dark = controls
         .get("useDark")
@@ -232,7 +232,7 @@ fn render_donut(
     let _badge_anim_x = if use_dark { "-10px" } else { "10px" }; // Still need this for now or use CSS vars
 
     Ok(format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 760 660" id="{chart_id}" class="donut-container{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 760 720" id="{chart_id}" class="donut-container{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
     <title id="{chart_id}_title">{title_esc}</title>
     <desc id="{chart_id}_desc">{subtitle_esc} - Total: {total}</desc>
     <defs>
@@ -320,11 +320,10 @@ fn render_donut(
         </filter>
         {defs}
     </defs>
-    <rect width="760" height="660" rx="28" fill="url(#donut_bg_{chart_id})" aria-hidden="true"/>
-    <rect width="760" height="660" rx="28" fill="url(#donut_ticks_{chart_id})" opacity="0.50" aria-hidden="true"/>
-    <rect width="760" height="660" rx="28" fill="url(#donut_halo_{chart_id})" aria-hidden="true"/>
+    <rect width="760" height="720" rx="28" fill="url(#donut_bg_{chart_id})" aria-hidden="true"/>
+    <rect width="760" height="720" rx="28" fill="url(#donut_ticks_{chart_id})" opacity="0.50" aria-hidden="true"/>
+    <rect width="760" height="720" rx="28" fill="url(#donut_halo_{chart_id})" aria-hidden="true"/>
     <g aria-hidden="true">
-        <text x="56" y="50" fill="var(--donut-header-prefix)" font-size="10" font-weight="900" letter-spacing="2.2">PIE CHART</text>
         <text x="56" y="74" fill="var(--donut-header-title)" font-size="28" font-weight="900" letter-spacing="-0.6">{title_esc}</text>
         <rect x="56" y="88" width="64" height="4" rx="2" fill="#a37acc"/>
         <rect x="128" y="88" width="18" height="4" rx="2" fill="#84cc16"/>
@@ -355,7 +354,7 @@ fn render_donut(
         {external_labels}
     </g>
 
-    <g transform="translate(80, 480)" filter="url(#donut_lift_{chart_id})" role="list" aria-label="Legend">
+    <g transform="translate(80, 540)" filter="url(#donut_lift_{chart_id})" role="list" aria-label="Legend">
         <rect x="0" y="0" width="600" height="164" rx="18" fill="url(#legend_surface_{chart_id})" stroke="url(#legend_stroke_{chart_id})" stroke-width="1.2" aria-hidden="true"/>
         <text x="32" y="28" fill="var(--donut-header-sub)" font-size="10" font-weight="900" letter-spacing="1.5" aria-hidden="true">LEGEND</text>
         <text x="568" y="28" text-anchor="end" fill="var(--donut-legend-val-header)" font-size="10" font-weight="900" letter-spacing="0.9" aria-hidden="true">VALUES / SHARE</text>
@@ -615,7 +614,6 @@ fn render_v1(
     
     <g transform="translate(40, 44)" aria-hidden="true">
         <g class="header-motion">
-            <text x="0" y="0" fill="var(--v1-header-prefix)" font-size="10" font-weight="800" letter-spacing="2.4">PIE CHART</text>
             <text x="0" y="34" fill="var(--v1-header-title)" font-size="28" font-weight="900">{title_esc}</text>
             <rect x="0" y="47" width="74" height="5" rx="2.5" fill="#3B82F6"/>
             <rect x="82" y="47" width="22" height="5" rx="2.5" fill="#DC2626"/>
@@ -674,7 +672,6 @@ mod tests {
         assert!(svg.contains("Test Pie"));
         assert!(svg.contains("30.0%"));
         assert!(svg.contains("70.0%"));
-        assert!(svg.contains("PIE CHART"));
         assert!(svg.contains("--v1-bg-1: #cccccc")); // Check CSS var
         assert!(svg.contains("var(--v1-badge-anim-x)"));
     }
@@ -702,7 +699,6 @@ mod tests {
         assert!(svg.contains("Donut Chart"));
         assert!(svg.contains("30.0%"));
         assert!(svg.contains("70.0%"));
-        assert!(svg.contains("PIE CHART"));
     }
 
     #[test]
