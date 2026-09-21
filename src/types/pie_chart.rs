@@ -180,12 +180,20 @@ fn render_donut(
         let ly = 58.0 + row * 30.0;
         legend_html.push_str(&format!(
             r##"        <g class="legend-item" role="listitem" aria-label="{label}: {value} ({pct:.0}%)" transform="translate({lx}, {ly})">
-            <rect width="14" height="14" rx="4" fill="url(#orbit_seg_{chart_id}_{i})" aria-hidden="true"/>
-            <text x="24" y="11" fill="var(--donut-item-text)" font-size="13" font-weight="850">{label}</text>
-            <text x="260" y="11" text-anchor="end" fill="var(--donut-item-val)" font-size="12" font-weight="800">{value} · {pct:.0}%</text>
+            <g class="legend-item-content">
+                <rect width="14" height="14" rx="4" fill="url(#orbit_seg_{chart_id}_{i})" aria-hidden="true"/>
+                <text x="24" y="11" fill="var(--donut-item-text)" font-size="13" font-weight="850">{label}</text>
+                <text x="260" y="11" text-anchor="end" fill="var(--donut-item-val)" font-size="12" font-weight="800">{value} · {pct:.0}%</text>
+            </g>
         </g>
 "##,
-            lx=lx, ly=ly, chart_id=chart_id, i=i, label=escape(label), value=value, pct=frac*100.0
+            lx = lx,
+            ly = ly,
+            chart_id = chart_id,
+            i = i,
+            label = escape(label),
+            value = value,
+            pct = frac * 100.0,
         ));
 
         // External labels logic
@@ -308,8 +316,9 @@ fn render_donut(
             @keyframes orbitReveal_{chart_id} {{ from {{ opacity: 0; transform: scale(.92) rotate(-5deg); }} to {{ opacity: 1; transform: scale(1) rotate(0deg); }} }}
             #{chart_id} .slice-shell {{ transform-box: fill-box; transform-origin: center; transition: transform 260ms cubic-bezier(.2,.9,.2,1), filter 260ms ease; cursor: pointer; }}
             #{chart_id} .slice-shell:hover {{ transform: scale(1.035); filter: url(#donut_lift_{chart_id}); }}
-            #{chart_id} .legend-item {{ transition: transform 200ms ease, opacity 200ms ease; cursor: pointer; }}
-            #{chart_id} .legend-item:hover {{ transform: translateY(-1px); opacity: 0.94; }}
+            #{chart_id} .legend-item {{ cursor: pointer; }}
+            #{chart_id} .legend-item-content {{ transition: transform 200ms ease, opacity 200ms ease; }}
+            #{chart_id} .legend-item:hover .legend-item-content {{ transform: translateY(-1px); opacity: 0.94; }}
             @keyframes labelLineReveal_{chart_id} {{ from {{ stroke-dashoffset: 100; opacity: 0; }} to {{ stroke-dashoffset: 0; opacity: 1; }} }}
             @keyframes labelBadgeReveal_{chart_id} {{ from {{ opacity: 0; transform: translateX(var(--donut-badge-anim-x)); }} to {{ opacity: 1; transform: translateX(0); }} }}
         </style>
@@ -699,6 +708,7 @@ mod tests {
         assert!(svg.contains("Donut Chart"));
         assert!(svg.contains("30.0%"));
         assert!(svg.contains("70.0%"));
+        assert!(svg.contains("class=\"legend-item-content\""));
     }
 
     #[test]
