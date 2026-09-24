@@ -149,7 +149,7 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
     }
     
     let mut y_positions = Vec::new();
-    let mut current_y_cursor = padding_top as i32;
+    let mut current_y_cursor = padding_top;
     for (_, _, card_h) in &entry_data {
         let y = current_y_cursor + (card_h / 2);
         y_positions.push(y);

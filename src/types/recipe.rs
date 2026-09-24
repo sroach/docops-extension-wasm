@@ -359,7 +359,7 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
     }
 
     let header_height = if theme.is_premium { 260 } else { 148 };
-    let meta_strip_height = if theme.is_premium { 72 } else { 72 };
+    let meta_strip_height = 72;
     let gap = 16;
     let summary_padding = if summary_height > 0 && !theme.is_premium { 20 } else { 0 };
 
@@ -1111,7 +1111,7 @@ fn render_notes_and_tags(
             _ => (theme.surface.as_str(), theme.accent_color.as_str()),
         };
 
-        let label_text = if theme.is_premium { "COOK'S NOTES" } else { "COOK'S NOTES" };
+        let label_text = "COOK'S NOTES";
         let title_class = if theme.is_premium { "notes-label" } else { "section-title" };
 
         sb.push_str(&format!(

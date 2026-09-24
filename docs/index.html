@@ -349,6 +349,9 @@
                 <optgroup label="BDD & Gherkin">
                     <option value="gherkin_default">Gherkin — User Authentication Scenarios</option>
                 </optgroup>
+                <optgroup label="Steps & Process">
+                    <option value="steps_journey">Step Journey — Customer Onboarding</option>
+                </optgroup>
                 <optgroup label="Recipes">
                     <option value="recipe_cake">Recipe Card — Chocolate Avocado Cake</option>
                     <option value="recipe_risotto">Recipe Card — Spring Pea Risotto</option>
@@ -433,6 +436,10 @@
             <div class="feature-item">
                 <h3>Timeline</h3>
                 <p>Render historical or project milestones with date-text pairs in a premium vertical layout via <code>[docops,timeline]</code>.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Steps & Process</h3>
+                <p>Generate clean, step-based journey visuals with premium isometric indicators and glassmorphism cards using <code>[docops,steps]</code>.</p>
             </div>
             <div class="feature-item">
                 <h3>Architecture Decision Records</h3>
@@ -664,6 +671,20 @@ Feature: User Authentication & Search
       | invalid  | password | Invalid credentials      |
       | user     | wrong    | Invalid credentials      |
       |          | password | Username is required     |
+----`,
+
+        steps_journey: `[docops,steps]
+----
+title=Customer Onboarding Journey
+subtitle=Steps to welcome and activate new customers
+footer=Conversion rate improved +15.4% YoY
+---
+Order | Title | Description | Color | Tag
+1 | Sign Up | Customer creates an account | #6EAEFF |
+2 | Verification | Identity and email verification | #69DEE5 |
+3 | Profile Setup | Complete preferences and settings | #F8BC95 | +12%
+4 | First Use | Guided walkthrough of key features | #D9AEF8 |
+5 | Engagement | Regular usage and feedback loop | #B0A5FB |
 ----`,
 
         recipe_cake: `[docops,recipe]

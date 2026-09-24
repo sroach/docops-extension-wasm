@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>DocOps Steps Demo</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --text: #0f172a;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --text: #f8fafc;
+            }
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            background: var(--bg);
+            color: var(--text);
+            padding: 0 20px;
+        }
+        .chart svg { max-width: 100%; height: auto; border-radius: 26px; margin-bottom: 40px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+
+<h1>DocOps Steps Visuals</h1>
+
+<!-- Chart 1: Customer Onboarding Journey -->
+<div class="chart" id="chart-1"></div>
+<script type="text/plain" class="chart-source" data-target="chart-1">
+[docops,steps]
+----
+title=Customer Onboarding Journey
+subtitle=Steps to welcome and activate new customers
+footer=Conversion rate improved +15.4% YoY
+---
+Order | Title | Description | Color | Tag
+1 | Sign Up | Customer creates an account | #6EAEFF |
+2 | Verification | Identity and email verification | #69DEE5 |
+3 | Profile Setup | Complete preferences and settings | #F8BC95 | +12%
+4 | First Use | Guided walkthrough of key features | #D9AEF8 |
+5 | Engagement | Regular usage and feedback loop | #B0A5FB |
+----
+</script>
+
+<!-- Chart 2: Dark Mode Journey -->
+<div class="chart" id="chart-2"></div>
+<script type="text/plain" class="chart-source" data-target="chart-2">
+[docops,steps,useDark=true]
+----
+title=Strategic Growth Pathway
+subtitle=High-level milestones for enterprise expansion
+footer=Competitive advantage index +42% YoY
+---
+Order | Title | Description | Color | Tag
+1 | Brand Influence | Establish global market presence | #3B82F6 |
+2 | R&D Strength | Advance core technology capabilities | #8B5CF6 |
+3 | Market Growth | Expand to new regional territories | #16A34A | +128% YoY
+4 | Service Excellence | Achieve industry-leading satisfaction | #D97706 |
+5 | Data Security | Robust protection and compliance | #10B981 |
+6 | Innovation | Advanced product roadmap | #6366F1 |
+----
+</script>
+
+<!-- Chart 3: Stress Test (Many Steps & Long Text) -->
+<div class="chart" id="chart-3"></div>
+<script type="text/plain" class="chart-source" data-target="chart-3">
+[docops,steps]
+----
+title=Complex Multi-Stage Deployment
+subtitle=A very long description of a complex process that involves multiple teams and stakeholders across different timezones and regions.
+footer=Deployment successful across 12 clusters
+---
+Order | Title | Description | Color | Tag
+1 | Initial Planning | Define requirements, goals, and key performance indicators for the entire project lifecycle. This involves multiple stakeholders. | #6EAEFF | Start
+2 | Architecture Design | Create detailed system architecture, including data flow diagrams, security protocols, and infrastructure scaling plans. | #69DEE5 | 
+3 | Security Audit | Perform a comprehensive security review of all proposed systems and processes to ensure compliance with global standards. | #F8BC95 | Critical
+4 | Resource Allocation | Assign personnel and budget to various workstreams based on the project roadmap and identified risks. | #D9AEF8 |
+5 | Beta Testing | Deploy to a subset of users to gather early feedback and identify potential bugs before full production rollout. | #B0A5FB | 
+6 | Global Rollout | Execute the full deployment strategy across all target markets and regions simultaneously. | #3B82F6 | 
+7 | Post-Launch Review | Analyze performance data and user feedback to identify areas for improvement in future iterations. | #8B5CF6 |
+8 | Maintenance Phase | Continuous monitoring and support to ensure system stability and performance over the long term. | #16A34A | Ongoing
+9 | Future Expansion | Plan for next-generation features and additional market entries based on the success of the current deployment. | #D97706 |
+10 | Project Closure | Finalize all documentation and transition responsibilities to the operations team for ongoing management. | #10B981 | Done
+----
+</script>
+
+<!-- Chart 4: 3D Box Design Showcase -->
+<div class="chart" id="chart-4"></div>
+<script type="text/plain" class="chart-source" data-target="chart-4">
+[docops,steps,useDark=true]
+----
+title=3D Box Design Showcase
+subtitle=Demonstrating the new premium isometric step indicators
+footer=Premium 3D rendering enabled
+---
+Order | Title | Description | Color | Tag
+1 | Isometric Geometry | Precision-crafted 3D boxes for each milestone. | #B0A5FB | New
+2 | Shaded Surfaces | Dynamic light and shadow for depth and realism. | #8B5CF6 | 
+3 | Floating Indicators | Numbered circles hovering elegantly above each step. | #D9AEF8 |
+4 | Glassmorphism | Premium frosted glass cards for content clarity. | #6EAEFF |
+----
+</script>
+
+<script type="module">
+    import init, { generate_svg } from '../pkg/docops_extension.js';
+
+    async function main() {
+        await init();
+        document.querySelectorAll('script.chart-source').forEach((sourceEl) => {
+            const dsl = sourceEl.textContent.trim();
+            const targetId = sourceEl.dataset.target;
+            const target = document.getElementById(targetId);
+
+            if (!target) return;
+
+            const svgString = generate_svg(dsl);
+            target.innerHTML = svgString;
+        });
+    }
+
+    main();
+</script>
+</body>
+</html>

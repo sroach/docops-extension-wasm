@@ -375,6 +375,20 @@ Feature: User Authentication
     When they enter valid credentials
     Then they should be redirected to dashboard
 ----"#,
+            // Steps
+            r#"[docops,steps]
+----
+title=Customer Onboarding Journey
+subtitle=Steps to welcome and activate new customers
+footer=Conversion rate improved +15.4% YoY
+---
+Order | Title | Description | Color | Tag
+1 | Sign Up | Customer creates an account | #6EAEFF |
+2 | Verification | Identity and email verification | #69DEE5 |
+3 | Profile Setup | Complete preferences and settings | #F8BC95 | +12%
+4 | First Use | Guided walkthrough of key features | #D9AEF8 |
+5 | Engagement | Regular usage and feedback loop | #B0A5FB |
+----"#,
             // Recipe
             r#"[docops,recipe]
 ----
