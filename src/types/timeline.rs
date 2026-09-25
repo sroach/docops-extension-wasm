@@ -8,6 +8,7 @@ struct TimelineEntry {
     date: String,
     text: String,
     category: Option<String>,
+    #[allow(dead_code)]
     color: Option<String>,
 }
 
@@ -107,43 +108,42 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
     
     // Layout parameters
     let width = 800;
-    let card_w = 280;
-    let padding_top = 160;
-    let padding_bottom = 60;
+    let card_w = 288;
+    let padding_top = 180;
+    let padding_bottom = 80;
     let mid_x = width / 2;
     
     // First pass: calculate y positions and card heights
     let mut entry_data = Vec::new();
     for entry in &timeline.entries {
-        let wrapped_text = wrap_text(&entry.text, (card_w - 40) as f32, 7.5);
+        let wrapped_text = wrap_text(&entry.text, 244.0, 7.8);
         let text_lines_count = wrapped_text.len();
         
         let mut text_lines_svg = String::new();
         for (idx, line) in wrapped_text.iter().enumerate() {
             text_lines_svg.push_str(&format!(
-                r##"<text x="20" y="{y}" class="entry-text">{text}</text>"##,
-                y = 55 + (idx * 18),
+                r##"<text x="22" y="{y}" class="body">{text}</text>"##,
+                y = 62 + (idx * 20),
                 text = escape(line)
             ));
         }
 
-        let last_text_y = 55 + (text_lines_count.saturating_sub(1) * 18);
+        let last_text_y = 62 + (text_lines_count.saturating_sub(1) * 20);
         
-        let category_y = last_text_y + 25;
         let category_svg = if let Some(cat) = &entry.category {
-            format!(r##"<text x="20" y="{y}" class="entry-category" fill-opacity="0.5">{cat}</text>"##, 
-                y = category_y,
+            format!(r##"<text x="22" y="{y}" class="category">{cat}</text>"##, 
+                y = last_text_y + 20,
                 cat = escape(&cat.to_uppercase()))
         } else {
             "".to_string()
         };
 
         let card_h = if entry.category.is_some() {
-            category_y + 20
+            last_text_y + 30
         } else {
-            last_text_y + 25
+            last_text_y + 22
         };
-        let card_h = card_h.max(100) as i32;
+        let card_h = card_h.max(100);
         
         entry_data.push((text_lines_svg, category_svg, card_h));
     }
@@ -153,65 +153,40 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
     for (_, _, card_h) in &entry_data {
         let y = current_y_cursor + (card_h / 2);
         y_positions.push(y);
-        current_y_cursor = y + (card_h / 2) + 40; // 40px gap between cards
+        current_y_cursor = y + (card_h / 2) + 30; // Gap between cards
     }
     
     let total_height = current_y_cursor.max(padding_top + padding_bottom) + padding_bottom;
     
-    let apple_colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"];
-    
     let mut entries_svg = String::new();
-    let mut spine_segments = String::new();
-
-    // Initial spine segment
-    if !timeline.entries.is_empty() {
-        let first_y = y_positions[0];
-        let color = timeline.entries[0].color.clone().unwrap_or_else(|| apple_colors[0].to_string());
-        spine_segments.push_str(&format!(
-            r##"<line x1="{mid_x}" y1="{start_y}" x2="{mid_x}" y2="{first_y}" stroke="{color}" stroke-width="4" stroke-linecap="round" opacity="0.3" />"##,
-            mid_x = mid_x, start_y = first_y - 40, first_y = first_y, color = color
-        ));
-    }
     
+    let spine_start_y = y_positions.first().map(|y| y - 50).unwrap_or(170);
+    let spine_end_y = y_positions.last().map(|y| y + 40).unwrap_or(1024);
+
     for (i, entry) in timeline.entries.iter().enumerate() {
         let y = y_positions[i];
         let (text_lines_svg, category_svg, card_h) = &entry_data[i];
         let is_left = i % 2 == 0;
-        let color = entry.color.clone().unwrap_or_else(|| apple_colors[i % apple_colors.len()].to_string());
         
-        // Spine segments
-        if i < timeline.entries.len() - 1 {
-            let next_y = y_positions[i+1];
-            spine_segments.push_str(&format!(
-                r##"<line x1="{mid_x}" y1="{y}" x2="{mid_x}" y2="{next_y}" stroke="{color}" stroke-width="4" stroke-linecap="round" opacity="0.6" />"##,
-                mid_x = mid_x, y = y, next_y = next_y, color = color
-            ));
-        } else {
-            // Final spine segment
-            spine_segments.push_str(&format!(
-                r##"<line x1="{mid_x}" y1="{y}" x2="{mid_x}" y2="{end_y}" stroke="{color}" stroke-width="4" stroke-linecap="round" opacity="0.3" />"##,
-                mid_x = mid_x, y = y, end_y = y + 40, color = color
-            ));
-        }
-
         let card_x = if is_left {
             mid_x - card_w - 40
         } else {
             mid_x + 40
         };
         
-        let connector_x1 = if is_left { card_x + card_w } else { card_x };
+        let connector_x1 = if is_left { mid_x - 40 } else { mid_x + 40 };
         let connector_x2 = mid_x;
         
         entries_svg.push_str(&format!(
             r##"    <g class="timeline-entry" role="graphics-symbol" aria-roledescription="event" tabindex="0" aria-label="{date}: {text_raw}">
-        <line x1="{c_x1}" y1="{y_mid}" x2="{c_x2}" y2="{y_mid}" stroke="{color}" stroke-width="2" opacity="0.4" aria-hidden="true" />
-        <circle cx="{mid_x}" cy="{y_mid}" r="10" fill="{color}" filter="url(#{id}_glow)" aria-hidden="true" />
-        <circle cx="{mid_x}" cy="{y_mid}" r="5" fill="white" aria-hidden="true" />
+        <line x1="{c_x1}" y1="{y_mid}" x2="{c_x2}" y2="{y_mid}" class="connector" aria-hidden="true" />
+        <circle cx="{mid_x}" cy="{y_mid}" r="18" class="node-ring" filter="url(#{id}_nodeGlow)" aria-hidden="true" />
+        <circle cx="{mid_x}" cy="{y_mid}" r="5.5" class="node-core" aria-hidden="true" />
         
         <g transform="translate({card_x}, {card_y})">
-            <rect width="{card_w}" height="{card_h}" rx="16" class="entry-card" aria-hidden="true" />
-            <text x="20" y="32" class="entry-date" fill="{color}">{date}</text>
+            <rect width="{card_w}" height="{card_h}" rx="24" class="card" aria-hidden="true" />
+            <rect x="1" y="1" width="{card_w_inner}" height="{card_h_inner}" rx="23" class="card-highlight" aria-hidden="true" />
+            <text x="22" y="34" class="date">{date}</text>
             {text_lines_svg}
             {category_svg}
         </g>
@@ -220,13 +195,14 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
             c_x1 = connector_x1,
             c_x2 = connector_x2,
             y_mid = y,
-            color = color,
             mid_x = mid_x,
             id = id,
             card_x = card_x,
             card_y = y - (card_h / 2),
             card_w = card_w,
+            card_w_inner = card_w - 2,
             card_h = card_h,
+            card_h_inner = card_h - 2,
             date = escape(&entry.date),
             text_lines_svg = text_lines_svg,
             category_svg = category_svg,
@@ -239,55 +215,104 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
     <title id="{id}_title">{title}</title>
     <desc id="{id}_desc">{subtitle}</desc>
     <defs>
-        <filter id="{id}_glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        <radialGradient id="{id}_bgGlowBlue" cx="18%" cy="10%" r="65%">
+            <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.38"/>
+            <stop offset="42%" stop-color="#3B82F6" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="{id}_bgGlowViolet" cx="86%" cy="30%" r="60%">
+            <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.32"/>
+            <stop offset="48%" stop-color="#8B5CF6" stop-opacity="0.11"/>
+            <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="{id}_bgGlowCyan" cx="70%" cy="90%" r="55%">
+            <stop offset="0%" stop-color="#22D3EE" stop-opacity="0.24"/>
+            <stop offset="56%" stop-color="#06B6D4" stop-opacity="0.09"/>
+            <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="{id}_spineGradient" x1="{mid_x}" y1="{spine_start_y}" x2="{mid_x}" y2="{spine_end_y}" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#93C5FD" stop-opacity="0.28"/>
+            <stop offset="15%" stop-color="#60A5FA" stop-opacity="0.86"/>
+            <stop offset="45%" stop-color="#22D3EE" stop-opacity="0.82"/>
+            <stop offset="70%" stop-color="#A78BFA" stop-opacity="0.82"/>
+            <stop offset="100%" stop-color="#93C5FD" stop-opacity="0.24"/>
+        </linearGradient>
+        <linearGradient id="{id}_glassCard" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.24"/>
+            <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.11"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.06"/>
+        </linearGradient>
+        <linearGradient id="{id}_glassCardLight" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.96"/>
+            <stop offset="100%" stop-color="#EFF6FF" stop-opacity="0.78"/>
+        </linearGradient>
+        <filter id="{id}_softShadow" x="-25%" y="-35%" width="150%" height="180%">
+            <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity="0.28"/>
+            <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#FFFFFF" flood-opacity="0.10"/>
+        </filter>
+        <filter id="{id}_nodeGlow" x="-90%" y="-90%" width="280%" height="280%">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.231 0 0 0 0 0.510 0 0 0 0 0.965 0 0 0 0.75 0"/>
+            <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
         </filter>
         <style>
             #{id} {{
-                --primary: #3B82F6;
-                --text-main: #FFFFFF;
-                --text-soft: #94A3B8;
-                --bg-canvas: #0F172A;
-                --bg-card: rgba(30, 41, 59, 0.7);
-                --card-border: rgba(255, 255, 255, 0.1);
+                --bg-canvas: #080D18;
+                --text-main: #F8FAFC;
+                --text-soft: #CBD5E1;
+                --text-muted: #94A3B8;
+                --card-fill: url(#{id}_glassCard);
+                --card-border: rgba(255, 255, 255, 0.22);
+                --accent: #3B82F6;
+                --accent-soft: #93C5FD;
+                --focus: #60A5FA;
                 background-color: var(--bg-canvas);
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
             }}
             @media (prefers-color-scheme: light) {{
                 #{id} {{
-                    --text-main: #1E293B;
-                    --text-soft: #64748B;
                     --bg-canvas: #F8FAFC;
-                    --bg-card: rgba(255, 255, 255, 0.9);
-                    --card-border: rgba(0, 0, 0, 0.05);
+                    --text-main: #0F172A;
+                    --text-soft: #475569;
+                    --text-muted: #64748B;
+                    --card-fill: url(#{id}_glassCardLight);
+                    --card-border: rgba(59, 130, 246, 0.18);
+                    --accent: #2563EB;
+                    --accent-soft: #3B82F6;
+                    --focus: #2563EB;
                 }}
             }}
-            #{id} .timeline-title {{ font-size: 32px; font-weight: 800; fill: var(--text-main); letter-spacing: -0.04em; }}
-            #{id} .timeline-subtitle {{ font-size: 16px; fill: var(--text-soft); font-weight: 500; }}
-            #{id} .entry-card {{ fill: var(--bg-card); stroke: var(--card-border); stroke-width: 1; }}
-            #{id} .entry-date {{ font-size: 14px; font-weight: 800; letter-spacing: 0.02em; }}
-            #{id} .entry-text {{ font-size: 14px; font-weight: 500; fill: var(--text-main); }}
-            #{id} .entry-category {{ font-size: 10px; font-weight: 800; fill: var(--text-soft); letter-spacing: 0.1em; }}
+            #{id} .title {{ font-size: 38px; font-weight: 800; letter-spacing: -0.055em; fill: var(--text-main); }}
+            #{id} .subtitle {{ font-size: 15px; font-weight: 560; letter-spacing: -0.01em; fill: var(--text-soft); }}
+            #{id} .card {{ fill: var(--card-fill); stroke: var(--card-border); stroke-width: 1; filter: url(#{id}_softShadow); }}
+            #{id} .card-highlight {{ fill: none; stroke: rgba(255, 255, 255, 0.34); stroke-width: 1; }}
+            #{id} .date {{ font-size: 13px; font-weight: 780; letter-spacing: -0.01em; fill: var(--accent-soft); }}
+            #{id} .body {{ font-size: 14px; font-weight: 520; letter-spacing: -0.012em; fill: var(--text-main); }}
+            #{id} .category {{ font-size: 10px; font-weight: 800; letter-spacing: 0.13em; fill: var(--text-muted); }}
+            #{id} .connector {{ stroke: var(--accent-soft); stroke-width: 1.5; stroke-linecap: round; opacity: 0.42; }}
+            #{id} .node-ring {{ fill: rgba(59, 130, 246, 0.16); stroke: rgba(147, 197, 253, 0.48); stroke-width: 1; }}
+            #{id} .node-core {{ fill: #F8FAFC; }}
             #{id} .timeline-entry:focus {{ outline: none; }}
-            #{id} .timeline-entry:focus-visible .entry-card {{ stroke: var(--primary); stroke-width: 2; }}
+            #{id} .timeline-entry:focus-visible .card {{ stroke: var(--focus); stroke-width: 2.5; }}
+            #{id} .timeline-entry:focus-visible .node-ring {{ stroke: var(--focus); stroke-width: 3; }}
         </style>
     </defs>
     
     <rect width="{width}" height="{height}" fill="var(--bg-canvas)" />
     
-    <!-- Decorative background waves -->
-    <g opacity="0.05" fill="none" stroke="var(--text-soft)" stroke-width="2" aria-hidden="true">
-        <path d="M0 {h8} Q{w4} {h7} {w2} {h8} T{width} {h8}" />
-        <path d="M0 {h6} Q{w4} {h5} {w2} {h6} T{width} {h6}" />
-    </g>
+    <!-- Background Glows -->
+    <rect width="{width}" height="{height}" fill="url(#{id}_bgGlowBlue)" aria-hidden="true" />
+    <rect width="{width}" height="{height}" fill="url(#{id}_bgGlowViolet)" aria-hidden="true" />
+    <rect width="{width}" height="{height}" fill="url(#{id}_bgGlowCyan)" aria-hidden="true" />
 
-    <text x="50" y="60" class="timeline-title">{title}</text>
-    <text x="50" y="85" class="timeline-subtitle">{subtitle}</text>
+    <text x="50" y="70" class="title">{title}</text>
+    <text x="50" y="95" class="subtitle">{subtitle}</text>
     
-    <g class="spine-container" aria-hidden="true">
-        {spine_segments}
-    </g>
+    <!-- Spine -->
+    <line x1="{mid_x}" y1="{spine_start_y}" x2="{mid_x}" y2="{spine_end_y}" stroke="url(#{id}_spineGradient)" stroke-width="6" stroke-linecap="round" aria-hidden="true" />
     
     {entries_svg}
 </svg>"##,
@@ -296,14 +321,10 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
         height = total_height,
         title = escape(&timeline.title),
         subtitle = escape(&timeline.subtitle),
-        spine_segments = spine_segments,
-        entries_svg = entries_svg,
-        w4 = width / 4,
-        w2 = width / 2,
-        h8 = total_height * 7 / 8,
-        h7 = total_height * 6 / 8,
-        h6 = total_height * 5 / 8,
-        h5 = total_height * 4 / 8
+        mid_x = mid_x,
+        spine_start_y = spine_start_y,
+        spine_end_y = spine_end_y,
+        entries_svg = entries_svg
     )
 }
 

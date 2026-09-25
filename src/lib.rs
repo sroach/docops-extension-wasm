@@ -389,6 +389,24 @@ Order | Title | Description | Color | Tag
 4 | First Use | Guided walkthrough of key features | #D9AEF8 |
 5 | Engagement | Regular usage and feedback loop | #B0A5FB |
 ----"#,
+            // Timeline
+            r#"[docops,timeline]
+----
+title=Space Exploration
+subtitle=Key Milestones
+---
+date= April 12, 1961
+text= Yuri Gagarin becomes the first human to journey into outer space
+
+date= July 20, 1969
+text= Neil Armstrong and Buzz Aldrin become the first humans to land on the Moon
+
+date= April 12, 1981
+text= First launch of Space Shuttle Columbia
+
+date= November 20, 1998
+text= Launch of the first module of the International Space Station
+----"#,
             // Recipe
             r#"[docops,recipe]
 ----
