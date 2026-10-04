@@ -177,7 +177,7 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             secondary_text: if use_dark { "#88AACC" } else { "#3377BB" }.to_string(),
             corner_radius: 12,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif".to_string(),
-            font_import: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');".to_string(),
+            font_import: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');".to_string(),
             font_width_multiplier: 1.0,
             is_premium: false,
         },
@@ -190,7 +190,7 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             secondary_text: if use_dark { "#B8860B" } else { "#8B6508" }.to_string(),
             corner_radius: 8,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif".to_string(),
-            font_import: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');".to_string(),
+            font_import: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');".to_string(),
             font_width_multiplier: 1.0,
             is_premium: false,
         },
@@ -201,9 +201,9 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             accent_color: if use_dark { "#60A5FA" } else { "#3B82F6" }.to_string(),
             primary_text: if use_dark { "#F9FAFB" } else { "#111827" }.to_string(),
             secondary_text: if use_dark { "#9CA3AF" } else { "#4B5563" }.to_string(),
-            corner_radius: 24,
+            corner_radius: 32,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif".to_string(),
-            font_import: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');".to_string(),
+            font_import: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');".to_string(),
             font_width_multiplier: 1.05,
             is_premium: true,
         },
@@ -260,7 +260,11 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
     } else {
         &recipe.summary
     };
-    let summary_lines = wrap_text_to_width(summary_to_wrap, (content_width - 32) as f32, summary_avg_char_w);
+    let summary_lines = wrap_text_to_width(
+        summary_to_wrap,
+        (content_width - 32) as f32,
+        summary_avg_char_w,
+    );
     let summary_lines = if summary_lines.len() > 3 {
         let mut lines = summary_lines.into_iter().take(3).collect::<Vec<_>>();
         if let Some(last) = lines.last_mut() {
@@ -361,13 +365,21 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
     let header_height = if theme.is_premium { 260 } else { 148 };
     let meta_strip_height = 72;
     let gap = 16;
-    let summary_padding = if summary_height > 0 && !theme.is_premium { 20 } else { 0 };
+    let summary_padding = if summary_height > 0 && !theme.is_premium {
+        20
+    } else {
+        0
+    };
 
     let body_panel_y = if theme.is_premium {
-        header_height + (if summary_height > 0 { summary_height + 40 } else { 20 })
+        header_height
+            + (if summary_height > 0 {
+                summary_height + 40
+            } else {
+                20
+            })
     } else {
-        32
-            + header_height
+        32 + header_height
             + gap
             + meta_strip_height
             + (if summary_height > 0 {
@@ -427,6 +439,46 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
     <title id="{id}_title">{title_esc} — Recipe Card</title>
     <desc id="{id}_desc">A styled recipe card for {title_esc}</desc>
     <defs>
+        <linearGradient id="{id}_bgGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--bg-start)"/>
+            <stop offset="48%" stop-color="var(--bg-mid)"/>
+            <stop offset="100%" stop-color="var(--bg-end)"/>
+        </linearGradient>
+
+        <radialGradient id="{id}_glowBlue" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="var(--glow-blue)" stop-opacity="0.72"/>
+            <stop offset="100%" stop-color="var(--glow-blue)" stop-opacity="0"/>
+        </radialGradient>
+
+        <radialGradient id="{id}_glowGreen" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="var(--glow-green)" stop-opacity="0.62"/>
+            <stop offset="100%" stop-color="var(--glow-green)" stop-opacity="0"/>
+        </radialGradient>
+
+        <radialGradient id="{id}_glowAmber" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="var(--glow-amber)" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="var(--glow-amber)" stop-opacity="0"/>
+        </radialGradient>
+
+        <linearGradient id="{id}_glassStroke" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--stroke-bright)" stop-opacity="0.9"/>
+            <stop offset="55%" stop-color="var(--stroke-soft)" stop-opacity="0.38"/>
+            <stop offset="100%" stop-color="var(--stroke-bright)" stop-opacity="0.3"/>
+        </linearGradient>
+
+        <linearGradient id="{id}_glassHighlight" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </linearGradient>
+
+        <filter id="{id}_softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity="var(--shadow-opacity)"/>
+        </filter>
+
+        <filter id="{id}_microShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="var(--micro-shadow-opacity)"/>
+        </filter>
+
         <filter id="{id}_shadow" x="-10%" y="-10%" width="120%" height="120%">
             <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="var(--shadow-color)" flood-opacity="var(--shadow-opacity)"/>
         </filter>
@@ -434,16 +486,37 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
         <style>
             {font_import}
             #{id} {{
+                --bg-start: #F8FAFC;
+                --bg-mid: #EEF6FF;
+                --bg-end: #F7FEE7;
+
+                --text: #111827;
+                --muted: #64748B;
+                --primary: #3B82F6;
+                --green: #10B981;
+                --amber: #F59E0B;
+
+                --glass: rgba(255, 255, 255, 0.62);
+                --glass-strong: rgba(255, 255, 255, 0.78);
+                --glass-soft: rgba(255, 255, 255, 0.38);
+
+                --stroke-bright: #FFFFFF;
+                --stroke-soft: #CBD5E1;
+
+                --glow-blue: #3B82F6;
+                --glow-green: #10B981;
+                --glow-amber: #F59E0B;
+
+                --shadow-opacity: 0.14;
+                --micro-shadow-opacity: 0.08;
+
                 --canvas: {canvas};
                 --surface: {surface};
-                --primary: {primary};
-                --secondary: {secondary};
                 --accent: {accent};
                 --accent-subtle: rgba(59, 130, 246, 0.08);
                 --border: rgba(59, 130, 246, 0.15);
                 --border-subtle: rgba(17, 24, 39, 0.08);
                 --shadow-color: #000000;
-                --shadow-opacity: 0.06;
                 --tag-bg: rgba(139, 92, 246, 0.1);
                 --tag-text: #6D28D9;
                 --tag-border: rgba(139, 92, 246, 0.2);
@@ -455,30 +528,52 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
                 --header-circle-2: #FEF3C7;
                 --header-circle-3: #D1FAE5;
             }}
-            #{id} .recipe-title {{ font-family: {font_family}; font-size: {title_size}; font-weight: 800; letter-spacing: -0.04em; fill: var(--primary); }}
-            #{id} .recipe-subtitle {{ font-family: {font_family}; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; fill: var(--accent); }}
-            #{id} .recipe-summary {{ font-family: {font_family}; font-size: 18px; font-weight: 500; line-height: 1.4; fill: var(--secondary); opacity: 0.9; }}
-            #{id} .meta-label {{ font-family: {font_family}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; fill: var(--secondary); opacity: 0.8; }}
-            #{id} .meta-value {{ font-family: {font_family}; font-size: 18px; font-weight: 700; fill: var(--primary); }}
-            #{id} .section-title {{ font-family: {font_family}; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; fill: var(--primary); }}
-            #{id} .body-text {{ font-family: {font_family}; font-size: 16px; font-weight: 500; line-height: 1.5; fill: var(--primary); }}
-            #{id} .summary-text {{ font-family: {font_family}; font-size: 16px; line-height: 1.6; fill: var(--secondary); }}
-            #{id} .step-num {{ font-family: {font_family}; font-size: 12px; font-weight: 800; fill: #FFFFFF; }}
-            #{id} .tag-text {{ font-family: {font_family}; font-size: 13px; font-weight: 600; fill: var(--tag-text); }}
-            #{id} .notes-label {{ font-family: {font_family}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; fill: var(--secondary); opacity: 0.8; }}
+            #{id} .recipe-title {{ font-family: {font_family}; font-size: {title_size}; font-weight: 800; letter-spacing: -0.04em; fill: var(--text); }}
+            #{id} .recipe-subtitle {{ font-family: {font_family}; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; fill: var(--primary); }}
+            #{id} .recipe-summary {{ font-family: {font_family}; font-size: 16px; font-weight: 600; line-height: 1.4; fill: var(--text); opacity: 0.9; }}
+            #{id} .meta-label {{ font-family: {font_family}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; fill: var(--muted); opacity: 0.8; }}
+            #{id} .meta-value {{ font-family: {font_family}; font-size: 18px; font-weight: 700; fill: var(--text); }}
+            #{id} .section-title {{ font-family: {font_family}; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; fill: var(--text); }}
+            #{id} .body-text {{ font-family: {font_family}; font-size: 15px; font-weight: 600; line-height: 1.5; fill: var(--text); }}
+            #{id} .summary-text {{ font-family: {font_family}; font-size: 16px; line-height: 1.6; fill: var(--text); }}
+            #{id} .step-num {{ font-family: {font_family}; font-size: 11px; font-weight: 800; fill: #FFFFFF; }}
+            #{id} .tag-text {{ font-family: {font_family}; font-size: 13px; font-weight: 700; fill: var(--text); }}
+            #{id} .notes-label {{ font-family: {font_family}; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; fill: var(--muted); opacity: 0.8; }}
+            #{id} .muted {{ font-family: {font_family}; font-size: 14px; font-weight: 500; fill: var(--muted); }}
 
             @media (prefers-color-scheme: dark) {{
                 #{id} {{
+                    --bg-start: #020617;
+                    --bg-mid: #0F172A;
+                    --bg-end: #111827;
+
+                    --text: #F8FAFC;
+                    --muted: #CBD5E1;
+                    --primary: #60A5FA;
+                    --green: #34D399;
+                    --amber: #FBBF24;
+
+                    --glass: rgba(15, 23, 42, 0.58);
+                    --glass-strong: rgba(30, 41, 59, 0.72);
+                    --glass-soft: rgba(255, 255, 255, 0.08);
+
+                    --stroke-bright: rgba(255, 255, 255, 0.72);
+                    --stroke-soft: rgba(148, 163, 184, 0.36);
+
+                    --glow-blue: #2563EB;
+                    --glow-green: #059669;
+                    --glow-amber: #D97706;
+
+                    --shadow-opacity: 0.42;
+                    --micro-shadow-opacity: 0.22;
+
                     --canvas: #0F172A;
                     --surface: #1E293B;
-                    --primary: #F9FAFB;
-                    --secondary: #9CA3AF;
                     --accent: #60A5FA;
                     --accent-subtle: rgba(96, 165, 250, 0.12);
                     --border: rgba(96, 165, 250, 0.25);
                     --border-subtle: rgba(255, 255, 255, 0.1);
                     --shadow-color: #000000;
-                    --shadow-opacity: 0.35;
                     --tag-bg: rgba(139, 92, 246, 0.25);
                     --tag-text: #C4B5FD;
                     --tag-border: rgba(139, 92, 246, 0.4);
@@ -490,19 +585,39 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
                     --header-circle-2: #451A03;
                     --header-circle-3: #065F46;
                 }}
-                #{id} .recipe-summary {{ fill: var(--primary); opacity: 1; }}
             }}
             #{id}.dark-mode {{
+                --bg-start: #020617;
+                --bg-mid: #0F172A;
+                --bg-end: #111827;
+
+                --text: #F8FAFC;
+                --muted: #CBD5E1;
+                --primary: #60A5FA;
+                --green: #34D399;
+                --amber: #FBBF24;
+
+                --glass: rgba(15, 23, 42, 0.58);
+                --glass-strong: rgba(30, 41, 59, 0.72);
+                --glass-soft: rgba(255, 255, 255, 0.08);
+
+                --stroke-bright: rgba(255, 255, 255, 0.72);
+                --stroke-soft: rgba(148, 163, 184, 0.36);
+
+                --glow-blue: #2563EB;
+                --glow-green: #059669;
+                --glow-amber: #D97706;
+
+                --shadow-opacity: 0.42;
+                --micro-shadow-opacity: 0.22;
+
                 --canvas: #0F172A;
                 --surface: #1E293B;
-                --primary: #F9FAFB;
-                --secondary: #9CA3AF;
                 --accent: #60A5FA;
                 --accent-subtle: rgba(96, 165, 250, 0.12);
                 --border: rgba(96, 165, 250, 0.25);
                 --border-subtle: rgba(255, 255, 255, 0.1);
                 --shadow-color: #000000;
-                --shadow-opacity: 0.35;
                 --tag-bg: rgba(139, 92, 246, 0.25);
                 --tag-text: #C4B5FD;
                 --tag-border: rgba(139, 92, 246, 0.4);
@@ -514,10 +629,9 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
                 --header-circle-2: #451A03;
                 --header-circle-3: #065F46;
             }}
-            #{id}.dark-mode .recipe-summary {{ fill: var(--primary); opacity: 1; }}
         </style>
     </defs>
-    <rect width="{width}" height="{total_height}" fill="var(--canvas)" rx="16" aria-hidden="true"/>
+    <rect width="{width}" height="{total_height}" fill="{canvas_fill}" rx="32" aria-hidden="true"/>
 "##,
         width = width,
         total_height = total_height,
@@ -526,14 +640,34 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
         title_esc = escape(&recipe.title),
         patterns_defs = patterns_defs,
         font_import = theme.font_import,
-        primary = theme.primary_text,
-        secondary = theme.secondary_text,
-        accent = theme.accent_color,
         canvas = theme.canvas,
         surface = theme.surface,
+        accent = theme.accent_color,
         font_family = theme.font_family,
-        title_size = if theme.is_premium { "36px" } else { "32px" }
+        title_size = if theme.is_premium { "36px" } else { "32px" },
+        canvas_fill = if theme.is_premium {
+            format!("url(#{}_bgGrad)", id)
+        } else {
+            "var(--canvas)".to_string()
+        }
     );
+
+    if theme.is_premium {
+        svg.push_str(&format!(
+            r##"<circle cx="92" cy="120" r="180" fill="url(#{id}_glowBlue)" aria-hidden="true"/>
+            <circle cx="560" cy="168" r="190" fill="url(#{id}_glowGreen)" aria-hidden="true"/>
+            <circle cx="496" cy="788" r="230" fill="url(#{id}_glowAmber)" aria-hidden="true"/>
+            <g filter="url(#{id}_softShadow)" role="region" aria-label="{title_esc}">
+                <rect x="28" y="28" width="{w}" height="{h}" rx="32" fill="var(--glass)" stroke="url(#{id}_glassStroke)" stroke-width="1.2" aria-hidden="true"/>
+                <path d="M60 29 H620 Q651 29 651 60 V220 Q468 190 330 234 Q180 282 29 218 V60 Q29 29 60 29 Z" fill="var(--glass-soft)" aria-hidden="true"/>
+                <rect x="44" y="44" width="{w_inner}" height="142" rx="26" fill="url(#{id}_glassHighlight)" opacity="0.55" aria-hidden="true"/>"##,
+            id = id,
+            title_esc = escape(&recipe.title),
+            w = width - 56,
+            h = total_height - 56,
+            w_inner = width - 88
+        ));
+    }
 
     // Theme specific patterns
     match theme.name.as_str() {
@@ -558,19 +692,7 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
         _ => {}
     }
 
-    if theme.is_premium {
-        svg.push_str(&format!(
-            r##"<rect width="{w}" height="{h}" rx="{r}" fill="var(--canvas)" filter="url(#{id}_shadow)" aria-hidden="true"/>
-            <rect x="0.5" y="0.5" width="{w_sub}" height="{h_sub}" rx="{r_sub}" fill="none" stroke="var(--border)" stroke-width="1" aria-hidden="true"/>"##,
-            w = width,
-            h = total_height,
-            r = theme.corner_radius,
-            id = id,
-            w_sub = width - 1,
-            h_sub = total_height - 1,
-            r_sub = theme.corner_radius,
-        ));
-    } else {
+    if !theme.is_premium {
         svg.push_str(&format!(
             r##"<rect x="14" y="14" width="{w}" height="{h}" rx="{r}" fill="none" stroke="{accent}" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="8 4" aria-hidden="true"/>"##,
             w = width - 28,
@@ -595,12 +717,19 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
     }
 
     // Header
-    svg.push_str(&render_header(recipe, &theme, &id, side_margin, &summary_lines));
+    svg.push_str(&render_header(
+        recipe,
+        &theme,
+        &id,
+        side_margin,
+        &summary_lines,
+    ));
 
     // Meta Strip
     svg.push_str(&render_meta_strip(
         recipe,
         &theme,
+        &id,
         side_margin,
         &summary_lines,
         summary_height,
@@ -620,6 +749,7 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
         &step_lines_nested,
         &clean_steps,
         &theme,
+        &id,
         &panels_layout,
     ));
 
@@ -635,10 +765,14 @@ fn render_svg(recipe: &Recipe, use_dark: bool) -> String {
     svg.push_str(&render_notes_and_tags(
         recipe,
         &theme,
+        &id,
         &note_lines_nested,
         &notes_tags_layout,
     ));
 
+    if theme.is_premium {
+        svg.push_str("</g>");
+    }
     svg.push_str("</svg>");
     svg
 }
@@ -652,58 +786,39 @@ fn render_header(
 ) -> String {
     if theme.is_premium {
         let tags_str = if recipe.tags.is_empty() {
-            "VEGAN · DESSERT · HEALTHY".to_string()
+            "Vegan · Dessert · Healthy".to_string()
         } else {
-            recipe.tags.join(" · ").to_uppercase()
+            recipe.tags.join(" · ")
         };
 
         let mut summary_svg = String::new();
         for (i, line) in summary_lines.iter().enumerate() {
-            let y = 88 + (i * 25);
+            let y = 166 + (i * 24);
             summary_svg.push_str(&format!(
-                r##"<text y="{y}" class="recipe-summary">{line}</text>"##,
+                r##"<text x="64" y="{y}" class="recipe-summary">{line}</text>"##,
                 y = y,
                 line = escape(line)
             ));
         }
 
         return format!(
-            r##"<g role="region" aria-label="Recipe Header">
-            <defs>
-                <linearGradient id="{id}_header_grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="var(--header-grad-start)" stop-opacity="0.8"/>
-                    <stop offset="100%" stop-color="var(--header-grad-end)" stop-opacity="0.5"/>
-                </linearGradient>
-            </defs>
-            <path d="M0 {r} Q0 0 {r} 0 L{w_r} 0 Q{w} 0 {w} {r} L{w} 240 L0 240 Z" fill="url(#{id}_header_grad)" aria-hidden="true"/>
-            
-            <g transform="translate({sm}, 60)">
-                <text y="0" class="recipe-subtitle">{tags}</text>
-                <text y="48" class="recipe-title">{title}</text>
-                {summary_svg}
-            </g>
- 
-            <g transform="translate({circle_x}, 20)" aria-hidden="true">
-                <circle cx="100" cy="60" r="50" fill="var(--header-circle-1)" fill-opacity="0.3"/>
-                <circle cx="120" cy="40" r="40" fill="var(--header-circle-2)" fill-opacity="0.5"/>
-                <circle cx="80" cy="30" r="45" fill="var(--header-circle-3)" fill-opacity="0.6"/>
-                <g transform="translate(75, 25)">
-                   <circle cx="25" cy="25" r="25" fill="#4B2C20"/>
-                   <circle cx="25" cy="25" r="15" fill="#34D399"/>
-                   <path d="M25 15 Q32 15 32 25 Q32 35 25 35 Q18 35 18 25 Q18 15 25 15 Z" fill="#065F46" opacity="0.2"/>
-                   <circle cx="25" cy="25" r="6" fill="#059669"/>
-                </g>
+            r##"<g role="region" aria-label="Recipe header">
+            <text x="64" y="86" class="recipe-subtitle">{tags}</text>
+            <text x="64" y="134" class="recipe-title">{title}</text>
+            {summary_svg}
+
+            <g transform="translate(520, 76)" aria-hidden="true">
+                <circle cx="36" cy="36" r="46" fill="var(--glass-strong)" stroke="url(#{id}_glassStroke)" filter="url(#{id}_microShadow)"/>
+                <circle cx="36" cy="36" r="27" fill="#3B241D"/>
+                <circle cx="36" cy="36" r="18" fill="#34D399"/>
+                <circle cx="36" cy="36" r="7" fill="#065F46" opacity="0.72"/>
+                <path d="M35 7 C48 11 58 22 61 35" fill="none" stroke="#FFFFFF" stroke-opacity="0.52" stroke-width="4" stroke-linecap="round"/>
             </g>
         </g>"##,
             id = id,
-            r = theme.corner_radius,
-            w = 680,
-            w_r = 680 - theme.corner_radius,
-            sm = side_margin,
             tags = escape(&tags_str),
             title = escape(&recipe.title),
-            summary_svg = summary_svg,
-            circle_x = 680 - 200
+            summary_svg = summary_svg
         );
     }
 
@@ -831,42 +946,50 @@ fn render_divider(y: i32, side_margin: i32, theme: &RecipeTheme) -> String {
 fn render_meta_strip(
     recipe: &Recipe,
     theme: &RecipeTheme,
+    id: &str,
     side_margin: i32,
     summary_lines: &[String],
     summary_height: i32,
 ) -> String {
     if theme.is_premium {
-        let content_width = 680 - (side_margin * 2);
-        let badge_w = (content_width - 32) / 3;
-        let y_strip = 250;
+        let y_strip = 236;
 
-        let yield_val = if recipe.yield_val.is_empty() { "8 servings" } else { &recipe.yield_val };
-        let prep_val = if recipe.prep.is_empty() { "20 minutes" } else { &recipe.prep };
-        let cook_val = if recipe.cook.is_empty() { "35 minutes" } else { &recipe.cook };
+        let yield_val = if recipe.yield_val.is_empty() {
+            "8 servings"
+        } else {
+            &recipe.yield_val
+        };
+        let prep_val = if recipe.prep.is_empty() {
+            "20 minutes"
+        } else {
+            &recipe.prep
+        };
+        let cook_val = if recipe.cook.is_empty() {
+            "35 minutes"
+        } else {
+            &recipe.cook
+        };
 
         return format!(
-            r##"<g role="region" aria-label="Recipe Overview" transform="translate({sm}, {y})">
+            r##"<g role="region" aria-label="Recipe overview metrics" transform="translate(64, {y})">
             <g role="graphics-symbol" aria-roledescription="metric" aria-label="Yield: {yield_val}">
-                <rect width="{bw}" height="64" rx="16" fill="var(--surface)" aria-hidden="true"/>
-                <text x="24" y="24" class="meta-label">YIELD</text>
-                <text x="24" y="50" class="meta-value">{yield_val}</text>
+                <rect width="168" height="78" rx="22" fill="var(--glass-strong)" stroke="url(#{id}_glassStroke)" filter="url(#{id}_microShadow)" aria-hidden="true"/>
+                <text x="22" y="30" class="meta-label">Yield</text>
+                <text x="22" y="58" class="meta-value">{yield_val}</text>
             </g>
-            <g transform="translate({x2}, 0)" role="graphics-symbol" aria-roledescription="metric" aria-label="Prep Time: {prep}">
-                <rect width="{bw}" height="64" rx="16" fill="var(--surface)" aria-hidden="true"/>
-                <text x="24" y="24" class="meta-label">PREP</text>
-                <text x="24" y="50" class="meta-value">{prep}</text>
+            <g transform="translate(196, 0)" role="graphics-symbol" aria-roledescription="metric" aria-label="Prep time: {prep}">
+                <rect width="168" height="78" rx="22" fill="var(--glass-strong)" stroke="url(#{id}_glassStroke)" filter="url(#{id}_microShadow)" aria-hidden="true"/>
+                <text x="22" y="30" class="meta-label">Prep</text>
+                <text x="22" y="58" class="meta-value">{prep}</text>
             </g>
-            <g transform="translate({x3}, 0)" role="graphics-symbol" aria-roledescription="metric" aria-label="Bake Time: {cook}">
-                <rect width="{bw}" height="64" rx="16" fill="var(--surface)" aria-hidden="true"/>
-                <text x="24" y="24" class="meta-label">BAKE</text>
-                <text x="24" y="50" class="meta-value">{cook}</text>
+            <g transform="translate(392, 0)" role="graphics-symbol" aria-roledescription="metric" aria-label="Bake time: {cook}">
+                <rect width="168" height="78" rx="22" fill="var(--glass-strong)" stroke="url(#{id}_glassStroke)" filter="url(#{id}_microShadow)" aria-hidden="true"/>
+                <text x="22" y="30" class="meta-label">Bake</text>
+                <text x="22" y="58" class="meta-value">{cook}</text>
             </g>
         </g>"##,
-            sm = side_margin,
+            id = id,
             y = y_strip,
-            bw = badge_w,
-            x2 = badge_w + 16,
-            x3 = (badge_w + 16) * 2,
             yield_val = escape(yield_val),
             prep = escape(prep_val),
             cook = escape(cook_val)
@@ -953,6 +1076,7 @@ fn render_body_panels(
     steps: &[Vec<String>],
     raw_steps: &[String],
     theme: &RecipeTheme,
+    id: &str,
     layout: &BodyPanelsLayout,
 ) -> String {
     let ing_layout = SectionLayout {
@@ -981,11 +1105,12 @@ fn render_body_panels(
             ingredients,
             raw_ingredients,
             theme,
+            id,
             &ing_layout,
             false
         ),
         steps_x = layout.column_width + layout.column_gap,
-        steps = render_section("STEPS", steps, raw_steps, theme, &steps_layout, true)
+        steps = render_section("STEPS", steps, raw_steps, theme, id, &steps_layout, true)
     )
 }
 
@@ -994,14 +1119,18 @@ fn render_section(
     items: &[Vec<String>],
     raw_items: &[String],
     theme: &RecipeTheme,
+    id: &str,
     layout: &SectionLayout,
     is_steps: bool,
 ) -> String {
     let (card_fill, card_stroke) = match theme.name.as_str() {
-        "spring" => ("#F0FAF0", "#90C890"),
-        "summer" => ("#E8F4FF", "#5090C8"),
-        "premium" => ("var(--surface)", "none"),
-        _ => (theme.surface.as_str(), theme.accent_color.as_str()),
+        "spring" => ("#F0FAF0".to_string(), "#90C890".to_string()),
+        "summer" => ("#E8F4FF".to_string(), "#5090C8".to_string()),
+        "premium" => (
+            "var(--glass-strong)".to_string(),
+            "url(#".to_string() + id + "_glassStroke)",
+        ),
+        _ => (theme.surface.to_string(), theme.accent_color.to_string()),
     };
 
     let region_label = if is_steps {
@@ -1017,7 +1146,7 @@ fn render_section(
 
     let mut sb = format!(
         r##"<g role="region" aria-label="{region_label}">
-        <rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="1" aria-hidden="true"/>
+        <rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="1.2" {filter} aria-hidden="true"/>
         <text x="{t_x}" y="{t_y}" class="section-title">{title_final}</text>
         <g role="list" aria-label="{list_label}">"##,
         region_label = region_label,
@@ -1025,12 +1154,25 @@ fn render_section(
         y = layout.y,
         w = layout.width,
         h = layout.height,
-        r = theme.corner_radius,
+        r = if theme.is_premium {
+            28
+        } else {
+            theme.corner_radius
+        },
         fill = card_fill,
         stroke = card_stroke,
+        filter = if theme.is_premium {
+            format!("filter=\"url(#{}_microShadow)\"", id)
+        } else {
+            "".to_string()
+        },
         t_x = layout.x + 24,
         t_y = layout.y + 44,
-        title_final = if theme.is_premium && is_steps { "Method" } else { title },
+        title_final = if theme.is_premium && is_steps {
+            "Method"
+        } else {
+            title
+        },
         list_label = list_label
     );
 
@@ -1052,7 +1194,11 @@ fn render_section(
         for (j, line) in lines.iter().enumerate() {
             if is_steps {
                 if j == 0 {
-                    let badge_bg = if theme.is_premium { "#3B82F6" } else { "var(--step-badge-bg)" };
+                    let badge_bg = if theme.is_premium {
+                        "#3B82F6"
+                    } else {
+                        "var(--step-badge-bg)"
+                    };
                     sb.push_str(&format!(
                         r##"<circle cx="{cx}" cy="{cy}" r="10" fill="{bg}" aria-hidden="true"/>
                         <text x="{cx}" y="{ty}" text-anchor="middle" class="step-num" aria-hidden="true">{num}</text>"##,
@@ -1071,7 +1217,11 @@ fn render_section(
                 ));
             } else {
                 if j == 0 {
-                    let dot_color = if theme.is_premium { "#10B981" } else { "var(--accent)" };
+                    let dot_color = if theme.is_premium {
+                        "#10B981"
+                    } else {
+                        "var(--accent)"
+                    };
                     sb.push_str(&format!(
                         r##"<circle cx="{cx}" cy="{cy}" r="3" fill="{color}" aria-hidden="true"/>"##,
                         cx = layout.x + 24,
@@ -1098,6 +1248,7 @@ fn render_section(
 fn render_notes_and_tags(
     recipe: &Recipe,
     theme: &RecipeTheme,
+    id: &str,
     note_lines: &[Vec<String>],
     layout: &NotesAndTagsLayout,
 ) -> String {
@@ -1105,42 +1256,73 @@ fn render_notes_and_tags(
 
     if !recipe.notes.is_empty() {
         let (fill, stroke) = match theme.name.as_str() {
-            "spring" => ("#F5FAF0", "#80C080"),
-            "summer" => ("#E8F4FF", "#5090C8"),
-            "premium" => ("var(--surface)", "none"),
-            _ => (theme.surface.as_str(), theme.accent_color.as_str()),
+            "spring" => ("#F5FAF0", "#80C080".to_string()),
+            "summer" => ("#E8F4FF", "#5090C8".to_string()),
+            "premium" => (
+                "var(--glass-strong)",
+                "url(#".to_string() + id + "_glassStroke)",
+            ),
+            _ => (theme.surface.as_str(), theme.accent_color.to_string()),
         };
 
-        let label_text = "COOK'S NOTES";
-        let title_class = if theme.is_premium { "notes-label" } else { "section-title" };
+        let label_text = if theme.is_premium {
+            "Cook's Notes"
+        } else {
+            "COOK'S NOTES"
+        };
+        let title_class = if theme.is_premium {
+            "section-title"
+        } else {
+            "notes-label"
+        };
+
+        let filter = if theme.is_premium {
+            format!("filter=\"url(#{}_microShadow)\"", id)
+        } else {
+            "".to_string()
+        };
 
         sb.push_str(&format!(
             r##"<g role="region" aria-label="Cook's Notes" transform="translate({side_margin}, {notes_y})">
-            <rect width="{w}" height="{h}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="1" aria-hidden="true"/>
-            <text x="24" y="24" class="{title_class}">{label}</text>"##,
+            <rect width="{w}" height="{h}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="1.2" {filter} aria-hidden="true"/>
+            <text x="24" y="32" class="{title_class}">{label}</text>"##,
             side_margin = layout.side_margin,
             notes_y = layout.notes_y,
             w = layout.content_width,
             h = layout.notes_height,
-            r = theme.corner_radius,
+            r = if theme.is_premium { 28 } else { theme.corner_radius },
             fill = fill,
             stroke = stroke,
+            filter = filter,
             title_class = title_class,
             label = label_text
         ));
 
-        let mut curr_y = 52;
+        let mut curr_y = if theme.is_premium { 63 } else { 52 };
+        let text_class = if theme.is_premium {
+            "muted"
+        } else {
+            "summary-text"
+        };
+
         for lines in note_lines {
             for (j, line) in lines.iter().enumerate() {
                 if j == 0 {
+                    let dot_color = if theme.is_premium {
+                        "var(--primary)"
+                    } else {
+                        "var(--accent)"
+                    };
                     sb.push_str(&format!(
-                        r##"<circle cx="24" cy="{cy}" r="2.5" fill="var(--accent)" fill-opacity="0.8" aria-hidden="true"/>"##,
-                        cy = curr_y - 4
+                        r##"<circle cx="27" cy="{cy}" r="3" fill="{dot_color}" aria-hidden="true"/>"##,
+                        cy = curr_y - 5,
+                        dot_color = dot_color
                     ));
                 }
                 sb.push_str(&format!(
-                    r##"<text x="36" y="{y}" class="summary-text" fill="var(--primary)">{line}</text>"##,
+                    r##"<text x="42" y="{y}" class="{text_class}">{line}</text>"##,
                     y = curr_y,
+                    text_class = text_class,
                     line = escape(line)
                 ));
                 curr_y += 24;
@@ -1152,48 +1334,44 @@ fn render_notes_and_tags(
 
     if !recipe.tags.is_empty() {
         sb.push_str(&format!(
-            r##"<g role="list" aria-label="Recipe Tags" transform="translate({side_margin}, {tags_y})">"##,
+            r##"<g role="list" aria-label="Recipe tags" transform="translate({side_margin}, {tags_y})">"##,
             side_margin = layout.side_margin,
             tags_y = layout.tags_y
         ));
         let mut tx = 0;
         let mut ty = 0;
         for tag in &recipe.tags {
-            let tw = (tag.len() as i32 * 8) + 32;
+            let tw = (tag.len() as i32 * 9) + 32; // slightly wider for glass chips
             if tx + tw > layout.content_width {
                 tx = 0;
-                ty += 40;
+                ty += 48;
             }
             let (fill, stroke) = match theme.name.as_str() {
-                "spring" => ("#F2B8CC", "#D47898"),
-                "summer" => ("rgba(16, 88, 160, 0.15)", "#1058A0"),
-                "premium" => {
-                    let fill = match tag.to_lowercase().as_str() {
-                        "vegan" => "#D1FAE5",
-                        "dessert" => "#FFEDD5",
-                        "healthy" | "low-carb" => "#DBEAFE",
-                        _ => "var(--tag-bg)",
-                    };
-                    (fill, "none")
-                },
-                _ => ("var(--tag-bg)", "var(--tag-border)"),
+                "spring" => ("#F2B8CC", "#D47898".to_string()),
+                "summer" => ("rgba(16, 88, 160, 0.15)", "#1058A0".to_string()),
+                "premium" => (
+                    "var(--glass-strong)",
+                    "url(#".to_string() + id + "_glassStroke)",
+                ),
+                _ => ("var(--tag-bg)", "var(--tag-border)".to_string()),
             };
-            
+
             let tag_text_color = if theme.is_premium {
-                match tag.to_lowercase().as_str() {
-                    "vegan" => "#065F46",
-                    "dessert" => "#9A3412",
-                    "healthy" | "low-carb" => "#1E40AF",
-                    _ => "var(--tag-text)",
-                }
+                "var(--text)"
             } else {
                 "var(--tag-text)"
             };
 
+            let chip_class = if theme.is_premium {
+                "tag-text"
+            } else {
+                "tag-text"
+            }; // Tag text class remains same but styles differ
+
             sb.push_str(&format!(
                 r##"<g role="listitem" aria-label="Tag: {tag_label}">
-                <rect x="{tx}" y="{ty}" width="{tw}" height="32" rx="12" fill="{fill}" stroke="{stroke}" stroke-width="1" aria-hidden="true"/>
-                <text x="{ctx}" y="{cty}" text-anchor="middle" class="tag-text" fill="{text_color}">{tag}</text>
+                <rect x="{tx}" y="{ty}" width="{tw}" height="36" rx="18" fill="{fill}" stroke="{stroke}" stroke-width="1.2" aria-hidden="true"/>
+                <text x="{ctx}" y="{cty}" text-anchor="middle" class="{chip_class}" fill="{text_color}">{tag}</text>
             </g>"##,
                 tag_label = escape(tag),
                 tx = tx,
@@ -1202,11 +1380,12 @@ fn render_notes_and_tags(
                 fill = fill,
                 stroke = stroke,
                 ctx = tx + tw / 2,
-                cty = ty + 20,
+                cty = ty + 23,
+                chip_class = chip_class,
                 tag = escape(tag),
                 text_color = tag_text_color
             ));
-            tx += tw + 8;
+            tx += tw + 12;
         }
         sb.push_str("</g>");
     }
@@ -1218,7 +1397,10 @@ fn render_notes_and_tags(
     } else {
         layout.notes_y
     };
-    sb.push_str(&render_bottom_divider(final_y, layout.side_margin, theme));
+
+    if !theme.is_premium {
+        sb.push_str(&render_bottom_divider(final_y, layout.side_margin, theme));
+    }
 
     sb
 }
@@ -1408,7 +1590,7 @@ mod tests {
         assert_eq!(recipe.theme, "");
         let theme = get_theme(&recipe.theme, false);
         assert_eq!(theme.name, "premium");
-        assert_eq!(theme.corner_radius, 24);
+        assert_eq!(theme.corner_radius, 32);
         assert!(theme.is_premium);
     }
 
@@ -1434,20 +1616,20 @@ mod tests {
         let svg = render(body, &HashMap::new()).unwrap();
 
         // 1. Valid CSS font import inside defs/style
-        assert!(svg.contains("<style>\n            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');"));
+        assert!(svg.contains("@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap');"));
 
         // 2. CSS variables and dark mode support
-        assert!(svg.contains("--primary:"));
-        assert!(svg.contains("--secondary:"));
-        assert!(svg.contains("--accent:"));
-        assert!(svg.contains("--canvas:"));
-        assert!(svg.contains("--surface:"));
+        assert!(svg.contains("--bg-start:"));
+        assert!(svg.contains("--text:"));
+        assert!(svg.contains("--glass:"));
+        assert!(svg.contains("--glow-blue:"));
+        assert!(svg.contains("--shadow-opacity:"));
         assert!(svg.contains("@media (prefers-color-scheme: dark)"));
         assert!(svg.contains(".dark-mode"));
 
         // 3. WCAG 2.2 AA ARIA Semantics
         assert!(svg.contains("role=\"graphics-document document\""));
-        assert!(svg.contains("role=\"region\" aria-label=\"Recipe Overview\""));
+        assert!(svg.contains("role=\"region\" aria-label=\"Recipe overview metrics\""));
         assert!(svg.contains("role=\"region\" aria-label=\"Ingredients\""));
         assert!(svg.contains("role=\"region\" aria-label=\"Preparation Steps\""));
         assert!(svg.contains("role=\"region\" aria-label=\"Cook's Notes\""));
@@ -1466,16 +1648,15 @@ mod tests {
         assert!(!svg.contains("· - The avocado flavor"));
 
         // 5. Typography tokens
-        assert!(svg.contains("font-size: 18px; font-weight: 700; fill: var(--primary);")); // Meta value on scale
-        assert!(svg.contains("font-size: 12px; font-weight: 800; fill: #FFFFFF;")); // Step num on scale
+        assert!(svg.contains("font-size: 18px; font-weight: 700; fill: var(--text);")); // Meta value on scale
+        assert!(svg.contains("font-size: 11px; font-weight: 800; fill: #FFFFFF;")); // Step num on scale
 
         // 6. Apple aesthetic: no thick vertical accent stripe
         assert!(!svg.contains("<rect width=\"6\""));
- 
+
         // 7. Dark mode premium contrast fixes
         assert!(svg.contains("--header-grad-start: #ECFDF5;"));
         assert!(svg.contains("--header-grad-start: #064E3B;"));
-        assert!(svg.contains(".recipe-summary { fill: var(--primary); opacity: 1; }"));
 
         // Update gen/recipe.svg with full generated output
         let full_sample = r#"[docops,recipe]
@@ -1517,13 +1698,17 @@ notes=
             theme= premium
         "#;
         let svg = render(body, &HashMap::new()).unwrap();
-        
+
         // Count summary text elements - each wrapped line is a separate <text> element with class recipe-summary
         let count = svg.matches("class=\"recipe-summary\"").count();
-        assert!(count >= 2, "Summary should wrap into multiple lines, but found {}", count);
-        
+        assert!(
+            count >= 2,
+            "Summary should wrap into multiple lines, but found {}",
+            count
+        );
+
         // Check for different Y offsets
-        assert!(svg.contains("y=\"88\""));
-        assert!(svg.contains("y=\"113\""));
+        assert!(svg.contains("y=\"166\""));
+        assert!(svg.contains("y=\"190\""));
     }
 }

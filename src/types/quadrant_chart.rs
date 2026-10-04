@@ -146,7 +146,7 @@ fn render_svg(chart: &QuadrantChart, controls: &HashMap<String, String>) -> Stri
     let desc_esc = escape(&desc_text);
 
     let mut svg = format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" id="{chart_id}" class="quadrant-chart{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" id="{chart_id}" class="quadrant-chart{extra_class}" role="graphics-document document" aria-labelledby="{chart_id}_title {chart_id}_desc">
   <title id="{chart_id}_title">{title_esc}</title>
   <desc id="{chart_id}_desc">{desc_esc}</desc>
   <defs>

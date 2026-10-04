@@ -1,5 +1,5 @@
-use crate::common::svg::escape;
 use crate::common::kv::parse_kv_header;
+use crate::common::svg::escape;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -32,8 +32,8 @@ fn parse_timeline(body: &str) -> Result<Timeline, String> {
         return Err("Timeline body must be wrapped in '---- ... ----'".into());
     }
     let inner = &trimmed[4..trimmed.len() - 4].trim();
-    
-    // We handle two formats: 
+
+    // We handle two formats:
     // 1. With '---' separator for header config
     // 2. Just entries
     let (header_part, entries_part) = if let Some((h, e)) = inner.split_once("---") {
@@ -43,7 +43,7 @@ fn parse_timeline(body: &str) -> Result<Timeline, String> {
     };
 
     let config = parse_kv_header(header_part);
-    
+
     let mut entries = Vec::new();
     let mut current_date = String::new();
     let mut current_text = Vec::new();
@@ -96,29 +96,35 @@ fn parse_timeline(body: &str) -> Result<Timeline, String> {
     }
 
     Ok(Timeline {
-        title: config.get("title").cloned().unwrap_or_else(|| "Timeline".into()),
+        title: config
+            .get("title")
+            .cloned()
+            .unwrap_or_else(|| "Timeline".into()),
         subtitle: config.get("subtitle").cloned().unwrap_or_default(),
-        theme: config.get("theme").cloned().unwrap_or_else(|| "premium".into()),
+        theme: config
+            .get("theme")
+            .cloned()
+            .unwrap_or_else(|| "premium".into()),
         entries,
     })
 }
 
 fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> String {
     let id = format!("timeline_{}", Uuid::new_v4().to_string().replace('-', "_"));
-    
+
     // Layout parameters
     let width = 800;
     let card_w = 288;
     let padding_top = 180;
     let padding_bottom = 80;
     let mid_x = width / 2;
-    
+
     // First pass: calculate y positions and card heights
     let mut entry_data = Vec::new();
     for entry in &timeline.entries {
         let wrapped_text = wrap_text(&entry.text, 244.0, 7.8);
         let text_lines_count = wrapped_text.len();
-        
+
         let mut text_lines_svg = String::new();
         for (idx, line) in wrapped_text.iter().enumerate() {
             text_lines_svg.push_str(&format!(
@@ -129,11 +135,13 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
         }
 
         let last_text_y = 62 + (text_lines_count.saturating_sub(1) * 20);
-        
+
         let category_svg = if let Some(cat) = &entry.category {
-            format!(r##"<text x="22" y="{y}" class="category">{cat}</text>"##, 
+            format!(
+                r##"<text x="22" y="{y}" class="category">{cat}</text>"##,
                 y = last_text_y + 20,
-                cat = escape(&cat.to_uppercase()))
+                cat = escape(&cat.to_uppercase())
+            )
         } else {
             "".to_string()
         };
@@ -144,10 +152,10 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
             last_text_y + 22
         };
         let card_h = card_h.max(100);
-        
+
         entry_data.push((text_lines_svg, category_svg, card_h));
     }
-    
+
     let mut y_positions = Vec::new();
     let mut current_y_cursor = padding_top;
     for (_, _, card_h) in &entry_data {
@@ -155,11 +163,11 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
         y_positions.push(y);
         current_y_cursor = y + (card_h / 2) + 30; // Gap between cards
     }
-    
+
     let total_height = current_y_cursor.max(padding_top + padding_bottom) + padding_bottom;
-    
+
     let mut entries_svg = String::new();
-    
+
     let spine_start_y = y_positions.first().map(|y| y - 50).unwrap_or(170);
     let spine_end_y = y_positions.last().map(|y| y + 40).unwrap_or(1024);
 
@@ -167,16 +175,16 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
         let y = y_positions[i];
         let (text_lines_svg, category_svg, card_h) = &entry_data[i];
         let is_left = i % 2 == 0;
-        
+
         let card_x = if is_left {
             mid_x - card_w - 40
         } else {
             mid_x + 40
         };
-        
+
         let connector_x1 = if is_left { mid_x - 40 } else { mid_x + 40 };
         let connector_x2 = mid_x;
-        
+
         entries_svg.push_str(&format!(
             r##"    <g class="timeline-entry" role="graphics-symbol" aria-roledescription="event" tabindex="0" aria-label="{date}: {text_raw}">
         <line x1="{c_x1}" y1="{y_mid}" x2="{c_x2}" y2="{y_mid}" class="connector" aria-hidden="true" />
@@ -209,7 +217,7 @@ fn render_svg(timeline: &Timeline, _controls: &HashMap<String, String>) -> Strin
             text_raw = escape(&entry.text)
         ));
     }
-    
+
     format!(
         r##"<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" role="graphics-document document" aria-labelledby="{id}_title {id}_desc" id="{id}">
     <title id="{id}_title">{title}</title>
@@ -369,7 +377,10 @@ color= #FF0000
         let timeline = parse_timeline(body).unwrap();
         assert_eq!(timeline.entries.len(), 2);
         assert_eq!(timeline.entries[0].date, "1891");
-        assert_eq!(timeline.entries[0].category.as_deref(), Some("Communication"));
+        assert_eq!(
+            timeline.entries[0].category.as_deref(),
+            Some("Communication")
+        );
         assert_eq!(timeline.entries[1].color.as_deref(), Some("#FF0000"));
         assert!(timeline.entries[1].text.contains("DocOps extension Server"));
     }
@@ -430,7 +441,7 @@ category= Private Spaceflight
 ----"#;
         let svg = render(body, &HashMap::new()).unwrap();
         let _ = std::fs::write("gen/space_timeline.svg", &svg);
-        
+
         // Check for full text content that was previously truncated
         assert!(svg.contains("journey into outer space"));
         assert!(svg.contains("land on the Moon"));

@@ -99,10 +99,7 @@ fn render_donut(
         .get("title")
         .map(String::as_str)
         .unwrap_or("Donut Chart");
-    let subtitle = cfg
-        .get("subtitle")
-        .map(String::as_str)
-        .unwrap_or("");
+    let subtitle = cfg.get("subtitle").map(String::as_str).unwrap_or("");
 
     let use_dark = controls
         .get("useDark")

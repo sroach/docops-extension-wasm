@@ -19,12 +19,112 @@ If you want to build the extension from source, you can run the following comman
 wasm-pack build --target web --release
 ```
 
-### Launch 
+### Launch Demo Page Locally
 
 ```shell
 python3 -m http.server 8000
 ```
 open http://localhost:8000 in your browser
+
+## HTTP Server (On-Demand SVG API)
+
+The project includes a high-performance native Rust microservice (`docops-server`) built with [Axum](https://github.com/tokio-rs/axum) for generating SVGs on demand via HTTP / REST URLs.
+
+### Running the Server
+
+To start the server locally:
+
+```shell
+cargo run --features server --bin docops-server
+```
+
+For production / optimized builds:
+
+```shell
+cargo run --release --features server --bin docops-server
+```
+
+### Configuration
+
+The server can be configured using environment variables:
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `3000` | Port to bind the server |
+| `HOST` | `0.0.0.0` | Host IP address |
+| `RUST_LOG` | `docops_server=info,tower_http=info` | Tracing / logging filter level |
+
+Example:
+```shell
+PORT=8080 HOST=127.0.0.1 cargo run --release --features server --bin docops-server
+```
+
+### API Endpoints
+
+- `GET /` — Interactive overview & documentation page.
+- `GET /health` — Service health check (returns `200 OK`).
+- `GET /svg?type=<type>&data=<payload>` — Render SVG from query parameters.
+- `GET /svg/:type/:payload` — Render SVG using path parameters.
+- `GET /svg/:payload` — Render SVG from full encoded `[docops,...]` block.
+- `POST /svg` — Render visual from raw DSL string (`text/plain`) or JSON payload (`application/json`).
+- `POST /svg/:type` — Render visual body for a specific type.
+
+### Payload Encoding
+
+Payloads can be encoded using:
+1. **URL-Safe Base64** (or standard Base64) with **Deflate compression** (recommended for compact URLs).
+2. **URL-Safe Base64** with **Zlib** or **Gzip** compression.
+3. **Plain Base64** (uncompressed text).
+
+#### Client-side JavaScript / Node.js Encoding Example (Native `CompressionStream`)
+
+Using the native Web Streams API (`CompressionStream`), built into all modern browsers and Node.js 18+ (zero external dependencies required):
+
+```javascript
+// Compress using native CompressionStream and encode to URL-safe Base64
+async function encodeDocOps(text, format = "deflate-raw") {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream(format));
+  const compressed = await new Response(stream).arrayBuffer();
+  const bytes = new Uint8Array(compressed);
+
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  // Convert standard Base64 to URL-safe Base64
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+// Example usage:
+const pieBody = `----
+theme=premium
+title=Website Traffic
+---
+Product A | 30
+Product B | 70
+----`;
+
+const encoded = await encodeDocOps(pieBody);
+const url = `http://localhost:3000/svg?type=pie&data=${encoded}`;
+```
+
+#### Embedding in Markdown
+
+```markdown
+![Website Traffic](http://localhost:3000/svg?type=pie&data=eNqLVjDXM9Qz0TMw1DMwM...)
+```
+
+### Testing the Server
+
+To run the server unit and integration tests:
+
+```shell
+cargo test --features server --bin docops-server
+```
 
 ## Test
 

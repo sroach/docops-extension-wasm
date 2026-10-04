@@ -79,7 +79,10 @@ fn parse_line(line: &str) -> Option<StepItem> {
             title: parts[1].to_string(),
             description: parts[2].to_string(),
             color: parts.get(3).unwrap_or(&"#3B82F6").to_string(),
-            tag: parts.get(4).map(|s| s.to_string()).filter(|s| !s.is_empty()),
+            tag: parts
+                .get(4)
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty()),
         })
     } else {
         None
@@ -117,12 +120,15 @@ fn wrap_text(text: &str, max_width_px: i32, font_size_px: i32) -> Vec<String> {
 }
 
 fn render_svg(spec: &StepsSpec, controls: &HashMap<String, String>) -> String {
-    let use_dark = controls.get("useDark").map(|s| s == "true").unwrap_or(false);
+    let use_dark = controls
+        .get("useDark")
+        .map(|s| s == "true")
+        .unwrap_or(false);
     let id = Uuid::new_v4().simple().to_string()[..8].to_string();
     let id_full = format!("steps_{}", id);
 
     let n = spec.items.len();
-    
+
     // Pre-calculate card heights and wrap descriptions
     let mut card_data = Vec::new();
     for item in &spec.items {
@@ -143,8 +149,14 @@ fn render_svg(spec: &StepsSpec, controls: &HashMap<String, String>) -> String {
         id_full = id_full
     ));
 
-    sb.push_str(&format!(r##"<title id="{id_full}_title">{}</title>"##, escape(&spec.title)));
-    sb.push_str(&format!(r##"<desc id="{id_full}_desc">{}</desc>"##, escape(&spec.subtitle)));
+    sb.push_str(&format!(
+        r##"<title id="{id_full}_title">{}</title>"##,
+        escape(&spec.title)
+    ));
+    sb.push_str(&format!(
+        r##"<desc id="{id_full}_desc">{}</desc>"##,
+        escape(&spec.subtitle)
+    ));
 
     sb.push_str(&format!(r##"
 <defs>
@@ -221,15 +233,24 @@ fn render_svg(spec: &StepsSpec, controls: &HashMap<String, String>) -> String {
     ));
 
     // Background
-    sb.push_str(&format!(r##"<rect width="{width}" height="{height}" fill="var(--bg-color)" aria-hidden="true"/>"##, width = width, height = height));
+    sb.push_str(&format!(
+        r##"<rect width="{width}" height="{height}" fill="var(--bg-color)" aria-hidden="true"/>"##,
+        width = width,
+        height = height
+    ));
 
     // Header
-    sb.push_str(&format!(r##"
+    sb.push_str(&format!(
+        r##"
 <g transform="translate(80, 100)">
     <text class="title_{id}">{title}</text>
     <text y="45" class="subtitle_{id}">{subtitle}</text>
 </g>
-"##, id = id, title = escape(&spec.title), subtitle = escape(&spec.subtitle)));
+"##,
+        id = id,
+        title = escape(&spec.title),
+        subtitle = escape(&spec.subtitle)
+    ));
 
     // Positions
     let mut positions = Vec::new();
@@ -239,7 +260,11 @@ fn render_svg(spec: &StepsSpec, controls: &HashMap<String, String>) -> String {
     let end_y = 220.0;
 
     for i in 0..n {
-        let t = if n > 1 { i as f32 / (n - 1) as f32 } else { 0.5 };
+        let t = if n > 1 {
+            i as f32 / (n - 1) as f32
+        } else {
+            0.5
+        };
         let px = start_x + (end_x - start_x) * t;
         let py = start_y + (end_y - start_y) * t;
         positions.push((px, py));
@@ -294,7 +319,11 @@ fn render_svg(spec: &StepsSpec, controls: &HashMap<String, String>) -> String {
 "##, x=x, y=y, color=color, order=order, title=title, id=id, card_h=card_h));
 
         for (j, line) in desc_lines.iter().enumerate() {
-            sb.push_str(&format!(r##"<tspan x="40" dy="{}">{}</tspan>"##, if j == 0 { "0" } else { "1.6em" }, escape(line)));
+            sb.push_str(&format!(
+                r##"<tspan x="40" dy="{}">{}</tspan>"##,
+                if j == 0 { "0" } else { "1.6em" },
+                escape(line)
+            ));
         }
 
         sb.push_str("</text>");
@@ -318,12 +347,16 @@ fn render_svg(spec: &StepsSpec, controls: &HashMap<String, String>) -> String {
         let footer_x = width as f32 - 400.0;
         let footer_y = height as f32 - 80.0;
         let footer_esc = escape(footer);
-        sb.push_str(&format!(r##"
+        sb.push_str(&format!(
+            r##"
 <g transform="translate({footer_x}, {footer_y})">
     <circle cx="20" cy="20" r="8" fill="#16A34A"/>
     <text x="40" y="25" class="footer-text_{id}">{footer_esc}</text>
 </g>
-"##, footer_esc = footer_esc, id = id));
+"##,
+            footer_esc = footer_esc,
+            id = id
+        ));
     }
 
     sb.push_str("</svg>");
@@ -365,7 +398,7 @@ subtitle=Premium Design
 1 | Start | Description | #3B82F6 | Tag
 ----"##;
         let result = render(body, &HashMap::new()).unwrap();
-        
+
         // Check for premium features
         assert!(result.contains("role=\"graphics-document document\""));
         assert!(result.contains("aria-labelledby=\"steps_"));
