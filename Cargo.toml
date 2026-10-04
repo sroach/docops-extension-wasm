@@ -19,6 +19,34 @@ ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 sha2 = "0.10"
 base64 = "0.22"
 hex = "0.4"
+axum = { version = "0.8.9", optional = true }
+tokio = { version = "1", features = ["full"], optional = true }
+flate2 = { version = "1.0", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+tower = { version = "0.5", optional = true }
+tower-http = { version = "0.7.1", features = ["cors", "trace"], optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+
+[features]
+default = []
+server = [
+    "dep:axum",
+    "dep:tokio",
+    "dep:flate2",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:tower",
+    "dep:tower-http",
+    "dep:tracing",
+    "dep:tracing-subscriber",
+]
+
+[[bin]]
+name = "docops-server"
+path = "src/bin/server.rs"
+required-features = ["server"]
 
 [profile.release]
 opt-level = "z"
