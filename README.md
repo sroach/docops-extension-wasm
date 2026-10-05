@@ -63,11 +63,46 @@ PORT=8080 HOST=127.0.0.1 cargo run --release --features server --bin docops-serv
 
 - `GET /` — Interactive overview & documentation page.
 - `GET /health` — Service health check (returns `200 OK`).
+- `GET /stats` (or `GET /metrics`) — In-memory operational metrics and visual breakdown (JSON).
 - `GET /svg?type=<type>&data=<payload>` — Render SVG from query parameters.
 - `GET /svg/:type/:payload` — Render SVG using path parameters.
 - `GET /svg/:payload` — Render SVG from full encoded `[docops,...]` block.
 - `POST /svg` — Render visual from raw DSL string (`text/plain`) or JSON payload (`application/json`).
 - `POST /svg/:type` — Render visual body for a specific type.
+
+### In-Memory Metrics & Telemetry (`GET /stats`)
+
+The server tracks operational telemetry using atomic counters with zero external dependencies and negligible memory footprint (< 1 KB RAM):
+
+```json
+{
+  "uptime_seconds": 124,
+  "total_requests": 42,
+  "successful_renders": 40,
+  "failed_requests": 2,
+  "avg_render_time_ms": 1.45,
+  "total_bytes_rendered": 182400,
+  "visuals_breakdown": {
+    "pie": 15,
+    "bar": 12,
+    "line": 5,
+    "combination": 2,
+    "badge": 3,
+    "adr": 2,
+    "scorecard": 1,
+    "button": 0,
+    "quadrant": 0,
+    "gherkin": 0,
+    "gauge": 0,
+    "recipe": 0,
+    "timeline": 0,
+    "steps": 0,
+    "release": 0,
+    "metrics_card": 0,
+    "other": 0
+  }
+}
+```
 
 ### Payload Encoding
 

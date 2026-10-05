@@ -1,17 +1,195 @@
 use axum::{
     body::Body,
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 use base64::prelude::*;
 use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::Instant;
 use tower_http::cors::CorsLayer;
+
+/// In-memory tracker for operational metrics with zero external overhead
+#[derive(Debug)]
+pub struct ServerMetrics {
+    start_time: Instant,
+    pub total_requests: AtomicU64,
+    pub successful_renders: AtomicU64,
+    pub failed_requests: AtomicU64,
+    pub total_render_time_us: AtomicU64,
+    pub total_bytes_rendered: AtomicU64,
+
+    // Breakdown by visual type
+    pub count_pie: AtomicU64,
+    pub count_bar: AtomicU64,
+    pub count_line: AtomicU64,
+    pub count_combination: AtomicU64,
+    pub count_badge: AtomicU64,
+    pub count_adr: AtomicU64,
+    pub count_scorecard: AtomicU64,
+    pub count_button: AtomicU64,
+    pub count_quadrant: AtomicU64,
+    pub count_gherkin: AtomicU64,
+    pub count_gauge: AtomicU64,
+    pub count_recipe: AtomicU64,
+    pub count_timeline: AtomicU64,
+    pub count_steps: AtomicU64,
+    pub count_release: AtomicU64,
+    pub count_metrics_card: AtomicU64,
+    pub count_other: AtomicU64,
+}
+
+impl Default for ServerMetrics {
+    fn default() -> Self {
+        Self {
+            start_time: Instant::now(),
+            total_requests: AtomicU64::new(0),
+            successful_renders: AtomicU64::new(0),
+            failed_requests: AtomicU64::new(0),
+            total_render_time_us: AtomicU64::new(0),
+            total_bytes_rendered: AtomicU64::new(0),
+            count_pie: AtomicU64::new(0),
+            count_bar: AtomicU64::new(0),
+            count_line: AtomicU64::new(0),
+            count_combination: AtomicU64::new(0),
+            count_badge: AtomicU64::new(0),
+            count_adr: AtomicU64::new(0),
+            count_scorecard: AtomicU64::new(0),
+            count_button: AtomicU64::new(0),
+            count_quadrant: AtomicU64::new(0),
+            count_gherkin: AtomicU64::new(0),
+            count_gauge: AtomicU64::new(0),
+            count_recipe: AtomicU64::new(0),
+            count_timeline: AtomicU64::new(0),
+            count_steps: AtomicU64::new(0),
+            count_release: AtomicU64::new(0),
+            count_metrics_card: AtomicU64::new(0),
+            count_other: AtomicU64::new(0),
+        }
+    }
+}
+
+/// JSON summary representation of server operational statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricsSummary {
+    pub uptime_seconds: u64,
+    pub total_requests: u64,
+    pub successful_renders: u64,
+    pub failed_requests: u64,
+    pub avg_render_time_ms: f64,
+    pub total_bytes_rendered: u64,
+    pub visuals_breakdown: VisualBreakdown,
+}
+
+/// Visual type usage distribution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VisualBreakdown {
+    pub pie: u64,
+    pub bar: u64,
+    pub line: u64,
+    pub combination: u64,
+    pub badge: u64,
+    pub adr: u64,
+    pub scorecard: u64,
+    pub button: u64,
+    pub quadrant: u64,
+    pub gherkin: u64,
+    pub gauge: u64,
+    pub recipe: u64,
+    pub timeline: u64,
+    pub steps: u64,
+    pub release: u64,
+    pub metrics_card: u64,
+    pub other: u64,
+}
+
+impl ServerMetrics {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn record_request(&self) {
+        self.total_requests.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn record_failure(&self) {
+        self.failed_requests.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn record_render(&self, dsl: &str, elapsed_us: u64, bytes_len: usize) {
+        self.successful_renders.fetch_add(1, Ordering::Relaxed);
+        self.total_render_time_us
+            .fetch_add(elapsed_us, Ordering::Relaxed);
+        self.total_bytes_rendered
+            .fetch_add(bytes_len as u64, Ordering::Relaxed);
+
+        let viz_type = extract_viz_type(dsl);
+        match viz_type.as_str() {
+            "pie" | "piechart" | "pieslice" => self.count_pie.fetch_add(1, Ordering::Relaxed),
+            "bar" | "barchart" => self.count_bar.fetch_add(1, Ordering::Relaxed),
+            "line" | "linechart" => self.count_line.fetch_add(1, Ordering::Relaxed),
+            "combination" | "combo" => self.count_combination.fetch_add(1, Ordering::Relaxed),
+            "badge" => self.count_badge.fetch_add(1, Ordering::Relaxed),
+            "adr" => self.count_adr.fetch_add(1, Ordering::Relaxed),
+            "scorecard" | "score" => self.count_scorecard.fetch_add(1, Ordering::Relaxed),
+            "button" => self.count_button.fetch_add(1, Ordering::Relaxed),
+            "quadrant" | "magic" => self.count_quadrant.fetch_add(1, Ordering::Relaxed),
+            "gherkin" => self.count_gherkin.fetch_add(1, Ordering::Relaxed),
+            "gauge" | "gaugechart" => self.count_gauge.fetch_add(1, Ordering::Relaxed),
+            "recipe" => self.count_recipe.fetch_add(1, Ordering::Relaxed),
+            "timeline" => self.count_timeline.fetch_add(1, Ordering::Relaxed),
+            "steps" => self.count_steps.fetch_add(1, Ordering::Relaxed),
+            "release" | "releasestrategy" => self.count_release.fetch_add(1, Ordering::Relaxed),
+            "metrics" | "metricscard" => self.count_metrics_card.fetch_add(1, Ordering::Relaxed),
+            _ => self.count_other.fetch_add(1, Ordering::Relaxed),
+        };
+    }
+
+    pub fn summary(&self) -> MetricsSummary {
+        let total_ok = self.successful_renders.load(Ordering::Relaxed);
+        let total_us = self.total_render_time_us.load(Ordering::Relaxed);
+        let avg_ms = if total_ok > 0 {
+            (total_us as f64 / total_ok as f64) / 1000.0
+        } else {
+            0.0
+        };
+
+        MetricsSummary {
+            uptime_seconds: self.start_time.elapsed().as_secs(),
+            total_requests: self.total_requests.load(Ordering::Relaxed),
+            successful_renders: total_ok,
+            failed_requests: self.failed_requests.load(Ordering::Relaxed),
+            avg_render_time_ms: (avg_ms * 100.0).round() / 100.0,
+            total_bytes_rendered: self.total_bytes_rendered.load(Ordering::Relaxed),
+            visuals_breakdown: VisualBreakdown {
+                pie: self.count_pie.load(Ordering::Relaxed),
+                bar: self.count_bar.load(Ordering::Relaxed),
+                line: self.count_line.load(Ordering::Relaxed),
+                combination: self.count_combination.load(Ordering::Relaxed),
+                badge: self.count_badge.load(Ordering::Relaxed),
+                adr: self.count_adr.load(Ordering::Relaxed),
+                scorecard: self.count_scorecard.load(Ordering::Relaxed),
+                button: self.count_button.load(Ordering::Relaxed),
+                quadrant: self.count_quadrant.load(Ordering::Relaxed),
+                gherkin: self.count_gherkin.load(Ordering::Relaxed),
+                gauge: self.count_gauge.load(Ordering::Relaxed),
+                recipe: self.count_recipe.load(Ordering::Relaxed),
+                timeline: self.count_timeline.load(Ordering::Relaxed),
+                steps: self.count_steps.load(Ordering::Relaxed),
+                release: self.count_release.load(Ordering::Relaxed),
+                metrics_card: self.count_metrics_card.load(Ordering::Relaxed),
+                other: self.count_other.load(Ordering::Relaxed),
+            },
+        }
+    }
+}
 
 /// Query parameters supported by `/svg`
 #[derive(Debug, Deserialize)]
@@ -76,6 +254,29 @@ pub fn decode_payload(encoded: &str) -> Result<String, String> {
     String::from_utf8(bytes).map_err(|e| format!("Decompression / UTF-8 decode error: {e}"))
 }
 
+/// Extracts the visualization type from DSL or raw block header (e.g. `[docops,pie]` -> `"pie"`)
+pub fn extract_viz_type(dsl: &str) -> String {
+    let trimmed = dsl.trim();
+    if let Some(rest) = trimmed.strip_prefix("[docops") {
+        let rest = rest.trim_start();
+        if let Some(after_comma) = rest.strip_prefix(',') {
+            if let Some(end) = after_comma.find(']') {
+                return after_comma[..end].trim().to_lowercase();
+            }
+        }
+    }
+    if trimmed.starts_with('[') {
+        if let Some(end) = trimmed.find(']') {
+            let inside = &trimmed[1..end];
+            let parts: Vec<&str> = inside.split(',').map(|s| s.trim()).collect();
+            if parts.len() >= 2 && parts[0].eq_ignore_ascii_case("docops") {
+                return parts[1].to_lowercase();
+            }
+        }
+    }
+    "unknown".to_string()
+}
+
 /// Format visual DSL based on type and body if not already wrapped in [docops,...]
 pub fn format_dsl(viz_type: Option<&str>, body: &str) -> String {
     let trimmed = body.trim();
@@ -116,17 +317,28 @@ fn svg_response(svg: String, cacheable: bool) -> Response {
 /// Handler for GET `/svg` with query string parameters:
 /// - `?type=<type>&data=<encoded>`
 /// - `?payload=<encoded>`
-pub async fn handle_get_query(Query(query): Query<SvgQuery>) -> Response {
+pub async fn handle_get_query(
+    State(metrics): State<Arc<ServerMetrics>>,
+    Query(query): Query<SvgQuery>,
+) -> Response {
+    metrics.record_request();
     let dsl = match (&query.viz_type, &query.data, &query.payload) {
         (Some(viz_type), Some(data), _) => match decode_payload(data) {
             Ok(body) => format_dsl(Some(viz_type), &body),
-            Err(err) => return (StatusCode::BAD_REQUEST, err).into_response(),
+            Err(err) => {
+                metrics.record_failure();
+                return (StatusCode::BAD_REQUEST, err).into_response();
+            }
         },
         (_, _, Some(payload)) => match decode_payload(payload) {
             Ok(decoded) => format_dsl(query.viz_type.as_deref(), &decoded),
-            Err(err) => return (StatusCode::BAD_REQUEST, err).into_response(),
+            Err(err) => {
+                metrics.record_failure();
+                return (StatusCode::BAD_REQUEST, err).into_response();
+            }
         },
         _ => {
+            metrics.record_failure();
             return (
                 StatusCode::BAD_REQUEST,
                 "Missing 'type' & 'data' or 'payload' query parameters. Example: /svg?type=pie&data=<base64>",
@@ -135,36 +347,64 @@ pub async fn handle_get_query(Query(query): Query<SvgQuery>) -> Response {
         }
     };
 
+    let start = Instant::now();
     let svg = docops_extension::generate_svg(&dsl);
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    metrics.record_render(&dsl, elapsed_us, svg.len());
     svg_response(svg, true)
 }
 
 /// Handler for GET `/svg/:payload` (single path param)
-pub async fn handle_get_path_single(Path(payload): Path<String>) -> Response {
+pub async fn handle_get_path_single(
+    State(metrics): State<Arc<ServerMetrics>>,
+    Path(payload): Path<String>,
+) -> Response {
+    metrics.record_request();
     match decode_payload(&payload) {
         Ok(decoded) => {
             let dsl = format_dsl(None, &decoded);
+            let start = Instant::now();
             let svg = docops_extension::generate_svg(&dsl);
+            let elapsed_us = start.elapsed().as_micros() as u64;
+            metrics.record_render(&dsl, elapsed_us, svg.len());
             svg_response(svg, true)
         }
-        Err(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+        Err(err) => {
+            metrics.record_failure();
+            (StatusCode::BAD_REQUEST, err).into_response()
+        }
     }
 }
 
 /// Handler for GET `/svg/:type/:payload`
-pub async fn handle_get_path_typed(Path((viz_type, payload)): Path<(String, String)>) -> Response {
+pub async fn handle_get_path_typed(
+    State(metrics): State<Arc<ServerMetrics>>,
+    Path((viz_type, payload)): Path<(String, String)>,
+) -> Response {
+    metrics.record_request();
     match decode_payload(&payload) {
         Ok(body) => {
             let dsl = format_dsl(Some(&viz_type), &body);
+            let start = Instant::now();
             let svg = docops_extension::generate_svg(&dsl);
+            let elapsed_us = start.elapsed().as_micros() as u64;
+            metrics.record_render(&dsl, elapsed_us, svg.len());
             svg_response(svg, true)
         }
-        Err(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+        Err(err) => {
+            metrics.record_failure();
+            (StatusCode::BAD_REQUEST, err).into_response()
+        }
     }
 }
 
 /// Handler for POST `/svg` accepting raw text DSL or JSON body
-pub async fn handle_post_svg(headers: HeaderMap, body: String) -> Response {
+pub async fn handle_post_svg(
+    State(metrics): State<Arc<ServerMetrics>>,
+    headers: HeaderMap,
+    body: String,
+) -> Response {
+    metrics.record_request();
     let content_type = headers
         .get(header::CONTENT_TYPE)
         .and_then(|h| h.to_str().ok())
@@ -182,30 +422,49 @@ pub async fn handle_post_svg(headers: HeaderMap, body: String) -> Response {
                     Err(_) => format_dsl(req.viz_type.as_deref(), payload),
                 },
                 _ => {
+                    metrics.record_failure();
                     return (
                         StatusCode::BAD_REQUEST,
                         "JSON requires 'type' & 'data' or 'payload'",
                     )
-                        .into_response()
+                        .into_response();
                 }
             },
             Err(e) => {
-                return (StatusCode::BAD_REQUEST, format!("Invalid JSON: {e}")).into_response()
+                metrics.record_failure();
+                return (StatusCode::BAD_REQUEST, format!("Invalid JSON: {e}")).into_response();
             }
         }
     } else {
         body
     };
 
+    let start = Instant::now();
     let svg = docops_extension::generate_svg(&dsl);
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    metrics.record_render(&dsl, elapsed_us, svg.len());
     svg_response(svg, false)
 }
 
 /// Handler for POST `/svg/:type`
-pub async fn handle_post_typed_svg(Path(viz_type): Path<String>, body: String) -> Response {
+pub async fn handle_post_typed_svg(
+    State(metrics): State<Arc<ServerMetrics>>,
+    Path(viz_type): Path<String>,
+    body: String,
+) -> Response {
+    metrics.record_request();
     let dsl = format_dsl(Some(&viz_type), &body);
+    let start = Instant::now();
     let svg = docops_extension::generate_svg(&dsl);
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    metrics.record_render(&dsl, elapsed_us, svg.len());
     svg_response(svg, false)
+}
+
+/// Operational statistics / metrics endpoint (JSON)
+pub async fn handle_stats(State(metrics): State<Arc<ServerMetrics>>) -> Json<MetricsSummary> {
+    metrics.record_request();
+    Json(metrics.summary())
 }
 
 /// Health check endpoint
@@ -282,6 +541,7 @@ pub async fn handle_index() -> Html<&'static str> {
             <li><code>GET /svg/:type</code> — Render full <code>[docops,...]</code> encoded block (single param)</li>
             <li><code>POST /svg</code> — Render visual from raw DSL string or JSON payload</li>
             <li><code>POST /svg/:type</code> — Render visual body for a specific type</li>
+            <li><code>GET /stats</code> — In-memory metrics &amp; visual usage statistics (JSON)</li>
             <li><code>GET /health</code> — Service health check</li>
         </ul>
     </div>
@@ -311,11 +571,18 @@ pub async fn handle_index() -> Html<&'static str> {
     )
 }
 
-/// Creates the Axum application router
+/// Creates the Axum application router with a fresh metrics state
 pub fn create_app() -> Router {
+    create_app_with_metrics(Arc::new(ServerMetrics::new()))
+}
+
+/// Creates the Axum application router with a custom metrics instance
+pub fn create_app_with_metrics(metrics: Arc<ServerMetrics>) -> Router {
     Router::new()
         .route("/", get(handle_index))
         .route("/health", get(handle_health))
+        .route("/stats", get(handle_stats))
+        .route("/metrics", get(handle_stats))
         .route("/svg", get(handle_get_query).post(handle_post_svg))
         .route(
             "/svg/{type}",
@@ -323,6 +590,7 @@ pub fn create_app() -> Router {
         )
         .route("/svg/{type}/{payload}", get(handle_get_path_typed))
         .layer(CorsLayer::permissive())
+        .with_state(metrics)
 }
 
 #[tokio::main]
@@ -553,5 +821,93 @@ Beta | 50
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_stats_endpoint() {
+        let metrics = Arc::new(ServerMetrics::new());
+        let app = create_app_with_metrics(Arc::clone(&metrics));
+
+        // 1. Initial metrics check
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/stats")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let summary: MetricsSummary = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(summary.total_requests, 1);
+        assert_eq!(summary.successful_renders, 0);
+        assert_eq!(summary.failed_requests, 0);
+
+        // 2. Perform a successful pie render
+        let body_data = "----\ntitle= Stats Test Pie\n---\nSlice A | 50\nSlice B | 50\n----";
+        let encoded = encode_deflate_base64(body_data);
+        let uri = format!("/svg?type=pie&data={encoded}");
+        let _ = app
+            .clone()
+            .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        // 3. Perform a successful bar render
+        let dsl_bar = "[docops,bar]\n----\ntitle= Stats Test Bar\n---\nItem 1 | 100\n----";
+        let _ = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/svg")
+                    .header("content-type", "text/plain")
+                    .body(Body::from(dsl_bar))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // 4. Perform a failed request
+        let _ = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/svg?type=pie&data=@@invalid@@")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // 5. Query stats again
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/stats")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let summary: MetricsSummary = serde_json::from_slice(&body_bytes).unwrap();
+
+        // Total requests = 1 (initial stats) + 1 (pie) + 1 (bar) + 1 (failed) + 1 (final stats) = 5
+        assert_eq!(summary.total_requests, 5);
+        assert_eq!(summary.successful_renders, 2);
+        assert_eq!(summary.failed_requests, 1);
+        assert_eq!(summary.visuals_breakdown.pie, 1);
+        assert_eq!(summary.visuals_breakdown.bar, 1);
+        assert!(summary.total_bytes_rendered > 0);
     }
 }
