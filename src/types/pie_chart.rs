@@ -400,9 +400,11 @@ fn render_v1(
         || cfg.get("theme").map(|s| s.as_str()) == Some("dark");
     let _id_full = format!("v1_{}", chart_id);
 
-    let cx = 300.0;
+    let width = 680.0;
+    let height = 580.0;
+    let cx = width / 2.0;
     let cy = 310.0;
-    let r = 154.0;
+    let r = 135.0;
 
     let mut gradient_defs = String::new();
     let mut slices_html = String::new();
@@ -435,7 +437,7 @@ fn render_v1(
         let large_arc = if sweep > PI { 1 } else { 0 };
 
         let path_d = format!(
-            "M {cx} {cy} L {x1:.2} {y1:.2} A {r} {r} 0 {large_arc} 1 {x2:.2} {y2:.2} Z",
+            "M {cx:.1} {cy:.1} L {x1:.2} {y1:.2} A {r:.1} {r:.1} 0 {large_arc} 1 {x2:.2} {y2:.2} Z",
             cx = cx,
             cy = cy,
             x1 = x1,
@@ -450,10 +452,10 @@ fn render_v1(
         slices_html.push_str(&format!(
             r##"<g class="pie-segment" style="animation-delay: {delay:.2}s;">
     <g class="slice-motion" role="graphics-symbol" aria-roledescription="slice" tabindex="0" aria-label="{label}: {value} ({pct:.1}%)">
-        <path d="{path_d}" fill="url(#slice_{chart_id}_{i})" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.2">
+        <path d="{path_d}" fill="url(#slice_{chart_id}_{i})" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1.5">
             <title>{label}: {value}</title>
         </path>
-        <path d="{path_d}" fill="url(#sliceGlass_{chart_id})" opacity="0.54" pointer-events="none" aria-hidden="true"/>
+        <path d="{path_d}" fill="url(#sliceGlass_{chart_id})" opacity="0.45" pointer-events="none" aria-hidden="true"/>
     </g>
 </g>"##,
             delay = delay, path_d = path_d, chart_id = chart_id, i = i, label = escape(label), value = value, pct = frac * 100.0
@@ -463,8 +465,8 @@ fn render_v1(
         let mid_angle = angle + sweep / 2.0;
         let lx1 = cx + r * mid_angle.cos();
         let ly1 = cy + r * mid_angle.sin();
-        let lx2 = cx + (r + 25.0) * mid_angle.cos();
-        let ly2 = cy + (r + 25.0) * mid_angle.sin();
+        let lx2 = cx + (r + 24.0) * mid_angle.cos();
+        let ly2 = cy + (r + 24.0) * mid_angle.sin();
         let is_right = lx2 > cx;
         let lx3 = if is_right { lx2 + 20.0 } else { lx2 - 20.0 };
 
@@ -474,25 +476,26 @@ fn render_v1(
         let badge_x = if is_right {
             lx3 + 4.0
         } else {
-            lx3 - 4.0 - 45.0
+            lx3 - 4.0 - 46.0
         };
         let text_anchor = if is_right { "start" } else { "end" };
         let label_text_x = if is_right {
-            badge_x + 53.0
+            badge_x + 54.0
         } else {
             badge_x - 8.0
         };
 
         labels_html.push_str(&format!(
-            r##"<path class="label-line" d="M {lx1:.1} {ly1:.1} L {lx2:.1} {ly2:.1} L {lx3:.1} {ly2:.1}" fill="none" stroke="var(--v1-label-line)" stroke-width="1.2" stroke-opacity="0.4" style="animation-delay: {label_delay:.2}s;"/>
+            r##"<circle cx="{lx1:.1}" cy="{ly1:.1}" r="2" fill="var(--v1-label-line)" opacity="0.6"/>
+<path class="label-line" d="M {lx1:.1} {ly1:.1} L {lx2:.1} {ly2:.1} L {lx3:.1} {ly2:.1}" fill="none" stroke="var(--v1-label-line)" stroke-width="1.2" stroke-opacity="0.6" style="animation-delay: {label_delay:.2}s;"/>
 <g class="label-badge" style="animation-delay: {badge_delay:.2}s;">
-    <rect x="{badge_x:.1}" y="{badge_y:.1}" width="45.0" height="20" rx="10" fill="var(--v1-badge-bg)" opacity="0.9"/>
-    <text x="{badge_text_x:.1}" y="{badge_y_mid:.1}" text-anchor="middle" dominant-baseline="middle" fill="var(--v1-badge-pct)" font-size="11" font-weight="900">{pct:.1}%</text>
-    <text x="{label_text_x:.1}" y="{badge_y_mid:.1}" text-anchor="{text_anchor}" dominant-baseline="middle" fill="var(--v1-badge-label)" font-size="12" font-weight="700">{label}</text>
+    <rect x="{badge_x:.1}" y="{badge_y:.1}" width="46.0" height="20" rx="10" fill="var(--v1-badge-bg)" stroke="var(--v1-surface-border)" stroke-width="1"/>
+    <text x="{badge_text_x:.1}" y="{badge_y_mid:.1}" text-anchor="middle" dominant-baseline="middle" fill="var(--v1-badge-pct)" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" font-weight="700">{pct:.1}%</text>
+    <text x="{label_text_x:.1}" y="{badge_y_mid:.1}" text-anchor="{text_anchor}" dominant-baseline="middle" fill="var(--v1-badge-label)" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="12" font-weight="600">{label}</text>
 </g>"##,
             lx1 = lx1, ly1 = ly1, lx2 = lx2, ly2 = ly2, lx3 = lx3,
             label_delay = label_delay, badge_delay = badge_delay, badge_x = badge_x, badge_y = ly2 - 10.0,
-            badge_text_x = badge_x + 22.5,
+            badge_text_x = badge_x + 23.0,
             badge_y_mid = ly2, pct = frac * 100.0, label_text_x = label_text_x, text_anchor = text_anchor,
             label = escape(label)
         ));
@@ -503,107 +506,93 @@ fn render_v1(
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
     Ok(format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" id="{chart_id}" class="v1-container{extra_class}" role="graphics-document document" aria-labelledby="title_{chart_id} desc_{chart_id}">
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" id="{chart_id}" class="v1-container{extra_class}" role="graphics-document document" aria-labelledby="title_{chart_id} desc_{chart_id}">
     <title id="title_{chart_id}">{title_esc}</title>
     <desc id="desc_{chart_id}">{desc_esc}</desc>
     <defs>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@600;700&amp;display=swap');
             #{chart_id} {{
-                --v1-bg-1: #cccccc; --v1-bg-2: #FFFFFF; --v1-bg-3: #cccccc;
-                --v1-glow-a-op: 0.16; --v1-glow-b-op: 0.12; --v1-vignette-op: 0.10;
-                --v1-sonar-fill: #111827; --v1-sonar-op: 0.12;
-                --v1-grid-stroke: #111827; --v1-grid-op: 0.055;
-                --v1-header-prefix: #6B7280; --v1-header-title: #111827;
-                --v1-card-bg: rgba(255, 255, 255, 0.8); --v1-card-label: #6B7280; --v1-card-value: #111827;
-                --v1-pulse-mid: #111827; --v1-center-fill: #FFFFFF;
-                --v1-label-line: #6B7280; --v1-badge-bg: #172033; --v1-badge-pct: #FFFFFF; --v1-badge-label: #111827;
+                --v1-bg-1: #F8FAFC; --v1-bg-2: #FFFFFF; --v1-bg-3: #F1F5F9;
+                --v1-surface-border: rgba(0, 0, 0, 0.08);
+                --v1-glow-op: 0.12;
+                --v1-header-title: #0F172A; --v1-header-sub: #64748B;
+                --v1-card-bg: rgba(255, 255, 255, 0.85); --v1-card-border: rgba(24, 86, 255, 0.20);
+                --v1-card-label: #64748B; --v1-card-value: #0F172A;
+                --v1-hub-fill: #FFFFFF; --v1-hub-stroke: rgba(24, 86, 255, 0.40); --v1-hub-core: #1856FF;
+                --v1-label-line: #94A3B8; --v1-badge-bg: #0F172A; --v1-badge-pct: #FFFFFF; --v1-badge-label: #0F172A;
                 --v1-badge-anim-x: 10px;
-                --v1-pal-0-1: #71A5F8; --v1-pal-0-2: #3B82F6; --v1-pal-0-3: #306AC9;
-                --v1-pal-1-1: #AB89F8; --v1-pal-1-2: #8B5CF6; --v1-pal-1-3: #714BC9;
-                --v1-pal-2-1: #57BC7C; --v1-pal-2-2: #16A34A; --v1-pal-2-3: #12853C;
-                --v1-pal-3-1: #E39D4B; --v1-pal-3-2: #D97706; --v1-pal-3-3: #B16104;
-                --v1-pal-4-1: #E56262; --v1-pal-4-2: #DC2626; --v1-pal-4-3: #B41F1F;
+                --v1-pal-0-1: #4B7BFF; --v1-pal-0-2: #1856FF; --v1-pal-0-3: #0D3ECC;
+                --v1-pal-1-1: #5A5274; --v1-pal-1-2: #3A344E; --v1-pal-1-3: #262235;
+                --v1-pal-2-1: #34E48F; --v1-pal-2-2: #07CA6B; --v1-pal-2-3: #059A51;
+                --v1-pal-3-1: #F2B07E; --v1-pal-3-2: #E89558; --v1-pal-3-3: #C76E2F;
+                --v1-pal-4-1: #F2526E; --v1-pal-4-2: #EA2143; --v1-pal-4-3: #B8122E;
             }}
 
             @media (prefers-color-scheme: dark) {{
                 #{chart_id} {{
-                    --v1-bg-1: #0F172A; --v1-bg-2: #121b32; --v1-bg-3: #041317;
-                    --v1-glow-a-op: 0.26; --v1-glow-b-op: 0.17; --v1-vignette-op: 0.38;
-                    --v1-sonar-fill: #F9FAFB; --v1-sonar-op: 0.10;
-                    --v1-grid-stroke: #F9FAFB; --v1-grid-op: 0.035;
-                    --v1-header-prefix: #9CA3AF; --v1-header-title: #F9FAFB;
-                    --v1-card-bg: #121b32; --v1-card-label: #9CA3AF; --v1-card-value: #F9FAFB;
-                    --v1-pulse-mid: #F9FAFB; --v1-center-fill: #0F172A;
-                    --v1-label-line: #9CA3AF; --v1-badge-bg: #06191E; --v1-badge-pct: #F7FBFF; --v1-badge-label: #F9FAFB;
+                    --v1-bg-1: #0B0F19; --v1-bg-2: #111827; --v1-bg-3: #0B0F19;
+                    --v1-surface-border: rgba(255, 255, 255, 0.12);
+                    --v1-glow-op: 0.18;
+                    --v1-header-title: #F8FAFC; --v1-header-sub: #94A3B8;
+                    --v1-card-bg: rgba(17, 24, 39, 0.75); --v1-card-border: rgba(24, 86, 255, 0.35);
+                    --v1-card-label: #94A3B8; --v1-card-value: #F8FAFC;
+                    --v1-hub-fill: #111827; --v1-hub-stroke: rgba(24, 86, 255, 0.60); --v1-hub-core: #3B82F6;
+                    --v1-label-line: #64748B; --v1-badge-bg: rgba(24, 86, 255, 0.25); --v1-badge-pct: #F8FAFC; --v1-badge-label: #F8FAFC;
                     --v1-badge-anim-x: -10px;
-                    --v1-pal-0-1: #71A5F8; --v1-pal-0-2: #3B82F6; --v1-pal-0-3: #306AC9;
-                    --v1-pal-1-1: #AB89F8; --v1-pal-1-2: #8B5CF6; --v1-pal-1-3: #714BC9;
-                    --v1-pal-2-1: #57BC7C; --v1-pal-2-2: #16A34A; --v1-pal-2-3: #12853C;
-                    --v1-pal-3-1: #E39D4B; --v1-pal-3-2: #D97706; --v1-pal-3-3: #B16104;
-                    --v1-pal-4-1: #E56262; --v1-pal-4-2: #DC2626; --v1-pal-4-3: #B41F1F;
+                    --v1-pal-0-1: #4B7BFF; --v1-pal-0-2: #1856FF; --v1-pal-0-3: #0D3ECC;
+                    --v1-pal-1-1: #5A5274; --v1-pal-1-2: #3A344E; --v1-pal-1-3: #262235;
+                    --v1-pal-2-1: #34E48F; --v1-pal-2-2: #07CA6B; --v1-pal-2-3: #059A51;
+                    --v1-pal-3-1: #F2B07E; --v1-pal-3-2: #E89558; --v1-pal-3-3: #C76E2F;
+                    --v1-pal-4-1: #F2526E; --v1-pal-4-2: #EA2143; --v1-pal-4-3: #B8122E;
                 }}
             }}
 
             #{chart_id}.dark-mode {{
-                --v1-bg-1: #0F172A; --v1-bg-2: #121b32; --v1-bg-3: #041317;
-                --v1-glow-a-op: 0.26; --v1-glow-b-op: 0.17; --v1-vignette-op: 0.38;
-                --v1-sonar-fill: #F9FAFB; --v1-sonar-op: 0.10;
-                --v1-grid-stroke: #F9FAFB; --v1-grid-op: 0.035;
-                --v1-header-prefix: #9CA3AF; --v1-header-title: #F9FAFB;
-                --v1-card-bg: #121b32; --v1-card-label: #9CA3AF; --v1-card-value: #F9FAFB;
-                --v1-pulse-mid: #F9FAFB; --v1-center-fill: #0F172A;
-                --v1-label-line: #9CA3AF; --v1-badge-bg: #06191E; --v1-badge-pct: #F7FBFF; --v1-badge-label: #F9FAFB;
+                --v1-bg-1: #0B0F19; --v1-bg-2: #111827; --v1-bg-3: #0B0F19;
+                --v1-surface-border: rgba(255, 255, 255, 0.12);
+                --v1-glow-op: 0.18;
+                --v1-header-title: #F8FAFC; --v1-header-sub: #94A3B8;
+                --v1-card-bg: rgba(17, 24, 39, 0.75); --v1-card-border: rgba(24, 86, 255, 0.35);
+                --v1-card-label: #94A3B8; --v1-card-value: #F8FAFC;
+                --v1-hub-fill: #111827; --v1-hub-stroke: rgba(24, 86, 255, 0.60); --v1-hub-core: #3B82F6;
+                --v1-label-line: #64748B; --v1-badge-bg: rgba(24, 86, 255, 0.25); --v1-badge-pct: #F8FAFC; --v1-badge-label: #F8FAFC;
                 --v1-badge-anim-x: -10px;
-                --v1-pal-0-1: #71A5F8; --v1-pal-0-2: #3B82F6; --v1-pal-0-3: #306AC9;
-                --v1-pal-1-1: #AB89F8; --v1-pal-1-2: #8B5CF6; --v1-pal-1-3: #714BC9;
-                --v1-pal-2-1: #57BC7C; --v1-pal-2-2: #16A34A; --v1-pal-2-3: #12853C;
-                --v1-pal-3-1: #E39D4B; --v1-pal-3-2: #D97706; --v1-pal-3-3: #B16104;
-                --v1-pal-4-1: #E56262; --v1-pal-4-2: #DC2626; --v1-pal-4-3: #B41F1F;
+                --v1-pal-0-1: #4B7BFF; --v1-pal-0-2: #1856FF; --v1-pal-0-3: #0D3ECC;
+                --v1-pal-1-1: #5A5274; --v1-pal-1-2: #3A344E; --v1-pal-1-3: #262235;
+                --v1-pal-2-1: #34E48F; --v1-pal-2-2: #07CA6B; --v1-pal-2-3: #059A51;
+                --v1-pal-3-1: #F2B07E; --v1-pal-3-2: #E89558; --v1-pal-3-3: #C76E2F;
+                --v1-pal-4-1: #F2526E; --v1-pal-4-2: #EA2143; --v1-pal-4-3: #B8122E;
             }}
 
-            #{chart_id} text {{ font-family: 'Inter', system-ui, sans-serif; }}
+            #{chart_id} text {{ font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }}
             @keyframes titleReveal_{chart_id} {{ from {{ opacity: 0; transform: translateY(-8px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-            @keyframes pieReveal_{chart_id} {{ from {{ opacity: 0; transform: scale(0.84) rotate(-4deg); }} to {{ opacity: 1; transform: scale(1) rotate(0deg); }} }}
-            @keyframes legendReveal_{chart_id} {{ from {{ opacity: 0; transform: translateY(14px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-            @keyframes pulseRing_{chart_id} {{ 0%, 100% {{ opacity: 0.16; stroke-width: 1; }} 50% {{ opacity: 0.36; stroke-width: 1.6; }} }}
+            @keyframes pieReveal_{chart_id} {{ from {{ opacity: 0; transform: scale(0.88); }} to {{ opacity: 1; transform: scale(1); }} }}
+            @keyframes legendReveal_{chart_id} {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
             @keyframes labelLineReveal_{chart_id} {{ from {{ stroke-dashoffset: 100; opacity: 0; }} to {{ stroke-dashoffset: 0; opacity: 1; }} }}
             @keyframes labelBadgeReveal_{chart_id} {{ from {{ opacity: 0; transform: translateX(var(--v1-badge-anim-x)); }} to {{ opacity: 1; transform: translateX(0); }} }}
             #{chart_id} .header-motion {{ animation: titleReveal_{chart_id} 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }}
             #{chart_id} .pie-segment {{ opacity: 0; transform-box: fill-box; transform-origin: center; animation: pieReveal_{chart_id} 680ms cubic-bezier(0.22, 1, 0.36, 1) both; }}
-            #{chart_id} .slice-motion {{ transform-box: fill-box; transform-origin: center; transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), filter 280ms ease; cursor: pointer; }}
-            #{chart_id} .slice-motion:hover {{ transform: scale(1.045); filter: url(#sliceGlow_{chart_id}); }}
+            #{chart_id} .slice-motion {{ transform-box: fill-box; transform-origin: center; transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), filter 280ms ease, opacity 280ms ease; cursor: pointer; }}
+            #{chart_id} .slice-motion:hover {{ transform: scale(1.035); filter: url(#sliceGlow_{chart_id}); }}
             #{chart_id} .legend-motion {{ animation: legendReveal_{chart_id} 620ms cubic-bezier(0.22, 1, 0.36, 1) 780ms both; opacity: 1; }}
-            #{chart_id} .pulse-ring {{ animation: pulseRing_{chart_id} 3.8s ease-in-out infinite; }}
             #{chart_id} .label-line {{ stroke-dasharray: 100; stroke-dashoffset: 100; animation: labelLineReveal_{chart_id} 800ms ease forwards; }}
             #{chart_id} .label-badge {{ opacity: 0; animation: labelBadgeReveal_{chart_id} 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }}
         </style>
         <linearGradient id="bgSurface_{chart_id}" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="var(--v1-bg-1)"/><stop offset="46%" stop-color="var(--v1-bg-2)"/><stop offset="100%" stop-color="var(--v1-bg-3)"/>
         </linearGradient>
-        <radialGradient id="bgGlowA_{chart_id}" cx="18%" cy="10%" r="70%">
-            <stop offset="0%" stop-color="#3B82F6" stop-opacity="var(--v1-glow-a-op)"/><stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+        <radialGradient id="bgGlow_{chart_id}" cx="20%" cy="15%" r="65%">
+            <stop offset="0%" stop-color="#1856FF" stop-opacity="var(--v1-glow-op)"/><stop offset="100%" stop-color="#1856FF" stop-opacity="0"/>
         </radialGradient>
-        <radialGradient id="bgGlowB_{chart_id}" cx="84%" cy="22%" r="58%">
-            <stop offset="0%" stop-color="#DC2626" stop-opacity="var(--v1-glow-b-op)"/><stop offset="100%" stop-color="#DC2626" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="vignette_{chart_id}" cx="50%" cy="48%" r="78%">
-            <stop offset="0%" stop-color="#000000" stop-opacity="0"/><stop offset="100%" stop-color="#000000" stop-opacity="var(--v1-vignette-op)"/>
-        </radialGradient>
-        <pattern id="sonarDots_{chart_id}" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-            <circle cx="2" cy="2" r="1" fill="var(--v1-sonar-fill)" opacity="var(--v1-sonar-op)"/>
-        </pattern>
-        <pattern id="fineGrid_{chart_id}" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
-            <path d="M48 0 H0 V48" fill="none" stroke="var(--v1-grid-stroke)" stroke-opacity="var(--v1-grid-op)" stroke-width="1"/>
-        </pattern>
         <linearGradient id="sliceGlass_{chart_id}" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45"/>
-            <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.1"/>
-            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32"/>
+            <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.02"/>
         </linearGradient>
         <filter id="sliceShadow_{chart_id}" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dx="0" dy="2" result="offsetblur"/>
-            <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3.5"/><feOffset dx="0" dy="3" result="offsetblur"/>
+            <feComponentTransfer><feFuncA type="linear" slope="0.22"/></feComponentTransfer>
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
         <filter id="sliceGlow_{chart_id}">
@@ -611,46 +600,36 @@ fn render_v1(
         </filter>
         {gradient_defs}
     </defs>
-    <rect width="600" height="600" rx="18" fill="url(#bgSurface_{chart_id})" aria-hidden="true"/>
-    <rect width="600" height="600" rx="18" fill="url(#bgGlowA_{chart_id})" aria-hidden="true"/>
-    <rect width="600" height="600" rx="18" fill="url(#bgGlowB_{chart_id})" aria-hidden="true"/>
-    <rect width="600" height="600" rx="18" fill="url(#fineGrid_{chart_id})" aria-hidden="true"/>
-    <rect width="600" height="600" rx="18" fill="url(#sonarDots_{chart_id})" aria-hidden="true"/>
-    <rect width="600" height="600" rx="18" fill="url(#vignette_{chart_id})" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="18" fill="url(#bgSurface_{chart_id})" stroke="var(--v1-surface-border)" stroke-width="1" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="18" fill="url(#bgGlow_{chart_id})" aria-hidden="true"/>
     
-    <g transform="translate(40, 44)" aria-hidden="true">
+    <g transform="translate(40, 36)" aria-hidden="true">
         <g class="header-motion">
-            <text x="0" y="34" fill="var(--v1-header-title)" font-size="28" font-weight="900">{title_esc}</text>
-            <rect x="0" y="47" width="74" height="5" rx="2.5" fill="#3B82F6"/>
-            <rect x="82" y="47" width="22" height="5" rx="2.5" fill="#DC2626"/>
+            <text x="0" y="28" fill="var(--v1-header-title)" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="24" font-weight="800" letter-spacing="-0.02em">{title_esc}</text>
         </g>
     </g>
 
-    <g transform="translate(448, 36)" aria-hidden="true">
+    <g transform="translate(528, 32)" aria-hidden="true">
         <g class="legend-motion">
-            <rect width="112" height="46" rx="14" fill="var(--v1-card-bg)" stroke="#3B82F6" stroke-opacity="0.28"/>
-            <text x="16" y="18" fill="var(--v1-card-label)" font-size="9" font-weight="900" letter-spacing="1.5">TOTAL</text>
-            <text x="16" y="36" fill="var(--v1-card-value)" font-size="18" font-weight="900">{total}</text>
+            <rect width="112" height="46" rx="12" fill="var(--v1-card-bg)" stroke="var(--v1-card-border)" stroke-width="1.2"/>
+            <text x="16" y="18" fill="var(--v1-card-label)" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="9" font-weight="800" letter-spacing="1.2">TOTAL</text>
+            <text x="16" y="36" fill="var(--v1-card-value)" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="18" font-weight="800">{total}</text>
         </g>
-    </g>
-
-    <g opacity="0.7" aria-hidden="true">
-        <circle class="pulse-ring" cx="{cx}" cy="{cy}" r="180" fill="none" stroke="#3B82F6"/>
-        <circle cx="{cx}" cy="{cy}" r="128" fill="none" stroke="var(--v1-pulse-mid)" stroke-opacity="0.045"/>
-        <circle cx="{cx}" cy="{cy}" r="204" fill="none" stroke="#DC2626" stroke-opacity="0.035"/>
     </g>
 
     <g filter="url(#sliceShadow_{chart_id})">
         {slices_html}
     </g>
 
-    <circle cx="{cx}" cy="{cy}" r="10" fill="var(--v1-center-fill)" stroke="#3B82F6" stroke-opacity="0.55" stroke-width="1.2" aria-hidden="true"/>
-    <circle cx="{cx}" cy="{cy}" r="4" fill="#DC2626" opacity="0.95" aria-hidden="true"/>
+    <circle cx="{cx:.1}" cy="{cy:.1}" r="12" fill="var(--v1-hub-fill)" stroke="var(--v1-hub-stroke)" stroke-width="1.5" aria-hidden="true"/>
+    <circle cx="{cx:.1}" cy="{cy:.1}" r="4" fill="var(--v1-hub-core)" opacity="0.9" aria-hidden="true"/>
 
     <g class="external-labels" pointer-events="none" aria-hidden="true">
         {labels_html}
     </g>
 </svg>"##,
+        width = width,
+        height = height,
         chart_id = chart_id,
         title_esc = escape(title),
         desc_esc = escape(&desc),
@@ -678,7 +657,7 @@ mod tests {
         assert!(svg.contains("Test Pie"));
         assert!(svg.contains("30.0%"));
         assert!(svg.contains("70.0%"));
-        assert!(svg.contains("--v1-bg-1: #cccccc")); // Check CSS var
+        assert!(svg.contains("--v1-bg-1: #F8FAFC")); // Check CSS var
         assert!(svg.contains("var(--v1-badge-anim-x)"));
     }
 
@@ -691,8 +670,25 @@ mod tests {
         assert!(result.is_ok());
         let svg = result.unwrap();
         assert!(svg.contains("class=\"v1-container dark-mode\""));
-        assert!(svg.contains("--v1-bg-1: #0F172A")); // In dark-mode block
-        assert!(svg.contains("var(--v1-glow-a-op)"));
+        assert!(svg.contains("--v1-bg-1: #0B0F19")); // In dark-mode block
+        assert!(svg.contains("var(--v1-glow-op)"));
+    }
+
+    #[test]
+    fn test_generate_gen_pie_svg() {
+        let sample = r#"[docops,pie]
+----
+title= Website Traffic Sources
+visualVersion=1
+---
+Organic Search | 35
+Direct | 25
+Referral | 20
+Social Media | 12
+Email Campaigns | 8
+----"#;
+        let generated_svg = crate::generate_svg(sample);
+        let _ = std::fs::write("gen/pie.svg", generated_svg);
     }
 
     #[test]
