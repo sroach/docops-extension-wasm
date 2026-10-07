@@ -9,43 +9,7 @@ struct LineGroup {
     points: Vec<(String, f64)>,
 }
 
-pub(crate) fn format_abbreviated_number(val: f64) -> String {
-    let abs = val.abs();
-    let sign = if val < 0.0 { "-" } else { "" };
-    if abs < 1e-6 {
-        return "0".to_string();
-    }
-    if abs >= 1_000_000_000.0 {
-        let num = abs / 1_000_000_000.0;
-        let s = if num >= 100.0 || (num * 10.0).round() % 10.0 == 0.0 {
-            format!("{:.0}B", num)
-        } else {
-            format!("{:.1}B", num)
-        };
-        format!("{}{}", sign, s)
-    } else if abs >= 1_000_000.0 {
-        let num = abs / 1_000_000.0;
-        let s = if num >= 100.0 || (num * 10.0).round() % 10.0 == 0.0 {
-            format!("{:.0}M", num)
-        } else {
-            format!("{:.1}M", num)
-        };
-        format!("{}{}", sign, s)
-    } else if abs >= 1_000.0 {
-        let num = abs / 1_000.0;
-        let s = if num >= 100.0 || (num * 10.0).round() % 10.0 == 0.0 {
-            format!("{:.0}K", num)
-        } else {
-            format!("{:.1}K", num)
-        };
-        format!("{}{}", sign, s)
-    } else if abs.fract() == 0.0 || abs >= 10.0 {
-        format!("{:.0}", val)
-    } else {
-        let s = format!("{:.1}", val);
-        s.trim_end_matches(".0").to_string()
-    }
-}
+pub(crate) use crate::common::svg::format_abbreviated_number;
 
 fn get_series(points: &Vec<(String, f64)>) -> (Vec<String>, Vec<LineGroup>) {
     let mut x_labels = Vec::new();

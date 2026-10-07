@@ -1,5 +1,5 @@
 use crate::common::kv::{parse_kv_body, KvBody};
-use crate::common::svg::escape;
+use crate::common::svg::{escape, format_abbreviated_number};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -159,10 +159,11 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         let frac = i as f64 / 10.0;
         let y = plot_y + plot_h - frac * plot_h;
         let val = max_val * frac;
+        let val_str = format_abbreviated_number(val);
         grid_lines.push_str(&format!(r##"        <line class="grid" x1="{plot_x:.1}" y1="{y:.1}" x2="{plot_rx:.1}" y2="{y:.1}"/>"##,
             plot_x = plot_x, y = y, plot_rx = plot_x + plot_w));
-        y_ticks.push_str(&format!(r##"    <text class="tick-text" x="{tick_x:.1}" y="{tick_y:.1}" text-anchor="end">{val:.0}</text>"##,
-            tick_x = plot_x - 12.0, tick_y = y + 4.0, val = val));
+        y_ticks.push_str(&format!(r##"    <text class="tick-text" x="{tick_x:.1}" y="{tick_y:.1}" text-anchor="end">{val_str}</text>"##,
+            tick_x = plot_x - 12.0, tick_y = y + 4.0, val_str = val_str));
     }
 
     let extra_class = if use_dark { " dark-mode" } else { "" };
@@ -453,6 +454,8 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
             BarShape::Cylinder => render_cylinder_bar(0.0, -bar_h, bar_inner_w, bar_h, &fill),
         };
 
+        let val_str = format_abbreviated_number(*value);
+
         bars_html.push_str(&format!(
             r##"    <g class="bar-wrap" role="graphics-symbol" aria-roledescription="bar" tabindex="0" aria-label="{label}: {value}">
         <rect class="bar-hit" x="{x_hit:.1}" y="{plot_y:.1}" width="{bar_hit_w:.1}" height="{plot_h:.1}" aria-hidden="true"/>
@@ -462,11 +465,12 @@ fn render_simple_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut St
             </g>
         </g>
         <text class="x-label" x="{cx:.1}" y="{label_y:.1}" text-anchor="middle">{label}</text>
-        <text class="value-label{peak_class} val-{idx}" x="{cx:.1}" y="{val_y:.1}" text-anchor="middle">{value}</text>
+        <text class="value-label{peak_class} val-{idx}" x="{cx:.1}" y="{val_y:.1}" text-anchor="middle">{val_str}</text>
     </g>
 "##,
             label = escape(label),
             value = value,
+            val_str = val_str,
             x_hit = x_hit,
             plot_y = ctx.plot_y,
             bar_hit_w = bar_hit_w,
@@ -535,6 +539,8 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
                 format!("{} ({})", group.name, sub_label)
             };
 
+            let val_str = format_abbreviated_number(*value);
+
             bars_html.push_str(&format!(
                 r##"    <g class="bar-wrap" role="graphics-symbol" aria-roledescription="bar" tabindex="0" aria-label="{display_label}: {value}">
         <g transform="translate({x_bar:.1} {y_base:.1})">
@@ -542,11 +548,12 @@ fn render_grouped_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
                 {shape_svg}
             </g>
         </g>
-        <text class="value-label val-{idx}" x="{cx:.1}" y="{val_y:.1}" text-anchor="middle">{value}</text>
+        <text class="value-label val-{idx}" x="{cx:.1}" y="{val_y:.1}" text-anchor="middle">{val_str}</text>
     </g>
 "##,
                 display_label = escape(&display_label),
                 value = value,
+                val_str = val_str,
                 x_bar = x_bar,
                 y_base = y_base,
                 idx = global_idx,
@@ -633,15 +640,16 @@ fn render_stacked_bar(ctx: &BarContext, bars_html: &mut String, anim_css: &mut S
 
         // Group label and total value
         let cx = x_hit + bar_hit_w / 2.0;
+        let total_str = format_abbreviated_number(group.total);
         bars_html.push_str(&format!(
             r##"    <text class="x-label" x="{cx:.1}" y="{label_y:.1}" text-anchor="middle">{group_name}</text>
-    <text class="value-label val-stack-{g_idx}" x="{cx:.1}" y="{val_y:.1}" text-anchor="middle" style="opacity: 1;">{total:.0}</text>
+    <text class="value-label val-stack-{g_idx}" x="{cx:.1}" y="{val_y:.1}" text-anchor="middle" style="opacity: 1;">{total_str}</text>
 "##,
             cx = cx,
             label_y = y_base + 24.0,
             group_name = escape(&group.name),
             val_y = current_y - 12.0,
-            total = group.total,
+            total_str = total_str,
             g_idx = g_idx,
         ));
     }
@@ -760,5 +768,49 @@ mod tests {
         controls.insert("useDark".to_string(), "true".to_string());
         let svg_dark = render(body, &controls).unwrap();
         assert!(svg_dark.contains("class=\"bar-chart-container dark-mode\""));
+    }
+
+    #[test]
+    fn test_bar_chart_abbreviated_ticks_and_values() {
+        let body_simple = "---- title=Sales --- Q1 | 1400.0 Q2 | 2500000.0 ----";
+        let svg_simple = render(body_simple, &HashMap::new()).unwrap();
+        // Values above bars
+        assert!(svg_simple.contains(">1.4K<"));
+        assert!(svg_simple.contains(">2.5M<"));
+
+        let body_grouped_streaming = r#"----
+title=Daily Streaming
+mode=grouped
+---
+Shape of you | 2018-01-05 | 4492978
+Despacito | 2018-01-05 | 3450315.0
+Something Just Like This | 2018-01-05 | 2408365.0
+HUMBLE | 2018-01-05 | 2685857.0
+Unforgettable | 2018-01-05 | 2869783.0
+
+Shape of you | 2018-01-06 | 4416476
+Despacito | 2018-01-06 | 3394284
+Something Just Like This | 2018-01-06 | 2188035.0
+HUMBLE | 2018-01-06 | 2559044.0
+Unforgettable | 2018-01-06 | 2743748.0
+----"#;
+        let svg_grouped = render(body_grouped_streaming, &HashMap::new()).unwrap();
+        assert!(svg_grouped.contains("Daily Streaming"));
+        assert!(svg_grouped.contains("Shape of you"));
+        assert!(svg_grouped.contains(">4.5M<"));
+        assert!(svg_grouped.contains(">4.4M<"));
+        assert!(svg_grouped.contains(">3.5M<"));
+        assert!(svg_grouped.contains(">3.4M<"));
+        // Ticks should also be abbreviated
+        assert!(
+            svg_grouped.contains(">4.9M<")
+                || svg_grouped.contains(">4.5M<")
+                || svg_grouped.contains(">4M<")
+        );
+
+        let body_stacked =
+            "---- mode=stacked --- Region | Product A | 1500000 Region | Product B | 2500000 ----";
+        let svg_stacked = render(body_stacked, &HashMap::new()).unwrap();
+        assert!(svg_stacked.contains(">4M<"));
     }
 }
