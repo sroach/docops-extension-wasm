@@ -9,6 +9,44 @@ struct LineGroup {
     points: Vec<(String, f64)>,
 }
 
+pub(crate) fn format_abbreviated_number(val: f64) -> String {
+    let abs = val.abs();
+    let sign = if val < 0.0 { "-" } else { "" };
+    if abs < 1e-6 {
+        return "0".to_string();
+    }
+    if abs >= 1_000_000_000.0 {
+        let num = abs / 1_000_000_000.0;
+        let s = if num >= 100.0 || (num * 10.0).round() % 10.0 == 0.0 {
+            format!("{:.0}B", num)
+        } else {
+            format!("{:.1}B", num)
+        };
+        format!("{}{}", sign, s)
+    } else if abs >= 1_000_000.0 {
+        let num = abs / 1_000_000.0;
+        let s = if num >= 100.0 || (num * 10.0).round() % 10.0 == 0.0 {
+            format!("{:.0}M", num)
+        } else {
+            format!("{:.1}M", num)
+        };
+        format!("{}{}", sign, s)
+    } else if abs >= 1_000.0 {
+        let num = abs / 1_000.0;
+        let s = if num >= 100.0 || (num * 10.0).round() % 10.0 == 0.0 {
+            format!("{:.0}K", num)
+        } else {
+            format!("{:.1}K", num)
+        };
+        format!("{}{}", sign, s)
+    } else if abs.fract() == 0.0 || abs >= 10.0 {
+        format!("{:.0}", val)
+    } else {
+        let s = format!("{:.1}", val);
+        s.trim_end_matches(".0").to_string()
+    }
+}
+
 fn get_series(points: &Vec<(String, f64)>) -> (Vec<String>, Vec<LineGroup>) {
     let mut x_labels = Vec::new();
     let mut x_map = HashMap::new();
@@ -86,12 +124,25 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         (raw_max * 1.1 / 10.0).ceil() * 10.0
     };
 
-    let width = 800.0;
-    let height = 500.0;
-    let plot_x = 85.0;
+    let width = cfg
+        .get("width")
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(880.0);
+    let height = cfg
+        .get("height")
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(500.0);
+    let card_x = 28.0;
+    let card_y = 20.0;
+    let card_w = width - 56.0;
+    let card_h = height - 40.0;
+
+    let plot_x = 75.0;
     let plot_y = 75.0;
-    let plot_w = 565.0;
-    let plot_h = 345.0;
+    let plot_w = (width - 340.0).max(400.0);
+    let plot_h = 320.0;
+    let legend_x = plot_x + plot_w + 20.0;
+    let legend_w = (width - legend_x - 36.0).max(180.0);
 
     let chart_id = format!("id_{}", Uuid::new_v4());
 
@@ -102,6 +153,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         let frac = i as f64 / steps as f64;
         let y = plot_y + plot_h - frac * plot_h;
         let val = max_val * frac;
+        let val_label = format_abbreviated_number(val);
         grid_svg.push_str(&format!(
             r##"<line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}"/>"##,
             x1 = plot_x,
@@ -109,8 +161,8 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             x2 = plot_x + plot_w
         ));
         y_ticks.push_str(&format!(
-            r##"<line x1="{plot_x}" y1="{y}" x2="{tick_x}" y2="{y}" class="chart-axis"/><text x="{tx}" y="{y}" text-anchor="end" dominant-baseline="middle" class="chart-text tick-label">{val:.0}</text>"##,
-            plot_x = plot_x, tick_x = plot_x - 5.0, tx = plot_x - 10.0, y = y, val = val
+            r##"<line x1="{plot_x}" y1="{y}" x2="{tick_x}" y2="{y}" class="chart-axis"/><text x="{tx}" y="{y}" text-anchor="end" dominant-baseline="middle" class="chart-text tick-label tick-y-val">{val_label}</text>"##,
+            plot_x = plot_x, tick_x = plot_x - 5.0, tx = plot_x - 10.0, y = y, val_label = val_label
         ));
     }
 
@@ -130,9 +182,13 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             y1 = plot_y,
             y2 = plot_y + plot_h
         ));
+        let y_base = plot_y + plot_h;
+        let tick_y = y_base + 5.0;
+        let ty = y_base + 16.0;
+        let label_esc = escape(label);
         x_ticks.push_str(&format!(
-            r##"<line x1="{x}" y1="{y_base}" x2="{x}" y2="{tick_y}" class="chart-axis"/><text x="{x}" y="{ty}" text-anchor="middle" class="chart-text tick-label">{label}<title>{label}</title></text>"##,
-            x = x, y_base = plot_y + plot_h, tick_y = plot_y + plot_h + 5.0, ty = plot_y + plot_h + 20.0, label = escape(label)
+            r##"<line x1="{x}" y1="{y_base}" x2="{x}" y2="{tick_y}" class="chart-axis"/><text x="{x}" y="{ty}" text-anchor="end" dominant-baseline="central" transform="rotate(-35 {x} {ty})" class="chart-text tick-label tick-x-val">{label_esc}<title>{label_esc}</title></text>"##,
+            x = x, y_base = y_base, tick_y = tick_y, ty = ty, label_esc = label_esc
         ));
     }
 
@@ -145,6 +201,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
     for (g_idx, group) in groups.iter().enumerate() {
         let pal_idx = g_idx % palette_size;
         let (peak_val, peak_idx) = series_peaks[g_idx];
+        let peak_formatted = format_abbreviated_number(peak_val);
 
         let mut path_d = String::new();
         let mut first = true;
@@ -208,9 +265,15 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             g_idx = g_idx, pal_idx = pal_idx, delay = g_idx as f64 * 0.08, d = path_d, id = chart_id, points_svg = points_svg, name = escape(&group.name)
         ));
 
+        let cy = 98.0 + g_idx as f64 * 38.0;
+        let ty = 94.0 + g_idx as f64 * 38.0;
+        let vy = 110.0 + g_idx as f64 * 38.0;
+        let lx_circle = legend_x + 16.0;
+        let lx_text = legend_x + 28.0;
+
         legend_items.push_str(&format!(
-            r##"<g class="legend-item" role="listitem" aria-label="{name}: Peak {peak_val}"><circle cx="676" cy="{cy}" r="5.5" fill="var(--line-pal-{pal_idx}-stroke)" aria-hidden="true"/><text x="690" y="{ty}" dominant-baseline="middle" class="chart-text legend-label">{name}</text><text x="690" y="{vy}" dominant-baseline="middle" class="chart-text legend-value">Peak {peak_val}</text></g>"##,
-            cy = 110 + g_idx * 36, ty = 108 + g_idx * 36, vy = 124 + g_idx * 36, pal_idx = pal_idx, name = escape(&group.name), peak_val = peak_val
+            r##"<g class="legend-item" role="listitem" aria-label="{name}: Peak {peak_formatted}"><circle cx="{lx_circle}" cy="{cy}" r="5.5" fill="var(--line-pal-{pal_idx}-stroke)" aria-hidden="true"/><text x="{lx_text}" y="{ty}" dominant-baseline="middle" class="chart-text legend-label">{name}<title>{name}</title></text><text x="{lx_text}" y="{vy}" dominant-baseline="middle" class="chart-text legend-value">Peak {peak_formatted}<title>Peak {peak_val}</title></text></g>"##,
+            lx_circle = lx_circle, lx_text = lx_text, cy = cy, ty = ty, vy = vy, pal_idx = pal_idx, name = escape(&group.name), peak_formatted = peak_formatted, peak_val = peak_val
         ));
     }
 
@@ -234,16 +297,19 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
 
     let extra_class = if use_dark { " dark-mode" } else { "" };
 
+    let header_x = plot_x + plot_w / 2.0;
     let header_svg = if !subtitle.is_empty() {
         format!(
-            r##"<text x="400" y="44" text-anchor="middle" class="chart-text chart-title">{title}</text>
-    <text x="400" y="62" text-anchor="middle" class="chart-text chart-subtitle">{subtitle}</text>"##,
+            r##"<text x="{hx}" y="44" text-anchor="middle" class="chart-text chart-title">{title}</text>
+    <text x="{hx}" y="62" text-anchor="middle" class="chart-text chart-subtitle">{subtitle}</text>"##,
+            hx = header_x,
             title = escape(title),
             subtitle = escape(subtitle)
         )
     } else {
         format!(
-            r##"<text x="400" y="52" text-anchor="middle" class="chart-text chart-title">{title}</text>"##,
+            r##"<text x="{hx}" y="52" text-anchor="middle" class="chart-text chart-title">{title}</text>"##,
+            hx = header_x,
             title = escape(title)
         )
     };
@@ -257,6 +323,8 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             x_labels.len()
         )
     };
+
+    let lh = 18.0 + groups.len() as f64 * 38.0;
 
     Ok(format!(
         r##"<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" id="{id}" preserveAspectRatio="xMidYMid meet" viewBox="0 0 {width} {height}" class="line-chart-container{extra_class}" role="graphics-document document" aria-labelledby="{id}_title {id}_desc">
@@ -302,73 +370,73 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         <clipPath id="{id}_plot_clip"><rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="26" ry="26"/></clipPath>
         {series_defs}
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
             #{id} {{
-                --bg: #F6F8FB;
-                --bg-0: #F7FAFF;
-                --bg-46: #EEF4FF;
-                --bg-100: #E7EEF8;
-                --card-bg: rgba(255, 255, 255, 0.38);
-                --card-stroke: rgba(255, 255, 255, 0.72);
+                --bg: #F8FAFC;
+                --bg-0: #FFFFFF;
+                --bg-46: #F1F5F9;
+                --bg-100: #E2E8F0;
+                --card-bg: rgba(255, 255, 255, 0.45);
+                --card-stroke: rgba(255, 255, 255, 0.75);
                 --plot-surface-0: #FFFFFF;
-                --plot-surface-100: #FFFFFF;
-                --plot-surface-op-0: 0.82;
-                --plot-surface-op-100: 0.48;
+                --plot-surface-100: #F8FAFC;
+                --plot-surface-op-0: 0.85;
+                --plot-surface-op-100: 0.50;
                 --plot-stroke-0: #FFFFFF;
-                --plot-stroke-100: #94A3B8;
-                --plot-stroke-op-0: 0.86;
-                --plot-stroke-op-100: 0.22;
-                --glow-blue-color: #60A5FA;
-                --glow-blue-op-0: 0.48;
-                --glow-blue-op-45: 0.16;
-                --glow-mint-color: #2DD4BF;
-                --glow-mint-op-0: 0.50;
-                --glow-mint-op-48: 0.13;
-                --glow-peach-color: #FDBA74;
-                --glow-peach-op: 0.24;
-                --deco-circle-1: #FFFFFF;
-                --deco-circle-2: #FFFFFF;
-                --deco-circle-op: 0.18;
-                --text: #111827;
-                --text-soft: #6B7280;
-                --text-muted: #8A94A6;
-                --grid: #CBD5E1;
-                --grid-op: 0.42;
+                --plot-stroke-100: #CBD5E1;
+                --plot-stroke-op-0: 0.90;
+                --plot-stroke-op-100: 0.30;
+                --glow-blue-color: #1856FF;
+                --glow-blue-op-0: 0.35;
+                --glow-blue-op-45: 0.12;
+                --glow-mint-color: #07CA6B;
+                --glow-mint-op-0: 0.30;
+                --glow-mint-op-48: 0.10;
+                --glow-peach-color: #E89558;
+                --glow-peach-op: 0.18;
+                --deco-circle-1: #1856FF;
+                --deco-circle-2: #8B5CF6;
+                --deco-circle-op: 0.08;
+                --text: #141414;
+                --text-soft: #4B5563;
+                --text-muted: #64748B;
+                --grid: #E2E8F0;
+                --grid-op: 0.65;
                 --axis: #94A3B8;
-                --legend-box-bg: rgba(255, 255, 255, 0.66);
-                --legend-box-stroke: rgba(255, 255, 255, 0.72);
+                --legend-box-bg: rgba(255, 255, 255, 0.75);
+                --legend-box-stroke: rgba(255, 255, 255, 0.85);
                 --point-bg: #FFFFFF;
                 --point-peak-stroke: #FFFFFF;
-                --shadow-flood: #1E293B;
-                --shadow-op: 0.14;
+                --shadow-flood: #0F172A;
+                --shadow-op: 0.10;
                 --shadow-flood-sub: #FFFFFF;
-                --shadow-op-sub: 0.90;
-                --point-shadow-color: #0369A1;
-                --point-shadow-op: 0.22;
-                --line-pal-0-1: #60A5FA;
-                --line-pal-0-2: #3B82F6;
-                --line-pal-0-stroke: #3B82F6;
+                --shadow-op-sub: 0.85;
+                --point-shadow-color: #1856FF;
+                --point-shadow-op: 0.25;
+                --line-pal-0-1: #4B7BFF;
+                --line-pal-0-2: #1856FF;
+                --line-pal-0-stroke: #1856FF;
                 --line-pal-1-1: #A78BFA;
                 --line-pal-1-2: #8B5CF6;
                 --line-pal-1-stroke: #8B5CF6;
-                --line-pal-2-1: #34D399;
-                --line-pal-2-2: #10B981;
-                --line-pal-2-stroke: #10B981;
-                --line-pal-3-1: #FBBF24;
-                --line-pal-3-2: #F59E0B;
-                --line-pal-3-stroke: #F59E0B;
-                --line-pal-4-1: #FB7185;
-                --line-pal-4-2: #E11D48;
-                --line-pal-4-stroke: #E11D48;
+                --line-pal-2-1: #34E48F;
+                --line-pal-2-2: #07CA6B;
+                --line-pal-2-stroke: #07CA6B;
+                --line-pal-3-1: #F2B07E;
+                --line-pal-3-2: #E89558;
+                --line-pal-3-stroke: #E89558;
+                --line-pal-4-1: #F2526E;
+                --line-pal-4-2: #EA2143;
+                --line-pal-4-stroke: #EA2143;
             }}
 
             @media (prefers-color-scheme: dark) {{
                 #{id} {{
-                    --bg: #111827;
-                    --bg-0: #0F172A;
+                    --bg: #0B0F19;
+                    --bg-0: #0B0F19;
                     --bg-46: #111827;
                     --bg-100: #1E293B;
-                    --card-bg: rgba(30, 41, 59, 0.55);
+                    --card-bg: rgba(17, 24, 39, 0.65);
                     --card-stroke: rgba(255, 255, 255, 0.12);
                     --plot-surface-0: #1E293B;
                     --plot-surface-100: #0F172A;
@@ -378,25 +446,25 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                     --plot-stroke-100: #334155;
                     --plot-stroke-op-0: 0.60;
                     --plot-stroke-op-100: 0.30;
-                    --glow-blue-color: #3B82F6;
+                    --glow-blue-color: #1856FF;
                     --glow-blue-op-0: 0.25;
                     --glow-blue-op-45: 0.08;
-                    --glow-mint-color: #0D9488;
+                    --glow-mint-color: #07CA6B;
                     --glow-mint-op-0: 0.20;
                     --glow-mint-op-48: 0.06;
-                    --glow-peach-color: #C2410C;
+                    --glow-peach-color: #E89558;
                     --glow-peach-op: 0.12;
-                    --deco-circle-1: #38BDF8;
-                    --deco-circle-2: #818CF8;
+                    --deco-circle-1: #1856FF;
+                    --deco-circle-2: #8B5CF6;
                     --deco-circle-op: 0.05;
-                    --text: #F9FAFB;
-                    --text-soft: #9CA3AF;
-                    --text-muted: #6B7280;
-                    --grid: #374151;
+                    --text: #F8FAFC;
+                    --text-soft: #CBD5E1;
+                    --text-muted: #94A3B8;
+                    --grid: #334155;
                     --grid-op: 0.50;
                     --axis: #4B5563;
-                    --legend-box-bg: rgba(17, 24, 39, 0.75);
-                    --legend-box-stroke: rgba(255, 255, 255, 0.10);
+                    --legend-box-bg: rgba(17, 24, 39, 0.80);
+                    --legend-box-stroke: rgba(255, 255, 255, 0.12);
                     --point-bg: #1E293B;
                     --point-peak-stroke: #FFFFFF;
                     --shadow-flood: #000000;
@@ -405,30 +473,30 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                     --shadow-op-sub: 0.0;
                     --point-shadow-color: #000000;
                     --point-shadow-op: 0.40;
-                    --line-pal-0-1: #93C5FD;
-                    --line-pal-0-2: #3B82F6;
-                    --line-pal-0-stroke: #60A5FA;
+                    --line-pal-0-1: #60A5FA;
+                    --line-pal-0-2: #1856FF;
+                    --line-pal-0-stroke: #4B7BFF;
                     --line-pal-1-1: #C4B5FD;
                     --line-pal-1-2: #8B5CF6;
                     --line-pal-1-stroke: #A78BFA;
                     --line-pal-2-1: #6EE7B7;
-                    --line-pal-2-2: #10B981;
-                    --line-pal-2-stroke: #34D399;
+                    --line-pal-2-2: #07CA6B;
+                    --line-pal-2-stroke: #34E48F;
                     --line-pal-3-1: #FDE68A;
-                    --line-pal-3-2: #F59E0B;
-                    --line-pal-3-stroke: #FBBF24;
+                    --line-pal-3-2: #E89558;
+                    --line-pal-3-stroke: #F2B07E;
                     --line-pal-4-1: #FDA4AF;
-                    --line-pal-4-2: #E11D48;
-                    --line-pal-4-stroke: #FB7185;
+                    --line-pal-4-2: #EA2143;
+                    --line-pal-4-stroke: #F2526E;
                 }}
             }}
 
             #{id}.dark-mode {{
-                --bg: #111827;
-                --bg-0: #0F172A;
+                --bg: #0B0F19;
+                --bg-0: #0B0F19;
                 --bg-46: #111827;
                 --bg-100: #1E293B;
-                --card-bg: rgba(30, 41, 59, 0.55);
+                --card-bg: rgba(17, 24, 39, 0.65);
                 --card-stroke: rgba(255, 255, 255, 0.12);
                 --plot-surface-0: #1E293B;
                 --plot-surface-100: #0F172A;
@@ -438,25 +506,25 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                 --plot-stroke-100: #334155;
                 --plot-stroke-op-0: 0.60;
                 --plot-stroke-op-100: 0.30;
-                --glow-blue-color: #3B82F6;
+                --glow-blue-color: #1856FF;
                 --glow-blue-op-0: 0.25;
                 --glow-blue-op-45: 0.08;
-                --glow-mint-color: #0D9488;
+                --glow-mint-color: #07CA6B;
                 --glow-mint-op-0: 0.20;
                 --glow-mint-op-48: 0.06;
-                --glow-peach-color: #C2410C;
+                --glow-peach-color: #E89558;
                 --glow-peach-op: 0.12;
-                --deco-circle-1: #38BDF8;
-                --deco-circle-2: #818CF8;
+                --deco-circle-1: #1856FF;
+                --deco-circle-2: #8B5CF6;
                 --deco-circle-op: 0.05;
-                --text: #F9FAFB;
-                --text-soft: #9CA3AF;
-                --text-muted: #6B7280;
-                --grid: #374151;
+                --text: #F8FAFC;
+                --text-soft: #CBD5E1;
+                --text-muted: #94A3B8;
+                --grid: #334155;
                 --grid-op: 0.50;
                 --axis: #4B5563;
-                --legend-box-bg: rgba(17, 24, 39, 0.75);
-                --legend-box-stroke: rgba(255, 255, 255, 0.10);
+                --legend-box-bg: rgba(17, 24, 39, 0.80);
+                --legend-box-stroke: rgba(255, 255, 255, 0.12);
                 --point-bg: #1E293B;
                 --point-peak-stroke: #FFFFFF;
                 --shadow-flood: #000000;
@@ -465,35 +533,35 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                 --shadow-op-sub: 0.0;
                 --point-shadow-color: #000000;
                 --point-shadow-op: 0.40;
-                --line-pal-0-1: #93C5FD;
-                --line-pal-0-2: #3B82F6;
-                --line-pal-0-stroke: #60A5FA;
+                --line-pal-0-1: #60A5FA;
+                --line-pal-0-2: #1856FF;
+                --line-pal-0-stroke: #4B7BFF;
                 --line-pal-1-1: #C4B5FD;
                 --line-pal-1-2: #8B5CF6;
                 --line-pal-1-stroke: #A78BFA;
                 --line-pal-2-1: #6EE7B7;
-                --line-pal-2-2: #10B981;
-                --line-pal-2-stroke: #34D399;
+                --line-pal-2-2: #07CA6B;
+                --line-pal-2-stroke: #34E48F;
                 --line-pal-3-1: #FDE68A;
-                --line-pal-3-2: #F59E0B;
-                --line-pal-3-stroke: #FBBF24;
+                --line-pal-3-2: #E89558;
+                --line-pal-3-stroke: #F2B07E;
                 --line-pal-4-1: #FDA4AF;
-                --line-pal-4-2: #E11D48;
-                --line-pal-4-stroke: #FB7185;
+                --line-pal-4-2: #EA2143;
+                --line-pal-4-stroke: #F2526E;
             }}
 
-            #{id} .chart-text {{ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif; fill: var(--text); letter-spacing: -0.01em; }}
+            #{id} .chart-text {{ font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: var(--text); letter-spacing: -0.01em; }}
             #{id} .chart-background {{ fill: url(#{id}_apple_bg); }}
             #{id} .plot-surface {{ fill: url(#{id}_plot_glass); stroke: url(#{id}_plot_stroke); stroke-width: 1; }}
             #{id} .chart-grid {{ stroke: var(--grid); stroke-opacity: var(--grid-op); }}
             #{id} .chart-axis {{ stroke: var(--axis); stroke-width: 1.25; stroke-opacity: 0.62; }}
-            #{id} .chart-title {{ fill: var(--text); font-size: 22px; font-weight: 760; letter-spacing: -0.025em; }}
+            #{id} .chart-title {{ fill: var(--text); font-size: 22px; font-weight: 800; letter-spacing: -0.025em; }}
             #{id} .chart-subtitle {{ fill: var(--text-soft); font-size: 12px; font-weight: 500; }}
-            #{id} .axis-label {{ fill: var(--text-soft); font-size: 13px; font-weight: 600; }}
-            #{id} .tick-label {{ fill: var(--text-muted); font-size: 11px; font-weight: 590; }}
+            #{id} .axis-label {{ fill: var(--text-soft); font-size: 12.5px; font-weight: 600; }}
+            #{id} .tick-label {{ font-family: 'JetBrains Mono', ui-monospace, monospace; fill: var(--text-muted); font-size: 11px; font-weight: 500; }}
             #{id} .legend-box {{ fill: var(--legend-box-bg); stroke: var(--legend-box-stroke); stroke-width: 1; }}
-            #{id} .legend-label {{ fill: var(--text); font-size: 12px; font-weight: 650; }}
-            #{id} .legend-value {{ fill: var(--text-muted); font-size: 10px; font-weight: 590; }}
+            #{id} .legend-label {{ fill: var(--text); font-size: 12px; font-weight: 700; }}
+            #{id} .legend-value {{ font-family: 'JetBrains Mono', ui-monospace, monospace; fill: var(--text-muted); font-size: 10.5px; font-weight: 600; }}
             #{id} .line-path {{ filter: url(#{id}_line_glow); transition: stroke-width 180ms ease; }}
             #{id} .area-path {{ opacity: 0; animation: areaBloom_{id} 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }}
             #{id} .line-reveal {{ opacity: 0; animation: lineReveal_{id} 900ms cubic-bezier(.2,.85,.2,1) forwards; }}
@@ -510,17 +578,17 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
             @media (prefers-reduced-motion: reduce) {{ #{id} * {{ transition: none !important; animation: none !important; }} }}
         </style>
     </defs>
-    <rect width="{width}" height="{height}" rx="34" class="chart-background" aria-hidden="true"/>
-    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_blue)" aria-hidden="true"/>
-    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_mint)" aria-hidden="true"/>
-    <rect width="{width}" height="{height}" rx="34" fill="url(#{id}_glow_peach)" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="32" class="chart-background" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="32" fill="url(#{id}_glow_blue)" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="32" fill="url(#{id}_glow_mint)" aria-hidden="true"/>
+    <rect width="{width}" height="{height}" rx="32" fill="url(#{id}_glow_peach)" aria-hidden="true"/>
     <circle cx="720" cy="80" r="80" fill="var(--deco-circle-1)" opacity="var(--deco-circle-op)" aria-hidden="true"/>
     <circle cx="88" cy="425" r="112" fill="var(--deco-circle-2)" opacity="var(--deco-circle-op)" aria-hidden="true"/>
     <g filter="url(#{id}_apple_card_shadow)" aria-hidden="true">
-        <rect x="34" y="24" width="732" height="452" rx="32" fill="var(--card-bg)" stroke="var(--card-stroke)" stroke-width="1"/>
+        <rect x="{card_x}" y="{card_y}" width="{card_w}" height="{card_h}" rx="28" fill="var(--card-bg)" stroke="var(--card-stroke)" stroke-width="1"/>
     </g>
     <g aria-hidden="true">{header_svg}</g>
-    <rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="26" class="plot-surface" aria-hidden="true"/>
+    <rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="24" class="plot-surface" aria-hidden="true"/>
     <g clip-path="url(#{id}_plot_clip)" aria-hidden="true">
         <g class="chart-grid">{grid_svg}</g>
     </g>
@@ -530,12 +598,12 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         {x_ticks}
         {y_ticks}
         <text x="{x_label_x}" y="{x_label_y}" class="chart-text axis-label" text-anchor="middle">{x_label_esc}</text>
-        <text x="{y_label_x}" y="{y_label_y}" class="chart-text axis-label" text-anchor="middle" transform="rotate(-90, {y_label_x}, {y_label_y})">{y_label_esc}</text>
+        <text x="{y_label_x}" y="{y_label_y}" class="chart-text axis-label" text-anchor="middle" transform="rotate(-90 {y_label_x} {y_label_y})">{y_label_esc}</text>
     </g>
     <g clip-path="url(#{id}_plot_clip)">{areas_svg}</g>
     <g class="plot" clip-path="url(#{id}_plot_clip)">{series_svg}</g>
     <g class="legend" role="list" aria-label="Legend">
-        <rect x="660" y="88" width="115" height="{lh}" rx="22" class="legend-box" aria-hidden="true"/>
+        <rect x="{legend_x}" y="80" width="{legend_w}" height="{lh}" rx="20" class="legend-box" aria-hidden="true"/>
         {legend_items}
     </g>
 </svg>"##,
@@ -545,31 +613,49 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
         title_esc = escape(title),
         desc_esc = escape(&desc_text),
         header_svg = header_svg,
+        card_x = card_x,
+        card_y = card_y,
+        card_w = card_w,
+        card_h = card_h,
         px = plot_x,
         py = plot_y,
         pw = plot_w,
         ph = plot_h,
         pb = plot_y + plot_h,
         pr = plot_x + plot_w,
+        legend_x = legend_x,
+        legend_w = legend_w,
         grid_svg = grid_svg,
         x_ticks = x_ticks,
         y_ticks = y_ticks,
         x_label_x = plot_x + plot_w / 2.0,
-        x_label_y = plot_y + plot_h + 45.0,
+        x_label_y = plot_y + plot_h + 58.0,
         x_label_esc = escape(x_label_text),
-        y_label_x = plot_x - 65.0,
+        y_label_x = plot_x - 55.0,
         y_label_y = plot_y + plot_h / 2.0,
         y_label_esc = escape(y_label_text),
         areas_svg = areas_svg,
         series_svg = series_svg,
         legend_items = legend_items,
-        lh = 20 + groups.len() * 36
+        lh = lh
     ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_format_abbreviated_number() {
+        assert_eq!(format_abbreviated_number(0.0), "0");
+        assert_eq!(format_abbreviated_number(1400.0), "1.4K");
+        assert_eq!(format_abbreviated_number(1000.0), "1K");
+        assert_eq!(format_abbreviated_number(10500.0), "10.5K");
+        assert_eq!(format_abbreviated_number(4942280.0), "4.9M");
+        assert_eq!(format_abbreviated_number(1000000.0), "1M");
+        assert_eq!(format_abbreviated_number(1000000000.0), "1B");
+        assert_eq!(format_abbreviated_number(25.0), "25");
+    }
 
     #[test]
     fn test_render_simple_line() {
@@ -581,17 +667,65 @@ mod tests {
         assert!(svg.contains("line-0"));
         assert!(svg.contains("prefers-color-scheme: dark"));
         assert!(svg.contains("--line-pal-0-1"));
+        assert!(svg.contains("transform=\"rotate(-35"));
     }
 
     #[test]
     fn test_render_multi_line() {
-        let input = "---- title=Comparison\nsubtitle=Monthly comparison ---\nS1 | Jan | 10\nS1 | Feb | 20\nS2 | Jan | 15\nS2 | Feb | 25\n----";
+        let input = "---- title=Comparison\nsubtitle=Monthly comparison ---\nS1 | Jan | 1000\nS1 | Feb | 2000\nS2 | Jan | 1500\nS2 | Feb | 2500\n----";
         let controls = HashMap::new();
         let svg = render(input, &controls).unwrap();
         assert!(svg.contains("Comparison"));
         assert!(svg.contains("Monthly comparison"));
         assert!(svg.contains("line-0"));
         assert!(svg.contains("line-1"));
+        assert!(svg.contains("Peak"));
+        assert!(svg.contains("rotate(-35"));
+    }
+
+    #[test]
+    fn test_render_streaming_sample_from_issue() {
+        let input = r#"---- title=Daily Streaming ---
+ Shape of you               | 2018-01-05 | 4492978
+ Despacito                  | 2018-01-05 | 3450315.0
+ Something Just Like This   | 2018-01-05 | 2408365.0
+ HUMBLE                     | 2018-01-05 | 2685857.0
+ Unforgettable              | 2018-01-05 | 2869783.0
+
+ Shape of you               | 2018-01-06 | 4416476
+ Despacito                  | 2018-01-06 | 3394284
+ Something Just Like This   | 2018-01-06 | 2188035.0
+ HUMBLE                     | 2018-01-06 | 2559044.0
+ Unforgettable              | 2018-01-06 | 2743748.0
+
+Shape of you                | 2018-01-07 | 4009104
+Despacito                   | 2018-01-07 | 3020789
+Something Just Like This    | 2018-01-07 | 1908129
+HUMBLE                      | 2018-01-07 | 2350985
+Unforgettable               | 2018-01-07 | 2441045
+
+Shape of you                | 2018-01-08 | 4135505
+Despacito                   | 2018-01-08 | 2755266
+Something Just Like This    | 2018-01-08 | 2023251
+HUMBLE                      | 2018-01-08 | 2523265
+Unforgettable               | 2018-01-08 | 2622693
+
+Shape of you                | 2018-01-09 | 4168506
+Despacito                   | 2018-01-09 | 2791601
+Something Just Like This    | 2018-01-09 | 2058016
+HUMBLE                      | 2018-01-09 | 2727678
+Unforgettable               | 2018-01-09 | 2627334
+----"#;
+        let controls = HashMap::new();
+        let svg = render(input, &controls).unwrap();
+        assert!(svg.contains("Daily Streaming"));
+        assert!(svg.contains("Shape of you"));
+        assert!(svg.contains("Something Just Like This"));
+        assert!(svg.contains("HUMBLE"));
+        assert!(svg.contains("Unforgettable"));
+        assert!(svg.contains("Peak 4.5M"));
+        assert!(svg.contains("Peak 3.5M"));
+        assert!(svg.contains("transform=\"rotate(-35"));
     }
 
     #[test]

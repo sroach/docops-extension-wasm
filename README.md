@@ -44,6 +44,11 @@ For production / optimized builds:
 cargo run --release --features server --bin docops-server
 ```
 
+For deployment to server build
+
+```shell
+cargo build --release --features server --bin docops-server
+```
 ### Configuration
 
 The server can be configured using environment variables:
