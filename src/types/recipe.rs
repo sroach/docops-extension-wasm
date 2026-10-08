@@ -23,7 +23,6 @@ struct RecipeTheme {
     canvas: String,
     surface: String,
     accent_color: String,
-    primary_text: String,
     secondary_text: String,
     corner_radius: i32,
     font_family: String,
@@ -147,7 +146,6 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             canvas: if use_dark { "#1A1A1A" } else { "#FFFFFF" }.to_string(),
             surface: if use_dark { "#262626" } else { "#F9FAFB" }.to_string(),
             accent_color: "#6B7280".to_string(),
-            primary_text: if use_dark { "#F3F4F6" } else { "#111827" }.to_string(),
             secondary_text: if use_dark { "#9CA3AF" } else { "#4B5563" }.to_string(),
             corner_radius: 8,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif".to_string(),
@@ -160,7 +158,6 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             canvas: if use_dark { "#2D372D" } else { "#FDFCF0" }.to_string(),
             surface: if use_dark { "#232E23" } else { "#F0FAF0" }.to_string(),
             accent_color: if use_dark { "#80C080" } else { "#3A7040" }.to_string(),
-            primary_text: if use_dark { "#F0F0F0" } else { "#2A3828" }.to_string(),
             secondary_text: if use_dark { "#A0B0A0" } else { "#4A8A4A" }.to_string(),
             corner_radius: 12,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif".to_string(),
@@ -173,7 +170,6 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             canvas: if use_dark { "#1A2634" } else { "#FFF9E6" }.to_string(),
             surface: if use_dark { "#15202B" } else { "#E8F4FF" }.to_string(),
             accent_color: if use_dark { "#5090C8" } else { "#1058A0" }.to_string(),
-            primary_text: if use_dark { "#E8F4FF" } else { "#0A3870" }.to_string(),
             secondary_text: if use_dark { "#88AACC" } else { "#3377BB" }.to_string(),
             corner_radius: 12,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif".to_string(),
@@ -186,7 +182,6 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             canvas: if use_dark { "#2A2420" } else { "#FFF8EE" }.to_string(),
             surface: if use_dark { "#221C18" } else { "#FDF3E5" }.to_string(),
             accent_color: if use_dark { "#D2691E" } else { "#8B4513" }.to_string(),
-            primary_text: if use_dark { "#F5E6D3" } else { "#4A2B10" }.to_string(),
             secondary_text: if use_dark { "#B8860B" } else { "#8B6508" }.to_string(),
             corner_radius: 8,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif".to_string(),
@@ -199,7 +194,6 @@ fn get_theme(name: &str, use_dark: bool) -> RecipeTheme {
             canvas: if use_dark { "#0F172A" } else { "#FFFFFF" }.to_string(),
             surface: if use_dark { "#1E293B" } else { "#F8FAFC" }.to_string(),
             accent_color: if use_dark { "#60A5FA" } else { "#3B82F6" }.to_string(),
-            primary_text: if use_dark { "#F9FAFB" } else { "#111827" }.to_string(),
             secondary_text: if use_dark { "#9CA3AF" } else { "#4B5563" }.to_string(),
             corner_radius: 32,
             font_family: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif".to_string(),
@@ -1362,11 +1356,7 @@ fn render_notes_and_tags(
                 "var(--tag-text)"
             };
 
-            let chip_class = if theme.is_premium {
-                "tag-text"
-            } else {
-                "tag-text"
-            }; // Tag text class remains same but styles differ
+            let chip_class = "tag-text";
 
             sb.push_str(&format!(
                 r##"<g role="listitem" aria-label="Tag: {tag_label}">
