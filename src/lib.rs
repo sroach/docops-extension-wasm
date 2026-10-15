@@ -37,6 +37,41 @@ pub fn generate_svg(input: &str) -> String {
     result.unwrap_or_else(|e| common::svg::error_svg(&e))
 }
 
+/// Entry point for PDF-compatible SVG generation.
+/// Resolves all CSS custom properties (`var(--name)`) to concrete values
+/// and removes the `<style>` block so the SVG renders correctly in Typst/PDF
+/// embedders that do not support CSS variables.
+#[wasm_bindgen]
+pub fn generate_svg_for_pdf(input: &str) -> String {
+    let result = envelope::parse_envelope(input).and_then(|env| {
+        let mut svg = types::render(&env.viz_type, env.body, &env.controls)?;
+
+        let meta = common::svg::Metadata::from_controls(&env.controls);
+        let meta_block = meta.to_rdf_xml();
+
+        if let Some(pos) = svg.find('>') {
+            svg.insert_str(pos + 1, &meta_block);
+        }
+
+        if let Some(privkey) = env.controls.get("privkey") {
+            common::svg::sign_svg(&mut svg, privkey)?;
+        }
+
+        Ok(svg)
+    });
+
+    let svg = result.unwrap_or_else(|e| common::svg::error_svg(&e));
+    resolve_for_pdf(&svg)
+}
+
+/// Post-process an SVG string so it renders correctly in Typst/PDF embedders
+/// that do not support CSS custom properties. Resolves all `var(--name)`
+/// references to their light-mode concrete values and removes the `<style>` block.
+#[wasm_bindgen]
+pub fn resolve_for_pdf(svg: &str) -> String {
+    common::svg::resolve_for_pdf(svg)
+}
+
 #[cfg(test)]
 mod demo_samples_tests {
     use super::*;

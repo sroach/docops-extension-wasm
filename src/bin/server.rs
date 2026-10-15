@@ -198,6 +198,9 @@ pub struct SvgQuery {
     pub viz_type: Option<String>,
     pub data: Option<String>,
     pub payload: Option<String>,
+    /// When set to "pdf", resolves CSS custom properties and removes the
+    /// `<style>` block so the SVG renders correctly in Typst/PDF embedders.
+    pub format: Option<String>,
 }
 
 /// JSON request body supported by POST `/svg`
@@ -207,6 +210,9 @@ pub struct SvgJsonRequest {
     pub viz_type: Option<String>,
     pub data: Option<String>,
     pub payload: Option<String>,
+    /// When set to "pdf", resolves CSS custom properties and removes the
+    /// `<style>` block so the SVG renders correctly in Typst/PDF embedders.
+    pub format: Option<String>,
 }
 
 /// Robust payload decoder supporting:
@@ -351,6 +357,12 @@ pub async fn handle_get_query(
     let svg = docops_extension::generate_svg(&dsl);
     let elapsed_us = start.elapsed().as_micros() as u64;
     metrics.record_render(&dsl, elapsed_us, svg.len());
+
+    let svg = if query.format.as_deref() == Some("pdf") {
+        docops_extension::resolve_for_pdf(&svg)
+    } else {
+        svg
+    };
     svg_response(svg, true)
 }
 
@@ -410,39 +422,48 @@ pub async fn handle_post_svg(
         .and_then(|h| h.to_str().ok())
         .unwrap_or("text/plain");
 
-    let dsl = if content_type.contains("application/json") {
+    let (dsl, format_pdf) = if content_type.contains("application/json") {
         match serde_json::from_str::<SvgJsonRequest>(&body) {
-            Ok(req) => match (&req.viz_type, &req.data, &req.payload) {
-                (Some(vt), Some(data), _) => match decode_payload(data) {
-                    Ok(decoded) => format_dsl(Some(vt), &decoded),
-                    Err(_) => format_dsl(Some(vt), data),
-                },
-                (_, _, Some(payload)) => match decode_payload(payload) {
-                    Ok(decoded) => format_dsl(req.viz_type.as_deref(), &decoded),
-                    Err(_) => format_dsl(req.viz_type.as_deref(), payload),
-                },
-                _ => {
-                    metrics.record_failure();
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        "JSON requires 'type' & 'data' or 'payload'",
-                    )
-                        .into_response();
+            Ok(req) => {
+                let fmt = req.format.as_deref() == Some("pdf");
+                match (&req.viz_type, &req.data, &req.payload) {
+                    (Some(vt), Some(data), _) => match decode_payload(data) {
+                        Ok(decoded) => (format_dsl(Some(vt), &decoded), fmt),
+                        Err(_) => (format_dsl(Some(vt), data), fmt),
+                    },
+                    (_, _, Some(payload)) => match decode_payload(payload) {
+                        Ok(decoded) => (format_dsl(req.viz_type.as_deref(), &decoded), fmt),
+                        Err(_) => (format_dsl(req.viz_type.as_deref(), payload), fmt),
+                    },
+                    _ => {
+                        metrics.record_failure();
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            "JSON requires 'type' & 'data' or 'payload'",
+                        )
+                            .into_response();
+                    }
                 }
-            },
+            }
             Err(e) => {
                 metrics.record_failure();
                 return (StatusCode::BAD_REQUEST, format!("Invalid JSON: {e}")).into_response();
             }
         }
     } else {
-        body
+        (body, false)
     };
 
     let start = Instant::now();
     let svg = docops_extension::generate_svg(&dsl);
     let elapsed_us = start.elapsed().as_micros() as u64;
     metrics.record_render(&dsl, elapsed_us, svg.len());
+
+    let svg = if format_pdf {
+        docops_extension::resolve_for_pdf(&svg)
+    } else {
+        svg
+    };
     svg_response(svg, false)
 }
 

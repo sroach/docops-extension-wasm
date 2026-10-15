@@ -143,13 +143,13 @@ Thomas Wright (Performance Engineer)
                 return;
             }
 
-            const svgString = generate_svg(dsl); // wasm returns raw SVG markup as a string
-            target.innerHTML = svgString;
+
+             // wasm returns raw SVG markup as a string
+            target.innerHTML = generate_svg(dsl);
         });
     }
 
     main();
 </script>
-<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
 </body>
 </html>

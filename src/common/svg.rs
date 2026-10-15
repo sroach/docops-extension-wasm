@@ -273,6 +273,193 @@ pub fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
     lines
 }
 
+/// Post-processes an SVG so that it renders correctly inside Typst / PDF
+/// embedders that do not support CSS custom properties (`var(--name)`).
+///
+/// The algorithm:
+/// 1. Extract the `<style>` block content.
+/// 2. Parse `--variable: value;` definitions from light-mode sections only,
+///    skipping `@media (prefers-color-scheme: dark)` and `.dark-mode` blocks
+///    using brace-depth tracking.
+/// 3. Replace every `var(--name)` occurrence with its resolved concrete value.
+/// 4. Remove the entire `<style>...</style>` block (animations, hover effects,
+///    and `@import` font rules don't work in PDF anyway).
+/// 5. Return the cleaned SVG.
+pub fn resolve_for_pdf(svg: &str) -> String {
+    // 1. Find and extract the <style> block
+    let style_start = match svg.find("<style>") {
+        Some(pos) => pos,
+        None => return svg.to_string(), // No style block; nothing to do
+    };
+    let inner_start = style_start + "<style>".len();
+    let style_end = match svg[inner_start..].find("</style>") {
+        Some(pos) => inner_start + pos,
+        None => return svg.to_string(), // Malformed; bail out
+    };
+    let style_content = &svg[inner_start..style_end];
+    let after_style = &svg[style_end + "</style>".len()..];
+
+    // 2. Parse CSS variables from light-mode blocks only.
+    // The style block structure is:
+    //   @import ...;
+    //   #{id} {
+    //       --var1: value1;
+    //       --var2: value2;
+    //   }
+    //   @media (prefers-color-scheme: dark) {
+    //       #{id} { --var1: darkValue1; ... }
+    //   }
+    //   #{id}.dark-mode { --var1: darkValue1; ... }
+    //   #{id} .class { property: var(--var1); }
+    // We only want the first #{id} { ... } block (light mode variables).
+    let mut vars: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut skip_block = false;
+    let mut skip_depth = 0i32;
+    let mut in_light_block = false;
+    let mut light_block_depth = 0i32;
+
+    for line in style_content.lines() {
+        let trimmed = line.trim().to_string();
+
+        // Detect @media (prefers-color-scheme: dark) — skip entire block
+        if !skip_block
+            && trimmed.contains("@media")
+            && trimmed.contains("prefers-color-scheme: dark")
+        {
+            skip_block = true;
+            skip_depth = 0;
+            // Count braces on this line
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // Detect .dark-mode class — skip entire block
+        if !skip_block && trimmed.contains(".dark-mode") {
+            skip_block = true;
+            skip_depth = 0;
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // If we're inside a skip block, track brace depth
+        if skip_block {
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // Detect the start of a light-mode selector block: #{id} {
+        // This is a line that starts with # (after trim) and contains '{'
+        if !in_light_block
+            && trimmed.starts_with('#')
+            && !trimmed.contains(".dark-mode")
+            && trimmed.contains('{')
+        {
+            in_light_block = true;
+            light_block_depth = 0;
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    light_block_depth += 1;
+                } else if ch == '}' {
+                    light_block_depth -= 1;
+                }
+            }
+            continue;
+        }
+
+        // Inside the light-mode block, parse all lines for --variable: value; definitions
+        if in_light_block {
+            parse_var_from_line(&trimmed, &mut vars);
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    light_block_depth += 1;
+                } else if ch == '}' {
+                    light_block_depth -= 1;
+                }
+            }
+            if light_block_depth <= 0 {
+                in_light_block = false;
+                light_block_depth = 0;
+            }
+            continue;
+        }
+
+        // Skip @import, @keyframes, and other at-rules
+        if trimmed.starts_with('@') {
+            continue;
+        }
+    }
+
+    // 3. Build result: everything before <style> + everything after </style>
+    let before_style = &svg[..style_start];
+    let mut result = before_style.to_string();
+    result.push_str(after_style);
+
+    // 4. Replace var(--name) with resolved values
+    for (name, value) in &vars {
+        let var_ref = format!("var(--{})", name);
+        result = result.replace(&var_ref, value);
+    }
+
+    result
+}
+
+/// Helper: extract CSS variable definitions from a line.
+/// Handles both single-variable lines (`--foo: #abc;`) and inline variables
+/// (`--foo: #abc; --bar: #def;`).
+fn parse_var_from_line(line: &str, vars: &mut std::collections::HashMap<String, String>) {
+    // Split by semicolons to handle multiple variables on the same line
+    for part in line.split(';') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        
+        // Look for --variable: value pattern
+        if let Some(stripped) = trimmed.strip_prefix("--") {
+            if let Some(colon_pos) = stripped.find(':') {
+                let name = stripped[..colon_pos].trim().to_string();
+                let value = stripped[colon_pos + 1..].trim().to_string();
+                if !name.is_empty()
+                    && !value.is_empty()
+                    && name.starts_with(|c: char| c.is_alphabetic() || c == '_')
+                {
+                    vars.insert(name, value);
+                }
+            }
+        }
+    }
+}
+
 /// The fallback rendered whenever any type's parser returns Err. Uses
 /// double-hash raw string delimiters since the literal hex colors below
 /// contain '#' immediately after a quote (see: the whole saga earlier in
@@ -286,4 +473,228 @@ pub fn error_svg(msg: &str) -> String {
 </svg>"##,
         msg = escape(msg)
     )
+}
+
+#[cfg(test)]
+mod pdf_tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_for_pdf_replaces_vars_and_removes_style() {
+        let svg = r#"<svg>
+<style>
+#chart1 {
+    --bg: #F6F8FB;
+    --text: #17202A;
+}
+@media (prefers-color-scheme: dark) {
+    #chart1 {
+        --bg: #111827;
+        --text: #F9FAFB;
+    }
+}
+#chart1.dark-mode {
+    --bg: #111827;
+    --text: #F9FAFB;
+}
+#chart1 .title { fill: var(--text); }
+</style>
+<rect fill="var(--bg)"/>
+<text fill="var(--text)">Hello</text>
+</svg>"#;
+
+        let result = resolve_for_pdf(svg);
+
+        // Should not contain var() references
+        assert!(
+            !result.contains("var("),
+            "No var() references should remain"
+        );
+        // Should not contain <style> block
+        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain resolved values
+        assert!(
+            result.contains("#F6F8FB"),
+            "Light-mode --bg value should be present"
+        );
+        assert!(
+            result.contains("#17202A"),
+            "Light-mode --text value should be present"
+        );
+        // Should NOT contain dark-mode values
+        assert!(
+            !result.contains("#111827"),
+            "Dark-mode --bg should not be used"
+        );
+        assert!(
+            !result.contains("#F9FAFB"),
+            "Dark-mode --text should not be used"
+        );
+    }
+
+    #[test]
+    fn test_resolve_for_pdf_no_style_block() {
+        let svg = r#"<svg><rect fill="red"/></svg>"#;
+        let result = resolve_for_pdf(svg);
+        assert_eq!(result, svg);
+    }
+
+    #[test]
+    fn test_resolve_for_pdf_rgba_values() {
+        let svg = r#"<svg>
+<style>
+#id1 {
+    --surface: rgba(255,255,255,0.74);
+}
+</style>
+<rect fill="var(--surface)"/>
+</svg>"#;
+
+        let result = resolve_for_pdf(svg);
+        assert!(!result.contains("var("));
+        assert!(result.contains("rgba(255,255,255,0.74)"));
+    }
+
+    #[test]
+    fn test_resolve_for_pdf_bar_chart_structure() {
+        // Simulate the actual bar chart SVG structure with gradients
+        let svg = r#"<svg>
+<defs>
+    <linearGradient id="chart1__premiumBackground" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="var(--premium-bg-0)"/>
+        <stop offset="42%" stop-color="var(--premium-bg-42)"/>
+        <stop offset="100%" stop-color="var(--premium-bg-100)"/>
+    </linearGradient>
+    <linearGradient id="chart1__glassSurface" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--surface)" stop-opacity="var(--glass-op)"/>
+        <stop offset="100%" stop-color="var(--surface)" stop-opacity="0.64"/>
+    </linearGradient>
+</defs>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter');
+    #chart1 {
+        --bg: #F6F8FB;
+        --surface: rgba(255,255,255,0.74);
+        --text: #17202A;
+        --premium-bg-0: #F7FAFF;
+        --premium-bg-42: #EEF4FB;
+        --premium-bg-100: #F9FAFB;
+        --glass-op: 0.88;
+    }
+    @media (prefers-color-scheme: dark) {
+        #chart1 {
+            --bg: #111827;
+            --surface: rgba(31, 41, 55, 0.74);
+            --text: #F9FAFB;
+            --premium-bg-0: #0F172A;
+            --premium-bg-42: #111827;
+            --premium-bg-100: #1F2937;
+            --glass-op: 0.2;
+        }
+    }
+    #chart1.dark-mode {
+        --bg: #111827;
+        --surface: rgba(31, 41, 55, 0.74);
+        --text: #F9FAFB;
+        --premium-bg-0: #0F172A;
+        --premium-bg-42: #111827;
+        --premium-bg-100: #1F2937;
+        --glass-op: 0.2;
+    }
+    #chart1 .title { fill: var(--text); }
+</style>
+<rect width="100%" height="100%" fill="url(#chart1__premiumBackground)"/>
+<rect x="36" y="34" width="888" height="492" fill="url(#chart1__glassSurface)"/>
+<text class="title">Test</text>
+</svg>"#;
+
+        let result = resolve_for_pdf(svg);
+
+        // Should not contain var() references
+        assert!(
+            !result.contains("var("),
+            "No var() references should remain"
+        );
+        // Should not contain <style> block
+        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain resolved light-mode values
+        assert!(result.contains("#F7FAFF"), "Light-mode --premium-bg-0 should be present");
+        assert!(result.contains("#EEF4FB"), "Light-mode --premium-bg-42 should be present");
+        assert!(result.contains("#F9FAFB"), "Light-mode --premium-bg-100 should be present");
+        assert!(result.contains("rgba(255,255,255,0.74)"), "Light-mode --surface should be present");
+        assert!(result.contains("0.88"), "Light-mode --glass-op should be present");
+        // Should NOT contain dark-mode values
+        assert!(
+            !result.contains("#0F172A"),
+            "Dark-mode --premium-bg-0 should not be used"
+        );
+        assert!(
+            !result.contains("#111827"),
+            "Dark-mode --premium-bg-42 should not be used"
+        );
+        assert!(
+            !result.contains("rgba(31, 41, 55, 0.74)"),
+            "Dark-mode --surface should not be used"
+        );
+    }
+
+    #[test]
+    fn test_resolve_for_pdf_pie_chart_inline_vars() {
+        // Simulate the pie chart style block where variables are on the same line
+        let svg = r#"<svg>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Lexend');
+    #chart1 { 
+        font-family: 'Lexend', ui-sans-serif, system-ui, sans-serif;
+        --donut-bg-1: #f8fafc; --donut-bg-2: #eef4f8; --donut-bg-3: #f9f4e8;
+        --donut-h1: #ffffff; --donut-ho1: 0.72;
+    }
+    @media (prefers-color-scheme: dark) {
+        #chart1 {
+            --donut-bg-1: #08111d; --donut-bg-2: #102033; --donut-bg-3: #11180f;
+            --donut-h1: #4ade80; --donut-ho1: 0.18;
+        }
+    }
+    #chart1.dark-mode {
+        --donut-bg-1: #08111d; --donut-bg-2: #102033; --donut-bg-3: #11180f;
+        --donut-h1: #4ade80; --donut-ho1: 0.18;
+    }
+    #chart1 .title { fill: var(--donut-h1); }
+</style>
+<rect fill="var(--donut-bg-1)"/>
+<rect fill="var(--donut-bg-2)"/>
+<rect fill="var(--donut-bg-3)"/>
+<text fill="var(--donut-h1)">Test</text>
+<text opacity="var(--donut-ho1)">Opacity</text>
+</svg>"#;
+
+        let result = resolve_for_pdf(svg);
+
+        // Should not contain var() references
+        assert!(
+            !result.contains("var("),
+            "No var() references should remain"
+        );
+        // Should not contain <style> block
+        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain resolved light-mode values
+        assert!(result.contains("#f8fafc"), "Light-mode --donut-bg-1 should be present");
+        assert!(result.contains("#eef4f8"), "Light-mode --donut-bg-2 should be present");
+        assert!(result.contains("#f9f4e8"), "Light-mode --donut-bg-3 should be present");
+        assert!(result.contains("#ffffff"), "Light-mode --donut-h1 should be present");
+        assert!(result.contains("0.72"), "Light-mode --donut-ho1 should be present");
+        // Should NOT contain dark-mode values
+        assert!(
+            !result.contains("#08111d"),
+            "Dark-mode --donut-bg-1 should not be used"
+        );
+        assert!(
+            !result.contains("#102033"),
+            "Dark-mode --donut-bg-2 should not be used"
+        );
+        assert!(
+            !result.contains("#4ade80"),
+            "Dark-mode --donut-h1 should not be used"
+        );
+    }
 }
