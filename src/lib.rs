@@ -83,6 +83,57 @@ pub fn force_light_mode(dsl: &str) -> String {
 }
 
 #[cfg(test)]
+mod pdf_integration_tests {
+    use super::*;
+
+    #[test]
+    fn test_line_chart_pdf_no_unresolved_vars() {
+        let input = "[docops,line]\n---- title= User Growth Over Time\nxLabel= Week\nyLabel= Users ---\nWeek 1 | 1250\nWeek 2 | 1400\nWeek 3 | 1650\nWeek 4 | 1900\nWeek 5 | 2100\n----";
+        let svg = generate_svg_for_pdf(input);
+        let var_count = svg.matches("var(").count();
+
+        assert!(
+            var_count == 0,
+            "Line chart PDF should have no unresolved var() references, found {}",
+            var_count
+        );
+        // Should contain light-mode background values, not dark
+        assert!(
+            svg.contains("#FFFFFF"),
+            "Should contain light-mode background color"
+        );
+        assert!(
+            !svg.contains("#0B0F19"),
+            "Should NOT contain dark-mode background color"
+        );
+    }
+
+    #[test]
+    fn test_bar_chart_pdf_no_unresolved_vars() {
+        let input = "[docops,bar]\n---- title= Monthly Sales\nxLabel= Month\nyLabel= Revenue ---\nJanuary | 125\nFebruary | 335\nMarch | 501\n----";
+        let svg = generate_svg_for_pdf(input);
+        let var_count = svg.matches("var(").count();
+        assert!(
+            var_count == 0,
+            "Bar chart PDF should have no unresolved var() references, found {}",
+            var_count
+        );
+    }
+
+    #[test]
+    fn test_pie_chart_pdf_no_unresolved_vars() {
+        let input = "[docops,pie]\n---- title= Market Share ---\nChrome | 65\nFirefox | 20\nSafari | 15\n----";
+        let svg = generate_svg_for_pdf(input);
+        let var_count = svg.matches("var(").count();
+        assert!(
+            var_count == 0,
+            "Pie chart PDF should have no unresolved var() references, found {}",
+            var_count
+        );
+    }
+}
+
+#[cfg(test)]
 mod demo_samples_tests {
     use super::*;
 

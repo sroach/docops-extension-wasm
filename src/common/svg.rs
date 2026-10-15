@@ -783,6 +783,146 @@ mod pdf_tests {
     }
 
     #[test]
+    fn test_resolve_for_pdf_line_chart() {
+        // Simulate the actual line chart SVG structure
+        let svg = r#"<svg>
+<defs>
+    <linearGradient id="id_abc_apple_bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="var(--bg-0)"/><stop offset="46%" stop-color="var(--bg-46)"/><stop offset="100%" stop-color="var(--bg-100)"/>
+    </linearGradient>
+    <linearGradient id="id_abc_plot_glass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--plot-surface-0)" stop-opacity="var(--plot-surface-op-0)"/><stop offset="100%" stop-color="var(--plot-surface-100)" stop-opacity="var(--plot-surface-op-100)"/>
+    </linearGradient>
+    <linearGradient id="id_abc_line_grad_0" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="var(--line-pal-0-1)" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="var(--line-pal-0-2)"/>
+    </linearGradient>
+    <linearGradient id="id_abc_area_grad_0" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--line-pal-0-1)" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="var(--line-pal-0-2)" stop-opacity="0.0"/>
+    </linearGradient>
+    <filter id="id_abc_apple_card_shadow" x="-20%" y="-20%" width="140%" height="150%">
+        <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="var(--shadow-flood)" flood-opacity="var(--shadow-op)"/>
+    </filter>
+</defs>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans');
+    #id_abc {
+        --bg: #F8FAFC;
+        --bg-0: #FFFFFF;
+        --bg-46: #F1F5F9;
+        --bg-100: #E2E8F0;
+        --card-bg: rgba(255, 255, 255, 0.45);
+        --plot-surface-0: #FFFFFF;
+        --plot-surface-100: #F8FAFC;
+        --plot-surface-op-0: 0.85;
+        --plot-surface-op-100: 0.50;
+        --text: #141414;
+        --shadow-flood: #0F172A;
+        --shadow-op: 0.10;
+        --line-pal-0-1: #4B7BFF;
+        --line-pal-0-2: #1856FF;
+        --line-pal-0-stroke: #1856FF;
+        --point-bg: #FFFFFF;
+    }
+    @media (prefers-color-scheme: dark) {
+        #id_abc {
+            --bg: #0B0F19;
+            --bg-0: #0B0F19;
+            --bg-46: #111827;
+            --bg-100: #1E293B;
+            --card-bg: rgba(17, 24, 39, 0.65);
+            --plot-surface-0: #1E293B;
+            --plot-surface-100: #0F172A;
+            --plot-surface-op-0: 0.85;
+            --plot-surface-op-100: 0.65;
+            --text: #F8FAFC;
+            --shadow-flood: #000000;
+            --shadow-op: 0.40;
+            --line-pal-0-1: #60A5FA;
+            --line-pal-0-2: #1856FF;
+            --line-pal-0-stroke: #4B7BFF;
+            --point-bg: #1E293B;
+        }
+    }
+    #id_abc.dark-mode {
+        --bg: #0B0F19;
+        --bg-0: #0B0F19;
+        --bg-46: #111827;
+        --bg-100: #1E293B;
+        --card-bg: rgba(17, 24, 39, 0.65);
+        --plot-surface-0: #1E293B;
+        --plot-surface-100: #0F172A;
+        --plot-surface-op-0: 0.85;
+        --plot-surface-op-100: 0.65;
+        --text: #F8FAFC;
+        --shadow-flood: #000000;
+        --shadow-op: 0.40;
+        --line-pal-0-1: #60A5FA;
+        --line-pal-0-2: #1856FF;
+        --line-pal-0-stroke: #4B7BFF;
+        --point-bg: #1E293B;
+    }
+    #id_abc .chart-text { fill: var(--text); }
+    #id_abc .chart-background { fill: url(#id_abc_apple_bg); }
+    #id_abc .plot-surface { fill: url(#id_abc_plot_glass); }
+</style>
+<rect width="100%" height="100%" fill="url(#id_abc_apple_bg)"/>
+<rect fill="var(--card-bg)"/>
+<rect class="plot-surface"/>
+<path stroke="url(#id_abc_line_grad_0)"/>
+<path fill="url(#id_abc_area_grad_0)"/>
+<circle fill="var(--point-bg)" stroke="var(--line-pal-0-stroke)"/>
+<text class="chart-text">Title</text>
+</svg>"#;
+
+        let result = resolve_for_pdf(svg);
+
+        // Should not contain var() references
+        assert!(
+            !result.contains("var("),
+            "No var() references should remain. Result:\n{}",
+            result
+        );
+        // Should not contain <style> block
+        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain resolved light-mode values
+        assert!(
+            result.contains("#FFFFFF"),
+            "Light-mode --bg-0 should be present"
+        );
+        assert!(
+            result.contains("#F1F5F9"),
+            "Light-mode --bg-46 should be present"
+        );
+        assert!(
+            result.contains("#E2E8F0"),
+            "Light-mode --bg-100 should be present"
+        );
+        assert!(
+            result.contains("#4B7BFF"),
+            "Light-mode --line-pal-0-1 should be present"
+        );
+        assert!(
+            result.contains("#1856FF"),
+            "Light-mode --line-pal-0-2 should be present"
+        );
+        assert!(
+            result.contains("rgba(255, 255, 255, 0.45)"),
+            "Light-mode --card-bg should be present"
+        );
+        // Should NOT contain dark-mode values
+        assert!(
+            !result.contains("#0B0F19"),
+            "Dark-mode --bg-0 should not be used"
+        );
+        assert!(
+            !result.contains("#1E293B"),
+            "Dark-mode --plot-surface-0 should not be used"
+        );
+    }
+
+    #[test]
     fn test_force_light_mode_replaces_use_dark_true() {
         let dsl = "[docops,bar, useDark=true, controls=false]\n----\ndata\n----";
         let result = force_light_mode(dsl);

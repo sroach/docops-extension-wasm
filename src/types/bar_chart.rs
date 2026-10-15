@@ -263,6 +263,7 @@ pub fn render(body: &str, controls: &HashMap<String, String>) -> Result<String, 
                 --bar-steel-100: #A4C6E2;
                 --bar-peak-0: #D98613;
                 --bar-peak-48: #F7B034;
+                --bar-peak-100: #FDE68A;
                 --bar-rose-100: #FFE2A4;
                 --peak-label: #8A5200;
                 --bar-purp-0: #7C3AED;
