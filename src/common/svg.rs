@@ -667,11 +667,34 @@ fn build_cleaned_style_block(
     result_lines.join("\n")
 }
 
-/// Strips `transition:` and `animation:` properties from a CSS declaration string.
+/// Strips `transition:` and `animation:` properties from a CSS declaration string,
+/// along with initial hidden states that animations were meant to override.
+/// For example, `opacity: 0` with `animation: reveal` becomes just nothing,
+/// because the element should be visible in static PDF output.
+///
+/// The input may be a full CSS rule line like:
+/// `#id .area-path { opacity: 0; animation: areaBloom 720ms forwards; }`
+/// or just the declarations inside the braces.
 fn strip_animation_props(css: &str) -> String {
-    let mut result = String::new();
-    // Split by semicolons to process each declaration
-    for part in css.split(';') {
+    // Extract the selector prefix (everything before and including the first '{')
+    // and the declarations body (everything between '{' and '}')
+    let (selector, declarations) = if let Some(open_brace) = css.find('{') {
+        let sel = &css[..=open_brace];
+        let rest = &css[open_brace + 1..];
+        let body = rest.trim_end_matches('}').trim();
+        (sel.to_string(), body.to_string())
+    } else {
+        (String::new(), css.to_string())
+    };
+
+    // Check if this rule has any animation properties
+    let has_animation = declarations.split(';').any(|part| {
+        let lower = part.trim().to_lowercase();
+        lower.starts_with("animation") || lower.starts_with("animation-name")
+    });
+
+    let mut kept_declarations = Vec::new();
+    for part in declarations.split(';') {
         let trimmed = part.trim();
         if trimmed.is_empty() {
             continue;
@@ -680,12 +703,32 @@ fn strip_animation_props(css: &str) -> String {
         if lower.starts_with("transition") || lower.starts_with("animation") {
             continue;
         }
-        if !result.is_empty() {
-            result.push(';');
+        // If there's an animation, strip initial hidden states it would override
+        if has_animation {
+            if lower.starts_with("opacity") && lower.contains("0") {
+                continue;
+            }
+            if lower.starts_with("transform") && lower.contains("scale(") && lower.contains("0") {
+                continue;
+            }
+            if lower.starts_with("transform-box") || lower.starts_with("transform-origin") {
+                continue;
+            }
+            if lower.starts_with("stroke-dashoffset") {
+                continue;
+            }
         }
-        result.push_str(trimmed);
+        kept_declarations.push(trimmed.to_string());
     }
-    result
+
+    if kept_declarations.is_empty() {
+        // Nothing to keep — return empty so the caller skips this rule entirely
+        String::new()
+    } else if selector.is_empty() {
+        kept_declarations.join(";")
+    } else {
+        format!("{}{};}}", selector, kept_declarations.join(";"))
+    }
 }
 
 /// Replaces all `var(--name)` references in a string with their resolved values.
@@ -1230,5 +1273,128 @@ mod pdf_tests {
         let dsl = "just plain text without envelope";
         let result = force_light_mode(dsl);
         assert_eq!(result, dsl, "non-envelope input should be unchanged");
+    }
+
+    #[test]
+    fn test_strip_animation_props_removes_opacity_zero() {
+        // When an animation property is present, opacity: 0 should be stripped
+        // because the animation was meant to reveal the element
+        let css = "opacity: 0; animation: reveal 900ms cubic-bezier(.2,.85,.2,1) forwards;";
+        let result = strip_animation_props(css);
+        assert!(
+            !result.contains("opacity"),
+            "opacity: 0 should be stripped when animation is present. Got: {}",
+            result
+        );
+        assert!(
+            !result.contains("animation"),
+            "animation should be stripped. Got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_strip_animation_props_keeps_opacity_when_no_animation() {
+        // When there's no animation, opacity should be kept
+        let css = "opacity: 0.5; filter: url(#shadow);";
+        let result = strip_animation_props(css);
+        assert!(
+            result.contains("opacity: 0.5"),
+            "opacity should be kept when no animation is present. Got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_strip_animation_props_removes_transform_initial_state() {
+        // transform-box and transform-origin should be stripped with animations
+        let css = "opacity: 0; transform-box: fill-box; transform-origin: center; animation: pointReveal 460ms forwards;";
+        let result = strip_animation_props(css);
+        assert!(!result.contains("opacity"), "opacity: 0 should be stripped");
+        assert!(
+            !result.contains("transform-box"),
+            "transform-box should be stripped"
+        );
+        assert!(
+            !result.contains("transform-origin"),
+            "transform-origin should be stripped"
+        );
+        assert!(
+            !result.contains("animation"),
+            "animation should be stripped"
+        );
+    }
+
+    #[test]
+    fn test_strip_animation_props_keeps_filter_with_transition() {
+        // filter should be kept, only transition stripped
+        let css = "filter: url(#id_line_glow); transition: stroke-width 180ms ease;";
+        let result = strip_animation_props(css);
+        assert!(
+            result.contains("filter: url(#id_line_glow)"),
+            "filter should be kept. Got: {}",
+            result
+        );
+        assert!(
+            !result.contains("transition"),
+            "transition should be stripped. Got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_resolve_for_pdf_line_chart_elements_visible() {
+        // Regression test: line chart elements should not have opacity: 0 in PDF output
+        let svg = r#"<svg>
+<style>
+#id_abc {
+    --text: #141414;
+    --grid: #E2E8F0;
+}
+#id_abc .area-path { opacity: 0; animation: areaBloom 720ms forwards; }
+#id_abc .line-reveal { opacity: 0; animation: lineReveal 900ms forwards; }
+#id_abc .point-reveal { opacity: 0; transform-box: fill-box; transform-origin: center; animation: pointReveal 460ms forwards; }
+#id_abc .chart-text { fill: var(--text); }
+#id_abc .chart-grid { stroke: var(--grid); }
+@keyframes areaBloom { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lineReveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pointReveal { from { opacity: 0; } to { opacity: 1; } }
+</style>
+<path class="area-path"/>
+<path class="line-reveal"/>
+<circle class="point-reveal"/>
+</svg>"#;
+
+        let result = resolve_for_pdf(svg);
+
+        // The cleaned style block should NOT contain opacity: 0 for animated classes
+        assert!(
+            !result.contains("opacity: 0"),
+            "opacity: 0 should be stripped from animated classes. Result:\n{}",
+            result
+        );
+        // Should not contain transform-box/transform-origin (only meaningful with animations)
+        assert!(
+            !result.contains("transform-box"),
+            "transform-box should be stripped"
+        );
+        assert!(
+            !result.contains("transform-origin"),
+            "transform-origin should be stripped"
+        );
+        // Should not contain @keyframes
+        assert!(
+            !result.contains("@keyframes"),
+            "@keyframes should be removed"
+        );
+        // Should still have the class rules for non-animation properties
+        assert!(
+            result.contains("fill: #141414"),
+            "Class rules should be preserved with resolved values"
+        );
+        assert!(
+            result.contains("stroke: #E2E8F0"),
+            "Grid class rule should be preserved"
+        );
     }
 }

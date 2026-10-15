@@ -106,6 +106,19 @@ mod pdf_integration_tests {
             !svg.contains("#0B0F19"),
             "Should NOT contain dark-mode background color"
         );
+        // Chart elements should not be hidden by opacity: 0 (exact, not opacity: 0.5 etc.)
+        let has_opacity_zero = svg.lines().any(|l| {
+            let trimmed = l.trim();
+            // Check for "opacity: 0" followed by ; or } (not opacity: 0.5, stroke-opacity, etc.)
+            (trimmed.contains("opacity: 0;") || trimmed.contains("opacity: 0}"))
+                && !trimmed.contains("stroke-opacity")
+                && !trimmed.contains("stop-opacity")
+                && !trimmed.contains("flood-opacity")
+        });
+        assert!(
+            !has_opacity_zero,
+            "Line chart elements should not have opacity: 0 in PDF output"
+        );
     }
 
     #[test]
@@ -129,6 +142,18 @@ mod pdf_integration_tests {
             var_count == 0,
             "Pie chart PDF should have no unresolved var() references, found {}",
             var_count
+        );
+        // Pie slices should not be hidden by opacity: 0 (exact)
+        let has_opacity_zero = svg.lines().any(|l| {
+            let trimmed = l.trim();
+            (trimmed.contains("opacity: 0;") || trimmed.contains("opacity: 0}"))
+                && !trimmed.contains("stroke-opacity")
+                && !trimmed.contains("stop-opacity")
+                && !trimmed.contains("flood-opacity")
+        });
+        assert!(
+            !has_opacity_zero,
+            "Pie chart elements should not have opacity: 0 in PDF output"
         );
     }
 }
