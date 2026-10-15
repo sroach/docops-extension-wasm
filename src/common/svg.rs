@@ -273,6 +273,60 @@ pub fn wrap_text(text: &str, max_chars: usize) -> Vec<String> {
     lines
 }
 
+/// Modifies a DSL string so that `useDark` is forced to `false` in the
+/// envelope header, ensuring the SVG is generated with light-mode styling.
+/// This should be called before `generate_svg` when the output target is PDF,
+/// because PDF embedders cannot switch color schemes at render time.
+///
+/// If the DSL does not contain an envelope header (no `[docops,...]`),
+/// it is returned unchanged.
+pub fn force_light_mode(dsl: &str) -> String {
+    let trimmed = dsl.trim();
+    if !trimmed.starts_with('[') {
+        return dsl.to_string();
+    }
+
+    let close = match trimmed.find(']') {
+        Some(pos) => pos,
+        None => return dsl.to_string(),
+    };
+    let header = &trimmed[1..close];
+    let body = &trimmed[close + 1..];
+
+    // Parse the header fields
+    let mut fields: Vec<&str> = header.split(',').collect();
+    let mut result_fields: Vec<String> = Vec::new();
+    let mut found_use_dark = false;
+
+    for field in &mut fields {
+        let f = field.trim();
+        if f.is_empty() {
+            continue;
+        }
+
+        if let Some((k, v)) = f.split_once('=') {
+            let k = k.trim();
+            let v = v.trim();
+            if k == "useDark" {
+                found_use_dark = true;
+                result_fields.push("useDark=false".to_string());
+            } else {
+                result_fields.push(format!("{k}={v}"));
+            }
+        } else {
+            result_fields.push(f.to_string());
+        }
+    }
+
+    // If useDark wasn't present, add it to ensure light mode
+    if !found_use_dark {
+        result_fields.push("useDark=false".to_string());
+    }
+
+    let new_header = result_fields.join(", ");
+    format!("[{new_header}]{body}")
+}
+
 /// Post-processes an SVG so that it renders correctly inside Typst / PDF
 /// embedders that do not support CSS custom properties (`var(--name)`).
 ///
@@ -443,7 +497,7 @@ fn parse_var_from_line(line: &str, vars: &mut std::collections::HashMap<String, 
         if trimmed.is_empty() {
             continue;
         }
-        
+
         // Look for --variable: value pattern
         if let Some(stripped) = trimmed.strip_prefix("--") {
             if let Some(colon_pos) = stripped.find(':') {
@@ -618,11 +672,26 @@ mod pdf_tests {
         // Should not contain <style> block
         assert!(!result.contains("<style>"), "Style block should be removed");
         // Should contain resolved light-mode values
-        assert!(result.contains("#F7FAFF"), "Light-mode --premium-bg-0 should be present");
-        assert!(result.contains("#EEF4FB"), "Light-mode --premium-bg-42 should be present");
-        assert!(result.contains("#F9FAFB"), "Light-mode --premium-bg-100 should be present");
-        assert!(result.contains("rgba(255,255,255,0.74)"), "Light-mode --surface should be present");
-        assert!(result.contains("0.88"), "Light-mode --glass-op should be present");
+        assert!(
+            result.contains("#F7FAFF"),
+            "Light-mode --premium-bg-0 should be present"
+        );
+        assert!(
+            result.contains("#EEF4FB"),
+            "Light-mode --premium-bg-42 should be present"
+        );
+        assert!(
+            result.contains("#F9FAFB"),
+            "Light-mode --premium-bg-100 should be present"
+        );
+        assert!(
+            result.contains("rgba(255,255,255,0.74)"),
+            "Light-mode --surface should be present"
+        );
+        assert!(
+            result.contains("0.88"),
+            "Light-mode --glass-op should be present"
+        );
         // Should NOT contain dark-mode values
         assert!(
             !result.contains("#0F172A"),
@@ -678,11 +747,26 @@ mod pdf_tests {
         // Should not contain <style> block
         assert!(!result.contains("<style>"), "Style block should be removed");
         // Should contain resolved light-mode values
-        assert!(result.contains("#f8fafc"), "Light-mode --donut-bg-1 should be present");
-        assert!(result.contains("#eef4f8"), "Light-mode --donut-bg-2 should be present");
-        assert!(result.contains("#f9f4e8"), "Light-mode --donut-bg-3 should be present");
-        assert!(result.contains("#ffffff"), "Light-mode --donut-h1 should be present");
-        assert!(result.contains("0.72"), "Light-mode --donut-ho1 should be present");
+        assert!(
+            result.contains("#f8fafc"),
+            "Light-mode --donut-bg-1 should be present"
+        );
+        assert!(
+            result.contains("#eef4f8"),
+            "Light-mode --donut-bg-2 should be present"
+        );
+        assert!(
+            result.contains("#f9f4e8"),
+            "Light-mode --donut-bg-3 should be present"
+        );
+        assert!(
+            result.contains("#ffffff"),
+            "Light-mode --donut-h1 should be present"
+        );
+        assert!(
+            result.contains("0.72"),
+            "Light-mode --donut-ho1 should be present"
+        );
         // Should NOT contain dark-mode values
         assert!(
             !result.contains("#08111d"),
@@ -696,5 +780,40 @@ mod pdf_tests {
             !result.contains("#4ade80"),
             "Dark-mode --donut-h1 should not be used"
         );
+    }
+
+    #[test]
+    fn test_force_light_mode_replaces_use_dark_true() {
+        let dsl = "[docops,bar, useDark=true, controls=false]\n----\ndata\n----";
+        let result = force_light_mode(dsl);
+        assert!(
+            result.contains("useDark=false"),
+            "useDark should be set to false"
+        );
+        assert!(
+            result.contains("controls=false"),
+            "other controls should be preserved"
+        );
+        assert!(
+            result.contains("[docops, bar"),
+            "header structure should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_force_light_mode_adds_use_dark_when_missing() {
+        let dsl = "[docops,pie]\n----\ndata\n----";
+        let result = force_light_mode(dsl);
+        assert!(
+            result.contains("useDark=false"),
+            "useDark=false should be added"
+        );
+    }
+
+    #[test]
+    fn test_force_light_mode_ignores_non_envelope_input() {
+        let dsl = "just plain text without envelope";
+        let result = force_light_mode(dsl);
+        assert_eq!(result, dsl, "non-envelope input should be unchanged");
     }
 }

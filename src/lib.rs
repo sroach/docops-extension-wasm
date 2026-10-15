@@ -43,7 +43,9 @@ pub fn generate_svg(input: &str) -> String {
 /// embedders that do not support CSS variables.
 #[wasm_bindgen]
 pub fn generate_svg_for_pdf(input: &str) -> String {
-    let result = envelope::parse_envelope(input).and_then(|env| {
+    // Force light mode so PDF embedders get light-mode SVGs
+    let input = common::svg::force_light_mode(input);
+    let result = envelope::parse_envelope(&input).and_then(|env| {
         let mut svg = types::render(&env.viz_type, env.body, &env.controls)?;
 
         let meta = common::svg::Metadata::from_controls(&env.controls);
@@ -70,6 +72,14 @@ pub fn generate_svg_for_pdf(input: &str) -> String {
 #[wasm_bindgen]
 pub fn resolve_for_pdf(svg: &str) -> String {
     common::svg::resolve_for_pdf(svg)
+}
+
+/// Forces `useDark=false` in the DSL envelope header so that the generated
+/// SVG uses light-mode styling. Call this before `generate_svg` when the
+/// output target is PDF, because PDF embedders cannot switch color schemes.
+#[wasm_bindgen]
+pub fn force_light_mode(dsl: &str) -> String {
+    common::svg::force_light_mode(dsl)
 }
 
 #[cfg(test)]

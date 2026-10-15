@@ -353,6 +353,13 @@ pub async fn handle_get_query(
         }
     };
 
+    // Force light mode for PDF output so SVGs render with light-mode styling
+    let dsl = if query.format.as_deref() == Some("pdf") {
+        docops_extension::force_light_mode(&dsl)
+    } else {
+        dsl
+    };
+
     let start = Instant::now();
     let svg = docops_extension::generate_svg(&dsl);
     let elapsed_us = start.elapsed().as_micros() as u64;
@@ -452,6 +459,13 @@ pub async fn handle_post_svg(
         }
     } else {
         (body, false)
+    };
+
+    // Force light mode for PDF output so SVGs render with light-mode styling
+    let dsl = if format_pdf {
+        docops_extension::force_light_mode(&dsl)
+    } else {
+        dsl
     };
 
     let start = Instant::now();
