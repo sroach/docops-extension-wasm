@@ -335,10 +335,17 @@ pub fn force_light_mode(dsl: &str) -> String {
 /// 2. Parse `--variable: value;` definitions from light-mode sections only,
 ///    skipping `@media (prefers-color-scheme: dark)` and `.dark-mode` blocks
 ///    using brace-depth tracking.
-/// 3. Replace every `var(--name)` occurrence with its resolved concrete value.
-/// 4. Remove the entire `<style>...</style>` block (animations, hover effects,
-///    and `@import` font rules don't work in PDF anyway).
-/// 5. Return the cleaned SVG.
+/// 3. Build a cleaned `<style>` block:
+///    - Remove `@import` font rules (fonts don't load in PDF).
+///    - Remove `@media (prefers-color-scheme: dark)` blocks.
+///    - Remove `#{id}.dark-mode` blocks.
+///    - Remove `@keyframes` animation blocks.
+///    - Remove hover/transition rules (don't work in PDF).
+///    - Keep class-based CSS rules but resolve all `var(--name)` references
+///      inside them with concrete light-mode values.
+/// 4. Replace every remaining `var(--name)` in SVG element attributes with
+///    resolved concrete values.
+/// 5. Return the cleaned SVG with the processed `<style>` block intact.
 pub fn resolve_for_pdf(svg: &str) -> String {
     // 1. Find and extract the <style> block
     let style_start = match svg.find("<style>") {
@@ -382,7 +389,6 @@ pub fn resolve_for_pdf(svg: &str) -> String {
         {
             skip_block = true;
             skip_depth = 0;
-            // Count braces on this line
             for ch in trimmed.chars() {
                 if ch == '{' {
                     skip_depth += 1;
@@ -432,7 +438,6 @@ pub fn resolve_for_pdf(svg: &str) -> String {
         }
 
         // Detect the start of a light-mode selector block: #{id} {
-        // This is a line that starts with # (after trim) and contains '{'
         if !in_light_block
             && trimmed.starts_with('#')
             && !trimmed.contains(".dark-mode")
@@ -466,24 +471,230 @@ pub fn resolve_for_pdf(svg: &str) -> String {
             }
             continue;
         }
-
-        // Skip @import, @keyframes, and other at-rules
-        if trimmed.starts_with('@') {
-            continue;
-        }
     }
 
-    // 3. Build result: everything before <style> + everything after </style>
+    // 3. Build a cleaned <style> block: keep class rules with resolved var() values,
+    //    but strip @import, @keyframes, @media, .dark-mode, and hover/transition rules.
+    let cleaned_style = build_cleaned_style_block(style_content, &vars);
+
+    // 4. Build result: before <style> + cleaned <style> + after </style>
     let before_style = &svg[..style_start];
     let mut result = before_style.to_string();
+    result.push_str("<style>");
+    result.push_str(&cleaned_style);
+    result.push_str("</style>");
     result.push_str(after_style);
 
-    // 4. Replace var(--name) with resolved values
+    // 5. Replace any remaining var(--name) in SVG element attributes
     for (name, value) in &vars {
         let var_ref = format!("var(--{})", name);
         result = result.replace(&var_ref, value);
     }
 
+    result
+}
+
+/// Builds a cleaned CSS style block for PDF output.
+/// Keeps class-based rules with resolved `var()` values.
+/// Strips: @import, @media (dark), .dark-mode, @keyframes, hover/transition rules.
+fn build_cleaned_style_block(
+    style_content: &str,
+    vars: &std::collections::HashMap<String, String>,
+) -> String {
+    let mut result_lines = Vec::new();
+    let mut skip_block = false;
+    let mut skip_depth = 0i32;
+    let mut in_var_block = false;
+    let mut var_block_depth = 0i32;
+
+    for line in style_content.lines() {
+        let trimmed = line.trim().to_string();
+
+        // Skip empty lines at the top level
+        if trimmed.is_empty() && !skip_block && !in_var_block {
+            continue;
+        }
+
+        // Detect @media (prefers-color-scheme: dark) — skip entire block
+        if !skip_block
+            && trimmed.contains("@media")
+            && trimmed.contains("prefers-color-scheme: dark")
+        {
+            skip_block = true;
+            skip_depth = 0;
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // Detect .dark-mode class — skip entire block
+        if !skip_block && trimmed.contains(".dark-mode") {
+            skip_block = true;
+            skip_depth = 0;
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // If we're inside a skip block, track brace depth
+        if skip_block {
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // Skip @import rules
+        if trimmed.starts_with("@import") {
+            continue;
+        }
+
+        // Detect @keyframes — skip entire block
+        if trimmed.starts_with("@keyframes") {
+            skip_block = true;
+            skip_depth = 0;
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    skip_depth += 1;
+                } else if ch == '}' {
+                    skip_depth -= 1;
+                }
+            }
+            if skip_depth <= 0 {
+                skip_block = false;
+                skip_depth = 0;
+            }
+            continue;
+        }
+
+        // Detect the light-mode variable definition block: #{id} { ... }
+        // (starts with #, no space after # before {, contains only --var defs)
+        // We skip these — they're just variable definitions, not class rules
+        if !in_var_block
+            && trimmed.starts_with('#')
+            && !trimmed.contains(" .")
+            && trimmed.contains('{')
+        {
+            in_var_block = true;
+            var_block_depth = 0;
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    var_block_depth += 1;
+                } else if ch == '}' {
+                    var_block_depth -= 1;
+                }
+            }
+            if var_block_depth <= 0 {
+                in_var_block = false;
+                var_block_depth = 0;
+            }
+            continue;
+        }
+
+        // Inside the variable definition block, skip
+        if in_var_block {
+            for ch in trimmed.chars() {
+                if ch == '{' {
+                    var_block_depth += 1;
+                } else if ch == '}' {
+                    var_block_depth -= 1;
+                }
+            }
+            if var_block_depth <= 0 {
+                in_var_block = false;
+                var_block_depth = 0;
+            }
+            continue;
+        }
+
+        // Skip @media (prefers-reduced-motion) and other @media blocks
+        if trimmed.starts_with("@media") {
+            continue;
+        }
+
+        // Skip hover rules
+        if trimmed.contains(":hover") {
+            continue;
+        }
+
+        // Skip lines that only contain transition/animation properties
+        // (but keep the rule if it has other useful properties)
+        if trimmed.contains("transition:") || trimmed.contains("animation:") {
+            // Check if this is a standalone rule or part of a larger rule
+            // For single-line rules like `#{id} .line-path { filter: ...; transition: ...; }`
+            // we keep the rule but strip the transition/animation parts
+            let cleaned = strip_animation_props(&trimmed);
+            if cleaned.trim().is_empty() {
+                continue;
+            }
+            // Resolve var() references and add
+            let resolved = resolve_vars_in_str(&cleaned, vars);
+            result_lines.push(resolved);
+            continue;
+        }
+
+        // This is a class-based CSS rule — resolve var() references and keep it
+        let resolved = resolve_vars_in_str(&trimmed, vars);
+        result_lines.push(resolved);
+    }
+
+    result_lines.join("\n")
+}
+
+/// Strips `transition:` and `animation:` properties from a CSS declaration string.
+fn strip_animation_props(css: &str) -> String {
+    let mut result = String::new();
+    // Split by semicolons to process each declaration
+    for part in css.split(';') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let lower = trimmed.to_lowercase();
+        if lower.starts_with("transition") || lower.starts_with("animation") {
+            continue;
+        }
+        if !result.is_empty() {
+            result.push(';');
+        }
+        result.push_str(trimmed);
+    }
+    result
+}
+
+/// Replaces all `var(--name)` references in a string with their resolved values.
+fn resolve_vars_in_str(s: &str, vars: &std::collections::HashMap<String, String>) -> String {
+    let mut result = s.to_string();
+    for (name, value) in vars {
+        let var_ref = format!("var(--{})", name);
+        result = result.replace(&var_ref, value);
+    }
     result
 }
 
@@ -564,9 +775,26 @@ mod pdf_tests {
             !result.contains("var("),
             "No var() references should remain"
         );
-        // Should not contain <style> block
-        assert!(!result.contains("<style>"), "Style block should be removed");
-        // Should contain resolved values
+        // Should contain cleaned <style> block with resolved class rules
+        assert!(
+            result.contains("<style>"),
+            "Cleaned style block should be present"
+        );
+        // Should contain resolved class rule
+        assert!(
+            result.contains("fill: #17202A"),
+            "Class rule should have resolved value"
+        );
+        // Should NOT contain dark-mode blocks
+        assert!(
+            !result.contains("@media"),
+            "Dark-mode @media should be removed"
+        );
+        assert!(
+            !result.contains(".dark-mode"),
+            ".dark-mode block should be removed"
+        );
+        // Should contain resolved values in attributes
         assert!(
             result.contains("#F6F8FB"),
             "Light-mode --bg value should be present"
@@ -669,8 +897,22 @@ mod pdf_tests {
             !result.contains("var("),
             "No var() references should remain"
         );
-        // Should not contain <style> block
-        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain cleaned <style> block with resolved class rules
+        assert!(
+            result.contains("<style>"),
+            "Cleaned style block should be present"
+        );
+        // Should NOT contain @import
+        assert!(!result.contains("@import"), "@import should be removed");
+        // Should NOT contain dark-mode blocks
+        assert!(
+            !result.contains("@media"),
+            "Dark-mode @media should be removed"
+        );
+        assert!(
+            !result.contains(".dark-mode"),
+            ".dark-mode block should be removed"
+        );
         // Should contain resolved light-mode values
         assert!(
             result.contains("#F7FAFF"),
@@ -744,8 +986,22 @@ mod pdf_tests {
             !result.contains("var("),
             "No var() references should remain"
         );
-        // Should not contain <style> block
-        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain cleaned <style> block with resolved class rules
+        assert!(
+            result.contains("<style>"),
+            "Cleaned style block should be present"
+        );
+        // Should NOT contain @import
+        assert!(!result.contains("@import"), "@import should be removed");
+        // Should NOT contain dark-mode blocks
+        assert!(
+            !result.contains("@media"),
+            "Dark-mode @media should be removed"
+        );
+        assert!(
+            !result.contains(".dark-mode"),
+            ".dark-mode block should be removed"
+        );
         // Should contain resolved light-mode values
         assert!(
             result.contains("#f8fafc"),
@@ -884,8 +1140,27 @@ mod pdf_tests {
             "No var() references should remain. Result:\n{}",
             result
         );
-        // Should not contain <style> block
-        assert!(!result.contains("<style>"), "Style block should be removed");
+        // Should contain cleaned <style> block with resolved class rules
+        assert!(
+            result.contains("<style>"),
+            "Cleaned style block should be present"
+        );
+        // Should contain resolved class rules
+        assert!(
+            result.contains("fill: #141414"),
+            "Class rule .chart-text should have resolved fill value"
+        );
+        // Should NOT contain @import
+        assert!(!result.contains("@import"), "@import should be removed");
+        // Should NOT contain dark-mode blocks
+        assert!(
+            !result.contains("@media"),
+            "Dark-mode @media should be removed"
+        );
+        assert!(
+            !result.contains(".dark-mode"),
+            ".dark-mode block should be removed"
+        );
         // Should contain resolved light-mode values
         assert!(
             result.contains("#FFFFFF"),
